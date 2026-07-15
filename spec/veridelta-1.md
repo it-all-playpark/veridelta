@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft |
 | **Schema identifier** | `veridelta/1` |
-| **Spec revision** | 0.2.0 — 2026-07-16 |
+| **Spec revision** | 0.3.0 — 2026-07-16 |
 | **License** | MIT |
 | **Reference implementation** | `vdelta` (this repository; in development) |
 
@@ -135,7 +135,7 @@ mutation is detectable.
 | `schema_version` | `"veridelta/1"` | REQUIRED. |
 | `repo` | repo identity, worktree path, branch lineage, `cwd` | REQUIRED. |
 | `invocation` | canonicalized command, test selector | REQUIRED. Selector is recorded as normalized by the adapter. |
-| `instrument` | adapter name, adapter version, runner config digest | REQUIRED. Together these identify the *measuring instrument* (§6.2). The runner config digest MUST cover the effective configuration that alters evidence quality or structure — including assertion-introspection mode and traceback style — however that configuration is supplied (command line, configuration files, plugins, or environment). |
+| `instrument` | adapter name, adapter version, runner config digest | REQUIRED. Together these identify the *measuring instrument* (§6.2). The runner config digest MUST cover the effective configuration that alters evidence quality or structure — including assertion-introspection mode, traceback style, and diff/message truncation settings — however that configuration is supplied (command line, configuration files, plugins, or environment). |
 | `environment` | runner, runtime, OS, fingerprint of adapter-declared comparison-relevant env vars | REQUIRED. Secret **values** MUST NOT be stored; fingerprints only (§15). |
 | `provenance` | `head` (VCS revision), `dirty_diff_digest`, `tree_digest` | REQUIRED. `tree_digest` MUST identify the exact source content the run executed against, computed per §3.5. Provenance is **evidence of what was compared, never a stream-matching key** (§5.1). |
 | `surface` | observed test inventory digest; digests of test source and test-relevant config files; suppression metadata | REQUIRED to the extent the adapter's declared capabilities allow. |
@@ -241,6 +241,15 @@ declared per adapter as a versioned **composition** and satisfying:
   prohibited; the sole exception is deterministic secret redaction (§15).
   Redaction MUST NOT be used to normalize non-secret volatile values.
 
+Where the runner's structured channel does not provide a CE-1 component
+(e.g., vitest provides no source region text), the adapter MUST either
+(a) declare the corresponding capability `unsupported` (§3.4), surfacing it
+through `degraded_capabilities` (§9.1), or (b) reconstruct the component
+deterministically from the run's recorded tree at the location named by the
+structured channel, declaring the reconstruction in its composition. A
+composition MUST distinguish channel-provided from tree-reconstructed
+components; silent omission is non-conforming.
+
 Material excluded by CE-2/CE-3 MUST be stored in the finding's annex,
 addressable via anchors (§9.3); exclusion from the digest is never exclusion
 from the record (INV-2). An adapter that stores captured-output annex material
@@ -314,6 +323,11 @@ pytest adapter: purge in-scope `__pycache__` directories, or point
 `PYTHONDONTWRITEBYTECODE` alone is insufficient: it suppresses writes but not
 reads of pre-existing cached bytecode. (pytest's `-p no:cacheprovider` does
 not address this cache.)
+
+Not every runner has such a cache: empirical probing found no stale-source
+path for vitest in run mode (its persistent caches carry no evidence), so its
+adapter declares that no neutralization is required — the §13.2 fixture
+remains mandatory as the arbiter of that declaration.
 
 ## 5. Streams and baseline selection
 
@@ -425,9 +439,9 @@ pure, documented functions
 `selector_relation(a, b) → equal | subset | superset | disjoint | unknown` and
 `selector_matches(selector, test_id) → yes | no | unknown`, evaluated over
 inclusion intent only and covered by conformance fixtures. Where the relation
-is undecidable (e.g., pytest `-k`/`-m` expressions), the adapter MUST return
-`unknown`; comparators MUST treat `unknown` as absence of proof, never as
-containment.
+is undecidable (e.g., pytest `-k`/`-m` expressions, vitest
+`--testNamePattern` or `--changed`), the adapter MUST return `unknown`;
+comparators MUST treat `unknown` as absence of proof, never as containment.
 
 ## 7. Delta taxonomy
 
@@ -533,9 +547,12 @@ Appendix A). Flaky annotations never suppress new/updated failure reporting.
 ### 7.8. Determinism
 
 Same input runs + same configuration → byte-identical report. Reports contain
-no timestamps and use stable sort orders. This is proven by conformance
-fixtures over adversarial inputs: reordering, partial execution, flakiness,
-secret-bearing output, branch crossing (§13).
+no timestamps and use stable sort orders. Runners that execute tests in
+parallel workers deliver results in nondeterministic order; recorders MUST
+order observations canonically (by test ID) so that run records and reports
+are independent of arrival order. This is proven by conformance fixtures over
+adversarial inputs: reordering, partial execution, flakiness, secret-bearing
+output, branch crossing (§13).
 
 ## 8. Trust invariants (normative core)
 
@@ -887,9 +904,13 @@ exit 2 — never `pass`.
   capability matrix; anything outside the subset is `unsupported`, not
   approximated.
 
-Adapter roadmap for the reference implementation (informative): `pytest`
-native first; `vitest` native reporter second (agent coding skews TS/JS);
-JUnit XML third, for CI breadth, under the constraints above.
+Adapter roadmap for the reference implementation (informative): `vitest`
+native reporter first — agent-authored code skews heavily toward TS/JS, the
+maintainer's own repositories (the cheapest dogfood subjects) are TypeScript,
+and empirical probing confirmed the channel satisfies §3.6 with no
+stale-cache path in run mode. `pytest` native second (its richer structured
+channel is already probed and its composition pre-designed); JUnit XML third,
+for CI breadth, under the constraints above.
 
 ## 13. Conformance
 
@@ -1038,6 +1059,15 @@ None violates an invariant; each is disclosed rather than papered over.
 
 ## Revision history
 
+- **0.3.0 (2026-07-16)** — First adapter target flipped to vitest after an
+  empirical probe confirmed §3.6 satisfiability (core digest stable across
+  rerun/line-shift/unrelated-edit, sensitive only to genuine signal; no
+  stale-cache path in run mode). Added: channel-absent CE-1 component rule
+  (declare `unsupported` or reconstruct deterministically from the recorded
+  tree, §3.6); runner-cache asymmetry note (§4.5); truncation settings in the
+  instrument digest (§3.1); canonical observation ordering under parallel
+  workers (§7.8); vitest selector examples (§6.4); adapter roadmap reorder
+  (§12).
 - **0.2.0 (2026-07-16)** — Resolved the open implementation questions via
   empirical probes (git tree-digest behavior; pytest failure-evidence
   volatility) and a two-round adversarial design review. Added: canonical
