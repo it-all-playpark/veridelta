@@ -713,6 +713,18 @@ conformance.
 The child's "tests failed" and "something regressed since baseline" are never
 encoded in the same exit code: `run` owns transparency, `gate` owns semantics.
 
+**`run` I/O contract.** In the normal path, `vdelta run` captures the child's
+output into the run record and emits the delta report to stdout (`--report
+json` for the primary JSON contract; the secondary human rendering otherwise)
+— replacing raw output with the report is the point of the tool, and the raw
+stream stays reachable via anchors (`show --raw`). The child's exit code is
+passed through unchanged, including signal-death conventions. In the degraded
+path (INV-5), the child's raw stdout/stderr are passed through verbatim to
+their respective streams and no report is emitted. veridelta's own
+diagnostics go to stderr and MUST NOT interleave with the report on stdout.
+Implementations MAY offer opt-in live passthrough for long-running suites;
+recording and the report are unaffected by it.
+
 ## 11. Gate
 
 ### 11.1. Policies and the reporting floor
@@ -1067,7 +1079,7 @@ None violates an invariant; each is disclosed rather than papered over.
   tree, §3.6); runner-cache asymmetry note (§4.5); truncation settings in the
   instrument digest (§3.1); canonical observation ordering under parallel
   workers (§7.8); vitest selector examples (§6.4); adapter roadmap reorder
-  (§12).
+  (§12); the `run` command I/O contract (§10).
 - **0.2.0 (2026-07-16)** — Resolved the open implementation questions via
   empirical probes (git tree-digest behavior; pytest failure-evidence
   volatility) and a two-round adversarial design review. Added: canonical
