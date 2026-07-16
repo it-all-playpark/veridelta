@@ -22,7 +22,9 @@ function serialize(value: unknown, path: string): string {
       return value ? 'true' : 'false'
     case 'number':
       if (!Number.isInteger(value)) {
-        throw new NonCanonicalValueError(`non-integer number at ${path}: ${value}`)
+        throw new NonCanonicalValueError(
+          `non-integer number at ${path}: ${value}`,
+        )
       }
       if (!Number.isSafeInteger(value)) {
         throw new NonCanonicalValueError(`unsafe integer at ${path}: ${value}`)
@@ -41,6 +43,8 @@ function serialize(value: unknown, path: string): string {
       return `{${keys.map((k) => `${JSON.stringify(k)}:${serialize(record[k], `${path}.${k}`)}`).join(',')}}`
     }
     default:
-      throw new NonCanonicalValueError(`unserializable ${typeof value} at ${path}`)
+      throw new NonCanonicalValueError(
+        `unserializable ${typeof value} at ${path}`,
+      )
   }
 }

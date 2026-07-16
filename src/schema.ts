@@ -7,11 +7,25 @@
 
 export const SCHEMA_VERSION = 'veridelta/1'
 
-export const VERDICTS = ['pass', 'fail', 'error', 'skip', 'xfail', 'xpass', 'not_run'] as const
+export const VERDICTS = [
+  'pass',
+  'fail',
+  'error',
+  'skip',
+  'xfail',
+  'xpass',
+  'not_run',
+] as const
 export type Verdict = (typeof VERDICTS)[number]
 export const RED_SET: readonly Verdict[] = ['fail', 'error']
 
-export const COMPARABILITIES = ['exact', 'scope_changed', 'subset', 'partial', 'none'] as const
+export const COMPARABILITIES = [
+  'exact',
+  'scope_changed',
+  'subset',
+  'partial',
+  'none',
+] as const
 export type Comparability = (typeof COMPARABILITIES)[number]
 
 export const NONE_REASONS = [
@@ -41,10 +55,20 @@ export const STREAM_KEY_FIELDS = [
 ] as const
 export type StreamKeyField = (typeof STREAM_KEY_FIELDS)[number]
 
-export const OUTCOME_VERDICTS = ['regressed', 'improved', 'unchanged', 'inconclusive'] as const
+export const OUTCOME_VERDICTS = [
+  'regressed',
+  'improved',
+  'unchanged',
+  'inconclusive',
+] as const
 export type OutcomeVerdict = (typeof OUTCOME_VERDICTS)[number]
 
-export const SURFACE_STATUSES = ['intact', 'changed', 'reduced', 'inconclusive'] as const
+export const SURFACE_STATUSES = [
+  'intact',
+  'changed',
+  'reduced',
+  'inconclusive',
+] as const
 export type SurfaceStatus = (typeof SURFACE_STATUSES)[number]
 
 export const SURFACE_EVENT_KINDS = [
@@ -73,7 +97,11 @@ export type BaselineMode = (typeof BASELINE_MODES)[number]
 export const COMPLETENESS_STATUSES = ['complete', 'partial', 'crashed'] as const
 export type CompletenessStatus = (typeof COMPLETENESS_STATUSES)[number]
 
-export const RECORD_INTEGRITIES = ['advisory', 'tamper-evident', 'trusted-environment'] as const
+export const RECORD_INTEGRITIES = [
+  'advisory',
+  'tamper-evident',
+  'trusted-environment',
+] as const
 export type RecordIntegrity = (typeof RECORD_INTEGRITIES)[number]
 
 export const GATE_POLICIES = ['report-only', 'advisory', 'blocking'] as const
@@ -258,7 +286,11 @@ export interface RunRecord {
     os: string
     env_fingerprint: string
   }
-  provenance: { head: string | null; dirty_diff_digest: string; tree_digest: string }
+  provenance: {
+    head: string | null
+    dirty_diff_digest: string
+    tree_digest: string
+  }
   surface: {
     inventory_digest: string
     test_sources: Record<string, string>
@@ -295,14 +327,21 @@ function fail(path: string, message: string): never {
 }
 
 function asObject(v: unknown, path: string): Obj {
-  if (v === null || typeof v !== 'object' || Array.isArray(v)) fail(path, 'expected object')
+  if (v === null || typeof v !== 'object' || Array.isArray(v))
+    fail(path, 'expected object')
   return v as Obj
 }
 
-function checkKeys(o: Obj, path: string, required: string[], optional: string[] = []): void {
+function checkKeys(
+  o: Obj,
+  path: string,
+  required: string[],
+  optional: string[] = [],
+): void {
   const allowed = new Set([...required, ...optional])
   for (const k of Object.keys(o)) {
-    if (!allowed.has(k)) fail(path, `unknown field "${k}" (unknown fields are rejected, §14)`)
+    if (!allowed.has(k))
+      fail(path, `unknown field "${k}" (unknown fields are rejected, §14)`)
   }
   for (const k of required) {
     if (!(k in o)) fail(path, `missing required field "${k}"`)
@@ -320,7 +359,8 @@ function asBoolean(v: unknown, path: string): boolean {
 }
 
 function asInteger(v: unknown, path: string): number {
-  if (typeof v !== 'number' || !Number.isInteger(v)) fail(path, 'expected integer')
+  if (typeof v !== 'number' || !Number.isInteger(v))
+    fail(path, 'expected integer')
   return v
 }
 
@@ -329,7 +369,11 @@ function asStringArray(v: unknown, path: string): string[] {
   return v.map((e, i) => asString(e, `${path}[${i}]`))
 }
 
-function asEnum<T extends string>(v: unknown, values: readonly T[], path: string): T {
+function asEnum<T extends string>(
+  v: unknown,
+  values: readonly T[],
+  path: string,
+): T {
   const s = asString(v, path)
   if (!(values as readonly string[]).includes(s)) {
     fail(path, `unknown closed-enum value "${s}" (hard error, §9.4)`)
@@ -347,7 +391,8 @@ function validateNearMiss(v: unknown, path: string): void {
   checkKeys(o, path, ['run_id', 'mismatches'])
   asString(o.run_id, `${path}.run_id`)
   if (!Array.isArray(o.mismatches)) fail(`${path}.mismatches`, 'expected array')
-  if (o.mismatches.length === 0) fail(`${path}.mismatches`, 'expected non-empty array')
+  if (o.mismatches.length === 0)
+    fail(`${path}.mismatches`, 'expected non-empty array')
   o.mismatches.forEach((m, i) => {
     const mo = asObject(m, `${path}.mismatches[${i}]`)
     checkKeys(mo, `${path}.mismatches[${i}]`, ['field', 'recorded', 'current'])
@@ -362,8 +407,10 @@ function validateStillFailEntry(v: unknown, path: string): void {
   const o = asObject(v, path)
   checkKeys(o, path, ['test_id'], ['degraded_capabilities', 'context_changed'])
   asString(o.test_id, `${path}.test_id`)
-  if ('degraded_capabilities' in o) asStringArray(o.degraded_capabilities, `${path}.degraded_capabilities`)
-  if ('context_changed' in o) asBoolean(o.context_changed, `${path}.context_changed`)
+  if ('degraded_capabilities' in o)
+    asStringArray(o.degraded_capabilities, `${path}.degraded_capabilities`)
+  if ('context_changed' in o)
+    asBoolean(o.context_changed, `${path}.context_changed`)
 }
 
 function validateUpdatedFailEntry(v: unknown, path: string): void {
@@ -371,14 +418,20 @@ function validateUpdatedFailEntry(v: unknown, path: string): void {
   checkKeys(
     o,
     path,
-    ['test_id', 'evidence_digest_before', 'evidence_digest_after', 'failure_mode_changed'],
+    [
+      'test_id',
+      'evidence_digest_before',
+      'evidence_digest_after',
+      'failure_mode_changed',
+    ],
     ['degraded_capabilities'],
   )
   asString(o.test_id, `${path}.test_id`)
   asString(o.evidence_digest_before, `${path}.evidence_digest_before`)
   asString(o.evidence_digest_after, `${path}.evidence_digest_after`)
   asBoolean(o.failure_mode_changed, `${path}.failure_mode_changed`)
-  if ('degraded_capabilities' in o) asStringArray(o.degraded_capabilities, `${path}.degraded_capabilities`)
+  if ('degraded_capabilities' in o)
+    asStringArray(o.degraded_capabilities, `${path}.degraded_capabilities`)
 }
 
 function validateTransitions(v: unknown, path: string): void {
@@ -404,11 +457,17 @@ function validateTransitions(v: unknown, path: string): void {
     const arr = o[key]
     if (!Array.isArray(arr)) fail(`${path}.${key}`, 'expected array')
     if (key === 'still_fail_unchanged') {
-      arr.forEach((e, i) => validateStillFailEntry(e, `${path}.${key}[${i}]`))
+      arr.forEach((e, i) => {
+        validateStillFailEntry(e, `${path}.${key}[${i}]`)
+      })
     } else if (key === 'updated_fail') {
-      arr.forEach((e, i) => validateUpdatedFailEntry(e, `${path}.${key}[${i}]`))
+      arr.forEach((e, i) => {
+        validateUpdatedFailEntry(e, `${path}.${key}[${i}]`)
+      })
     } else {
-      arr.forEach((e, i) => asString(e, `${path}.${key}[${i}]`))
+      arr.forEach((e, i) => {
+        asString(e, `${path}.${key}[${i}]`)
+      })
     }
   }
 }
@@ -424,12 +483,24 @@ function validateSurfaceEvent(v: unknown, path: string): void {
 
 function validateGate(v: unknown, path: string): void {
   const o = asObject(v, path)
-  checkKeys(o, path, ['policy', 'verdict', 'triggered', 'target', 'staleness', 'record_integrity'])
+  checkKeys(o, path, [
+    'policy',
+    'verdict',
+    'triggered',
+    'target',
+    'staleness',
+    'record_integrity',
+  ])
   asEnum(o.policy, GATE_POLICIES, `${path}.policy`)
   asEnum(o.verdict, GATE_VERDICTS, `${path}.verdict`)
   asStringArray(o.triggered, `${path}.triggered`)
   const target = asObject(o.target, `${path}.target`)
-  checkKeys(target, `${path}.target`, ['kind', 'head_sha', 'base_sha'], ['merge_sha'])
+  checkKeys(
+    target,
+    `${path}.target`,
+    ['kind', 'head_sha', 'base_sha'],
+    ['merge_sha'],
+  )
   asEnum(target.kind, GATE_TARGET_KINDS, `${path}.target.kind`)
   asString(target.head_sha, `${path}.target.head_sha`)
   asString(target.base_sha, `${path}.target.base_sha`)
@@ -443,7 +514,10 @@ function validateGate(v: unknown, path: string): void {
   asString(staleness.run_tree_digest, `${path}.staleness.run_tree_digest`)
   asString(staleness.target_tree_digest, `${path}.staleness.target_tree_digest`)
   asBoolean(staleness.match, `${path}.staleness.match`)
-  asStringArray(staleness.unverified_submodules, `${path}.staleness.unverified_submodules`)
+  asStringArray(
+    staleness.unverified_submodules,
+    `${path}.staleness.unverified_submodules`,
+  )
   asEnum(o.record_integrity, RECORD_INTEGRITIES, `${path}.record_integrity`)
 }
 
@@ -481,19 +555,34 @@ export function parseReport(value: unknown): ComparisonReport {
     fail('report.schema_version', `expected "${SCHEMA_VERSION}"`)
   }
   asEnum(o.outcome_verdict, OUTCOME_VERDICTS, 'report.outcome_verdict')
-  const comparability = asEnum(o.comparability, COMPARABILITIES, 'report.comparability')
+  const comparability = asEnum(
+    o.comparability,
+    COMPARABILITIES,
+    'report.comparability',
+  )
 
   if (o.baseline !== null) {
     const b = asObject(o.baseline, 'report.baseline')
-    checkKeys(b, 'report.baseline', ['run_id', 'mode', 'selection_reason'], ['superset_candidates'])
+    checkKeys(
+      b,
+      'report.baseline',
+      ['run_id', 'mode', 'selection_reason'],
+      ['superset_candidates'],
+    )
     asString(b.run_id, 'report.baseline.run_id')
     asEnum(b.mode, BASELINE_MODES, 'report.baseline.mode')
     asString(b.selection_reason, 'report.baseline.selection_reason')
-    if ('superset_candidates' in b) asInteger(b.superset_candidates, 'report.baseline.superset_candidates')
+    if ('superset_candidates' in b)
+      asInteger(b.superset_candidates, 'report.baseline.superset_candidates')
   }
 
   const cur = asObject(o.current, 'report.current')
-  checkKeys(cur, 'report.current', ['run_id', 'complete', 'child_exit_code'], ['red'])
+  checkKeys(
+    cur,
+    'report.current',
+    ['run_id', 'complete', 'child_exit_code'],
+    ['red'],
+  )
   asString(cur.run_id, 'report.current.run_id')
   asBoolean(cur.complete, 'report.current.complete')
   asInteger(cur.child_exit_code, 'report.current.child_exit_code')
@@ -502,40 +591,65 @@ export function parseReport(value: unknown): ComparisonReport {
   const cov = asObject(o.observation_coverage, 'report.observation_coverage')
   checkKeys(cov, 'report.observation_coverage', ['current'], ['baseline'])
   asString(cov.current, 'report.observation_coverage.current')
-  if ('baseline' in cov) asString(cov.baseline, 'report.observation_coverage.baseline')
+  if ('baseline' in cov)
+    asString(cov.baseline, 'report.observation_coverage.baseline')
 
   if ('comparability_detail' in o) {
     const d = asObject(o.comparability_detail, 'report.comparability_detail')
-    checkKeys(d, 'report.comparability_detail', ['reason', 'kind'], ['near_miss'])
+    checkKeys(
+      d,
+      'report.comparability_detail',
+      ['reason', 'kind'],
+      ['near_miss'],
+    )
     asEnum(d.reason, NONE_REASONS, 'report.comparability_detail.reason')
     asEnum(d.kind, DETAIL_KINDS, 'report.comparability_detail.kind')
-    if ('near_miss' in d) validateNearMiss(d.near_miss, 'report.comparability_detail.near_miss')
+    if ('near_miss' in d)
+      validateNearMiss(d.near_miss, 'report.comparability_detail.near_miss')
   } else if (comparability === 'none') {
-    fail('report.comparability_detail', 'required when comparability is "none" (§6.3)')
+    fail(
+      'report.comparability_detail',
+      'required when comparability is "none" (§6.3)',
+    )
   }
 
   if ('verification_surface' in o) {
     const s = asObject(o.verification_surface, 'report.verification_surface')
     checkKeys(s, 'report.verification_surface', ['status', 'events'])
     asEnum(s.status, SURFACE_STATUSES, 'report.verification_surface.status')
-    if (!Array.isArray(s.events)) fail('report.verification_surface.events', 'expected array')
-    s.events.forEach((e, i) => validateSurfaceEvent(e, `report.verification_surface.events[${i}]`))
+    if (!Array.isArray(s.events))
+      fail('report.verification_surface.events', 'expected array')
+    s.events.forEach((e, i) => {
+      validateSurfaceEvent(e, `report.verification_surface.events[${i}]`)
+    })
   }
 
-  if ('transitions' in o) validateTransitions(o.transitions, 'report.transitions')
+  if ('transitions' in o)
+    validateTransitions(o.transitions, 'report.transitions')
 
   const fe = asObject(o.failure_evidence, 'report.failure_evidence')
-  checkKeys(fe, 'report.failure_evidence', ['composition_id', 'degraded_capabilities'])
+  checkKeys(fe, 'report.failure_evidence', [
+    'composition_id',
+    'degraded_capabilities',
+  ])
   asString(fe.composition_id, 'report.failure_evidence.composition_id')
-  asStringArray(fe.degraded_capabilities, 'report.failure_evidence.degraded_capabilities')
+  asStringArray(
+    fe.degraded_capabilities,
+    'report.failure_evidence.degraded_capabilities',
+  )
 
   const trust = asObject(o.trust, 'report.trust')
   checkKeys(trust, 'report.trust', ['record_integrity'])
-  asEnum(trust.record_integrity, RECORD_INTEGRITIES, 'report.trust.record_integrity')
+  asEnum(
+    trust.record_integrity,
+    RECORD_INTEGRITIES,
+    'report.trust.record_integrity',
+  )
 
   validateStringMap(o.anchors, 'report.anchors')
 
-  if ('budget_exceeded_for_safety' in o) asBoolean(o.budget_exceeded_for_safety, 'report.budget_exceeded_for_safety')
+  if ('budget_exceeded_for_safety' in o)
+    asBoolean(o.budget_exceeded_for_safety, 'report.budget_exceeded_for_safety')
   if ('masking_applied' in o) {
     const m = asObject(o.masking_applied, 'report.masking_applied')
     checkKeys(m, 'report.masking_applied', ['count', 'example'])
@@ -549,12 +663,19 @@ export function parseReport(value: unknown): ComparisonReport {
 
 function validateFinding(v: unknown, path: string): void {
   const o = asObject(v, path)
-  checkKeys(o, path, ['evidence_digest', 'structural_fingerprint', 'evidence', 'context_digest', 'annex'])
+  checkKeys(o, path, [
+    'evidence_digest',
+    'structural_fingerprint',
+    'evidence',
+    'context_digest',
+    'annex',
+  ])
   asString(o.evidence_digest, `${path}.evidence_digest`)
   asString(o.structural_fingerprint, `${path}.structural_fingerprint`)
   const ev = asObject(o.evidence, `${path}.evidence`)
   checkKeys(ev, `${path}.evidence`, ['errors'])
-  if (!Array.isArray(ev.errors)) fail(`${path}.evidence.errors`, 'expected array')
+  if (!Array.isArray(ev.errors))
+    fail(`${path}.evidence.errors`, 'expected array')
   ev.errors.forEach((e, i) => {
     const eo = asObject(e, `${path}.evidence.errors[${i}]`)
     checkKeys(
@@ -565,8 +686,11 @@ function validateFinding(v: unknown, path: string): void {
     )
     asString(eo.exception_type, `${path}.evidence.errors[${i}].exception_type`)
     asString(eo.message, `${path}.evidence.errors[${i}].message`)
-    if (!Array.isArray(eo.rel_offsets)) fail(`${path}.evidence.errors[${i}].rel_offsets`, 'expected array')
-    eo.rel_offsets.forEach((n, j) => asInteger(n, `${path}.evidence.errors[${i}].rel_offsets[${j}]`))
+    if (!Array.isArray(eo.rel_offsets))
+      fail(`${path}.evidence.errors[${i}].rel_offsets`, 'expected array')
+    eo.rel_offsets.forEach((n, j) => {
+      asInteger(n, `${path}.evidence.errors[${i}].rel_offsets[${j}]`)
+    })
   })
   asString(o.context_digest, `${path}.context_digest`)
   const annex = asObject(o.annex, `${path}.annex`)
@@ -591,7 +715,8 @@ export function parseRunRecord(value: unknown): RunRecord {
     'observations',
     'recording',
   ])
-  if (o.schema_version !== SCHEMA_VERSION) fail('record.schema_version', `expected "${SCHEMA_VERSION}"`)
+  if (o.schema_version !== SCHEMA_VERSION)
+    fail('record.schema_version', `expected "${SCHEMA_VERSION}"`)
 
   const repo = asObject(o.repo, 'record.repo')
   checkKeys(repo, 'record.repo', ['identity', 'worktree', 'branch', 'cwd'])
@@ -601,36 +726,75 @@ export function parseRunRecord(value: unknown): RunRecord {
   asStringArray(invocation.selector, 'record.invocation.selector')
 
   const instrument = asObject(o.instrument, 'record.instrument')
-  checkKeys(instrument, 'record.instrument', ['adapter', 'adapter_version', 'composition_id', 'config_digest'])
+  checkKeys(instrument, 'record.instrument', [
+    'adapter',
+    'adapter_version',
+    'composition_id',
+    'config_digest',
+  ])
 
   const environment = asObject(o.environment, 'record.environment')
-  checkKeys(environment, 'record.environment', ['runner', 'runner_version', 'runtime', 'os', 'env_fingerprint'])
+  checkKeys(environment, 'record.environment', [
+    'runner',
+    'runner_version',
+    'runtime',
+    'os',
+    'env_fingerprint',
+  ])
 
   const provenance = asObject(o.provenance, 'record.provenance')
-  checkKeys(provenance, 'record.provenance', ['head', 'dirty_diff_digest', 'tree_digest'])
-  if (provenance.head !== null) asString(provenance.head, 'record.provenance.head')
+  checkKeys(provenance, 'record.provenance', [
+    'head',
+    'dirty_diff_digest',
+    'tree_digest',
+  ])
+  if (provenance.head !== null)
+    asString(provenance.head, 'record.provenance.head')
   asString(provenance.tree_digest, 'record.provenance.tree_digest')
 
   const surface = asObject(o.surface, 'record.surface')
-  checkKeys(surface, 'record.surface', ['inventory_digest', 'test_sources', 'config_sources', 'suppressed'])
+  checkKeys(surface, 'record.surface', [
+    'inventory_digest',
+    'test_sources',
+    'config_sources',
+    'suppressed',
+  ])
   validateStringMap(surface.test_sources, 'record.surface.test_sources')
   validateStringMap(surface.config_sources, 'record.surface.config_sources')
   asStringArray(surface.suppressed, 'record.surface.suppressed')
 
   const completeness = asObject(o.completeness, 'record.completeness')
   checkKeys(completeness, 'record.completeness', ['status', 'child_exit_code'])
-  asEnum(completeness.status, COMPLETENESS_STATUSES, 'record.completeness.status')
+  asEnum(
+    completeness.status,
+    COMPLETENESS_STATUSES,
+    'record.completeness.status',
+  )
   asInteger(completeness.child_exit_code, 'record.completeness.child_exit_code')
 
-  if (!Array.isArray(o.observations)) fail('record.observations', 'expected array')
+  if (!Array.isArray(o.observations))
+    fail('record.observations', 'expected array')
   o.observations.forEach((obs, i) => {
     const oo = asObject(obs, `record.observations[${i}]`)
-    checkKeys(oo, `record.observations[${i}]`, ['test_id', 'verdict'], ['suppression', 'source_ref', 'finding'])
+    checkKeys(
+      oo,
+      `record.observations[${i}]`,
+      ['test_id', 'verdict'],
+      ['suppression', 'source_ref', 'finding'],
+    )
     asString(oo.test_id, `record.observations[${i}].test_id`)
     asEnum(oo.verdict, VERDICTS, `record.observations[${i}].verdict`)
     if ('suppression' in oo) {
-      const sup = asObject(oo.suppression, `record.observations[${i}].suppression`)
-      checkKeys(sup, `record.observations[${i}].suppression`, ['marker'], ['note'])
+      const sup = asObject(
+        oo.suppression,
+        `record.observations[${i}].suppression`,
+      )
+      checkKeys(
+        sup,
+        `record.observations[${i}].suppression`,
+        ['marker'],
+        ['note'],
+      )
       asString(sup.marker, `record.observations[${i}].suppression.marker`)
     }
     if ('source_ref' in oo) {
@@ -639,7 +803,8 @@ export function parseRunRecord(value: unknown): RunRecord {
       asString(sr.file, `record.observations[${i}].source_ref.file`)
       asInteger(sr.line, `record.observations[${i}].source_ref.line`)
     }
-    if ('finding' in oo) validateFinding(oo.finding, `record.observations[${i}].finding`)
+    if ('finding' in oo)
+      validateFinding(oo.finding, `record.observations[${i}].finding`)
   })
 
   const recording = asObject(o.recording, 'record.recording')

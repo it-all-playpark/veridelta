@@ -7,7 +7,6 @@
  * shell), so fixture-supplied strings can never be interpreted by a shell.
  */
 import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import {
   cpSync,
   existsSync,
@@ -23,6 +22,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
+import { promisify } from 'node:util'
 import { parseReport, parseRunRecord } from '../../src/index.js'
 
 const execFileP = promisify(execFile)
@@ -58,7 +58,9 @@ export class FixtureFailure extends Error {
 }
 
 export async function runFixture(fixtureDir: string): Promise<void> {
-  const manifest = JSON.parse(readFileSync(join(fixtureDir, 'manifest.json'), 'utf8')) as Manifest
+  const manifest = JSON.parse(
+    readFileSync(join(fixtureDir, 'manifest.json'), 'utf8'),
+  ) as Manifest
   const ctx = new FixtureContext(fixtureDir, manifest)
   try {
     await ctx.init()
@@ -86,7 +88,10 @@ class FixtureContext {
     await this.git(['init', '-b', 'main'])
     await this.git(['config', 'user.name', 'conformance'])
     await this.git(['config', 'user.email', 'conformance@veridelta.invalid'])
-    symlinkSync(join(REPO_ROOT, 'node_modules'), join(this.workspace, 'node_modules'))
+    symlinkSync(
+      join(REPO_ROOT, 'node_modules'),
+      join(this.workspace, 'node_modules'),
+    )
   }
 
   cleanup(): void {
@@ -101,12 +106,19 @@ class FixtureContext {
     await execFileP('git', ['-C', this.workspace, ...args])
   }
 
-  private vdelta(args: string[], env?: Record<string, string>): Promise<ExecResult> {
+  private vdelta(
+    args: string[],
+    env?: Record<string, string>,
+  ): Promise<ExecResult> {
     return new Promise((resolve) => {
       execFile(
         process.execPath,
         [CLI, ...args],
-        { cwd: this.workspace, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 },
+        {
+          cwd: this.workspace,
+          env: { ...process.env, ...env },
+          maxBuffer: 64 * 1024 * 1024,
+        },
         (error, stdout, stderr) => {
           const code =
             error === null
@@ -126,7 +138,12 @@ class FixtureContext {
         return this.stepApply(step)
       case 'commit':
         await this.git(['add', '-A'])
-        await this.git(['commit', '-m', String(step.message ?? 'fixture'), '--allow-empty'])
+        await this.git([
+          'commit',
+          '-m',
+          String(step.message ?? 'fixture'),
+          '--allow-empty',
+        ])
         return
       case 'branch':
         await this.git(['checkout', '-b', String(step.name)])
@@ -151,7 +168,10 @@ class FixtureContext {
       case 'edit-json':
         return this.stepEditJson(step)
       case 'delete':
-        rmSync(join(this.workspace, String(step.path)), { recursive: true, force: true })
+        rmSync(join(this.workspace, String(step.path)), {
+          recursive: true,
+          force: true,
+        })
         return
       case 'mkdir':
         mkdirSync(join(this.workspace, String(step.path)), { recursive: true })
@@ -167,19 +187,32 @@ class FixtureContext {
 
   private stepApply(step: Step): void {
     const project = join(this.fixtureDir, 'projects', String(step.project))
-    if (!existsSync(project)) this.fail(`no such project: ${String(step.project)}`)
+    if (!existsSync(project))
+      this.fail(`no such project: ${String(step.project)}`)
     const preserve = step.preserveMtime === true
     const before = new Map<string, { mtime: Date; content: Buffer }>()
     if (preserve) {
-      for (const rel of walkFiles(this.workspace, ['.git', '.veridelta', 'node_modules'])) {
+      for (const rel of walkFiles(this.workspace, [
+        '.git',
+        '.veridelta',
+        'node_modules',
+      ])) {
         const abs = join(this.workspace, rel)
-        before.set(rel, { mtime: statSync(abs).mtime, content: readFileSync(abs) })
+        before.set(rel, {
+          mtime: statSync(abs).mtime,
+          content: readFileSync(abs),
+        })
       }
     }
     // delete workspace files not present in the project (contract §3 apply)
     const projectFiles = new Set(walkFiles(project, []))
-    for (const rel of walkFiles(this.workspace, ['.git', '.veridelta', 'node_modules'])) {
-      if (!projectFiles.has(rel)) rmSync(join(this.workspace, rel), { force: true })
+    for (const rel of walkFiles(this.workspace, [
+      '.git',
+      '.veridelta',
+      'node_modules',
+    ])) {
+      if (!projectFiles.has(rel))
+        rmSync(join(this.workspace, rel), { force: true })
     }
     cpSync(project, this.workspace, { recursive: true })
     if (preserve) {
@@ -196,10 +229,22 @@ class FixtureContext {
 
   private async stepRun(step: Step): Promise<void> {
     const args = Array.isArray(step.args) ? step.args.map(String) : []
-    const child = ['run', '--report', 'json', '--', process.execPath, VITEST_MJS, 'run', ...args]
+    const child = [
+      'run',
+      '--report',
+      'json',
+      '--',
+      process.execPath,
+      VITEST_MJS,
+      'run',
+      ...args,
+    ]
     const env = (step.env ?? {}) as Record<string, string>
     const result = await this.vdelta(child, env)
-    if (typeof step.expectExit === 'number' && result.code !== step.expectExit) {
+    if (
+      typeof step.expectExit === 'number' &&
+      result.code !== step.expectExit
+    ) {
       this.fail(
         `run ${String(step.id)}: expected exit ${step.expectExit}, got ${result.code}\nstderr: ${result.stderr.slice(0, 2000)}\nstdout: ${result.stdout.slice(0, 2000)}`,
       )
@@ -212,7 +257,10 @@ class FixtureContext {
       } catch {
         looksLikeReport = false
       }
-      if (looksLikeReport) this.fail(`run ${String(step.id)}: expected degraded passthrough, got a report`)
+      if (looksLikeReport)
+        this.fail(
+          `run ${String(step.id)}: expected degraded passthrough, got a report`,
+        )
       return
     }
     let report: { current?: { run_id?: string } }
@@ -234,9 +282,16 @@ class FixtureContext {
     const args = ['compare']
     if (typeof step.ref === 'string') {
       args.push('--ref', step.ref)
-      if (typeof step.current === 'string') args.push(this.resolveRunRef(step.current))
-    } else if (typeof step.baseline === 'string' && typeof step.current === 'string') {
-      args.push(this.resolveRunRef(step.baseline), this.resolveRunRef(step.current))
+      if (typeof step.current === 'string')
+        args.push(this.resolveRunRef(step.current))
+    } else if (
+      typeof step.baseline === 'string' &&
+      typeof step.current === 'string'
+    ) {
+      args.push(
+        this.resolveRunRef(step.baseline),
+        this.resolveRunRef(step.current),
+      )
     }
     args.push('--report', 'json')
     return args
@@ -245,7 +300,10 @@ class FixtureContext {
   private async stepCompare(step: Step): Promise<void> {
     const args = this.compareArgs(step)
     const result = await this.vdelta(args)
-    if (typeof step.expectExit === 'number' && result.code !== step.expectExit) {
+    if (
+      typeof step.expectExit === 'number' &&
+      result.code !== step.expectExit
+    ) {
       this.fail(
         `compare ${String(step.id)}: expected exit ${step.expectExit}, got ${result.code}\nstderr: ${result.stderr.slice(0, 2000)}`,
       )
@@ -253,7 +311,9 @@ class FixtureContext {
     if (step.assertDeterministic === true) {
       const again = await this.vdelta(args)
       if (again.stdout !== result.stdout) {
-        this.fail(`compare ${String(step.id)}: re-execution is not byte-identical (§13.3)`)
+        this.fail(
+          `compare ${String(step.id)}: re-execution is not byte-identical (§13.3)`,
+        )
       }
     }
     this.storeStepReport(step, result)
@@ -261,10 +321,14 @@ class FixtureContext {
 
   private async stepGate(step: Step): Promise<void> {
     const args = ['gate', '--ref', String(step.ref), '--policy', 'report-only']
-    if (typeof step.run === 'string') args.push('--run', this.resolveRunRef(step.run))
+    if (typeof step.run === 'string')
+      args.push('--run', this.resolveRunRef(step.run))
     args.push('--report', 'json')
     const result = await this.vdelta(args)
-    if (typeof step.expectExit === 'number' && result.code !== step.expectExit) {
+    if (
+      typeof step.expectExit === 'number' &&
+      result.code !== step.expectExit
+    ) {
       this.fail(
         `gate ${String(step.id)}: expected exit ${step.expectExit}, got ${result.code}\nstderr: ${result.stderr.slice(0, 2000)}`,
       )
@@ -272,7 +336,9 @@ class FixtureContext {
     if (step.assertDeterministic === true) {
       const again = await this.vdelta(args)
       if (again.stdout !== result.stdout) {
-        this.fail(`gate ${String(step.id)}: re-execution is not byte-identical (§13.3)`)
+        this.fail(
+          `gate ${String(step.id)}: re-execution is not byte-identical (§13.3)`,
+        )
       }
     }
     this.storeStepReport(step, result)
@@ -283,8 +349,13 @@ class FixtureContext {
     if (typeof step.test === 'string') args.push('--test', step.test)
     if (step.raw === true) args.push('--raw')
     const result = await this.vdelta(args)
-    if (typeof step.expectExit === 'number' && result.code !== step.expectExit) {
-      this.fail(`show ${String(step.id)}: expected exit ${step.expectExit}, got ${result.code}`)
+    if (
+      typeof step.expectExit === 'number' &&
+      result.code !== step.expectExit
+    ) {
+      this.fail(
+        `show ${String(step.id)}: expected exit ${step.expectExit}, got ${result.code}`,
+      )
     }
     if (typeof step.id === 'string') {
       if (step.raw === true) {
@@ -317,13 +388,17 @@ class FixtureContext {
   }
 
   private expandPath(path: string): string {
-    return path.replace(/\{RUN:([^}]+)\}/g, (_, id: string) => this.resolveRunRef(id))
+    return path.replace(/\{RUN:([^}]+)\}/g, (_, id: string) =>
+      this.resolveRunRef(id),
+    )
   }
 
   private stepEditJson(step: Step): void {
     const target = join(this.workspace, this.expandPath(String(step.path)))
     const doc = JSON.parse(readFileSync(target, 'utf8')) as unknown
-    for (const [dotPath, value] of Object.entries(step.set as Record<string, unknown>)) {
+    for (const [dotPath, value] of Object.entries(
+      step.set as Record<string, unknown>,
+    )) {
       setPath(doc, dotPath, value)
     }
     writeFileSync(target, `${JSON.stringify(doc, null, 1)}\n`)
@@ -345,10 +420,14 @@ class FixtureContext {
       error = err instanceof Error ? err.message : String(err)
     }
     if (step.expectError === true && !threw) {
-      this.fail(`parse-${kind} ${String(step.id)}: expected a hard error, parsed cleanly (§9.4)`)
+      this.fail(
+        `parse-${kind} ${String(step.id)}: expected a hard error, parsed cleanly (§9.4)`,
+      )
     }
     if (step.expectError === false && threw) {
-      this.fail(`parse-${kind} ${String(step.id)}: expected clean parse, threw: ${error}`)
+      this.fail(
+        `parse-${kind} ${String(step.id)}: expected clean parse, threw: ${error}`,
+      )
     }
   }
 
@@ -356,8 +435,14 @@ class FixtureContext {
   // Assertions
 
   checkAssertion(a: Assertion): void {
-    if ('sameValue' in a) return this.checkPairs(a.sameValue, true)
-    if ('differentValue' in a) return this.checkPairs(a.differentValue, false)
+    if ('sameValue' in a) {
+      this.checkPairs(a.sameValue, true)
+      return
+    }
+    if ('differentValue' in a) {
+      this.checkPairs(a.differentValue, false)
+      return
+    }
     if ('reportNotContains' in a) {
       const spec = a.reportNotContains as { report: string; text: string }
       const report = this.getReport(spec.report)
@@ -369,20 +454,27 @@ class FixtureContext {
     if ('storeNotContains' in a || 'storeContains' in a) {
       const text = String(a.storeNotContains ?? a.storeContains)
       const found = this.storeGrep(text)
-      if ('storeNotContains' in a && found) this.fail(`store must not contain "${text}"`)
-      if ('storeContains' in a && !found) this.fail(`store must contain "${text}"`)
+      if ('storeNotContains' in a && found)
+        this.fail(`store must not contain "${text}"`)
+      if ('storeContains' in a && !found)
+        this.fail(`store must contain "${text}"`)
       return
     }
     if ('observationsSorted' in a) {
       const spec = a.observationsSorted as { run: string }
       const runId = this.resolveRunRef(spec.run)
       const record = JSON.parse(
-        readFileSync(join(this.workspace, '.veridelta', 'runs', `${runId}.json`), 'utf8'),
+        readFileSync(
+          join(this.workspace, '.veridelta', 'runs', `${runId}.json`),
+          'utf8',
+        ),
       ) as { observations: { test_id: string }[] }
       const ids = record.observations.map((o) => o.test_id)
       const sorted = [...ids].sort()
       if (JSON.stringify(ids) !== JSON.stringify(sorted)) {
-        this.fail(`run ${spec.run}: observations are not canonically ordered (§7.8)`)
+        this.fail(
+          `run ${spec.run}: observations are not canonically ordered (§7.8)`,
+        )
       }
       return
     }
@@ -392,16 +484,25 @@ class FixtureContext {
     const where = `report ${reportId} path ${String(a.path)}`
     if ('eq' in a) {
       if (!deepEqual(value, a.eq)) {
-        this.fail(`${where}: expected ${JSON.stringify(a.eq)}, got ${JSON.stringify(value)}`)
+        this.fail(
+          `${where}: expected ${JSON.stringify(a.eq)}, got ${JSON.stringify(value)}`,
+        )
       }
     } else if ('contains' in a) {
-      if (!Array.isArray(value) || !value.some((e) => deepEqual(e, a.contains))) {
-        this.fail(`${where}: expected array containing ${JSON.stringify(a.contains)}, got ${JSON.stringify(value)}`)
+      if (
+        !Array.isArray(value) ||
+        !value.some((e) => deepEqual(e, a.contains))
+      ) {
+        this.fail(
+          `${where}: expected array containing ${JSON.stringify(a.contains)}, got ${JSON.stringify(value)}`,
+        )
       }
     } else if ('containsMatch' in a) {
       const subset = a.containsMatch as Record<string, unknown>
       if (!Array.isArray(value) || !value.some((e) => subsetMatch(e, subset))) {
-        this.fail(`${where}: expected array with element matching ${JSON.stringify(subset)}, got ${JSON.stringify(value)}`)
+        this.fail(
+          `${where}: expected array with element matching ${JSON.stringify(subset)}, got ${JSON.stringify(value)}`,
+        )
       }
     } else if ('empty' in a) {
       const isEmpty = Array.isArray(value)
@@ -409,26 +510,35 @@ class FixtureContext {
         : value !== null && typeof value === 'object'
           ? Object.keys(value as object).length === 0
           : false
-      if (a.empty === true && !isEmpty) this.fail(`${where}: expected empty, got ${JSON.stringify(value)}`)
-      if (a.empty === false && isEmpty) this.fail(`${where}: expected non-empty`)
+      if (a.empty === true && !isEmpty)
+        this.fail(`${where}: expected empty, got ${JSON.stringify(value)}`)
+      if (a.empty === false && isEmpty)
+        this.fail(`${where}: expected non-empty`)
     } else if ('nonEmpty' in a) {
       const size = Array.isArray(value)
         ? value.length
         : value && typeof value === 'object'
           ? Object.keys(value).length
           : 0
-      if (a.nonEmpty === true && size === 0) this.fail(`${where}: expected non-empty`)
+      if (a.nonEmpty === true && size === 0)
+        this.fail(`${where}: expected non-empty`)
     } else if ('defined' in a) {
       const isDefined = value !== undefined
       if (a.defined !== isDefined) {
-        this.fail(`${where}: expected defined=${String(a.defined)}, got ${JSON.stringify(value)}`)
+        this.fail(
+          `${where}: expected defined=${String(a.defined)}, got ${JSON.stringify(value)}`,
+        )
       }
     } else if ('matches' in a) {
       if (typeof value !== 'string' && typeof value !== 'number') {
-        this.fail(`${where}: expected scalar to match ${String(a.matches)}, got ${JSON.stringify(value)}`)
+        this.fail(
+          `${where}: expected scalar to match ${String(a.matches)}, got ${JSON.stringify(value)}`,
+        )
       }
       if (!new RegExp(String(a.matches)).test(String(value))) {
-        this.fail(`${where}: "${String(value)}" does not match /${String(a.matches)}/`)
+        this.fail(
+          `${where}: "${String(value)}" does not match /${String(a.matches)}/`,
+        )
       }
     } else {
       this.fail(`unknown assertion: ${JSON.stringify(a)}`)
@@ -438,7 +548,8 @@ class FixtureContext {
   private checkPairs(spec: unknown, wantEqual: boolean): void {
     const pair = spec as { report: string; path: string }[]
     const [a, b] = pair
-    if (a === undefined || b === undefined) this.fail('sameValue/differentValue needs two locations')
+    if (a === undefined || b === undefined)
+      this.fail('sameValue/differentValue needs two locations')
     const va = getPath(this.getReport(a.report), a.path)
     const vb = getPath(this.getReport(b.report), b.path)
     const equal = deepEqual(va, vb)
@@ -509,7 +620,9 @@ function setPath(obj: unknown, dotPath: string, value: unknown): void {
   let cur: unknown = obj
   for (let i = 0; i < segs.length - 1; i++) {
     const seg = segs[i]!
-    cur = Array.isArray(cur) ? cur[Number(seg)] : (cur as Record<string, unknown>)[seg]
+    cur = Array.isArray(cur)
+      ? cur[Number(seg)]
+      : (cur as Record<string, unknown>)[seg]
     if (cur === null || typeof cur !== 'object') {
       throw new Error(`edit-json: cannot descend into ${dotPath} at "${seg}"`)
     }
@@ -525,16 +638,31 @@ function deepEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((e, i) => deepEqual(e, b[i]))
   }
-  if (typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+  if (
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    !Array.isArray(a) &&
+    !Array.isArray(b)
+  ) {
     const ka = Object.keys(a as object).sort()
     const kb = Object.keys(b as object).sort()
     if (!deepEqual(ka, kb)) return false
-    return ka.every((k) => deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+    return ka.every((k) =>
+      deepEqual(
+        (a as Record<string, unknown>)[k],
+        (b as Record<string, unknown>)[k],
+      ),
+    )
   }
   return false
 }
 
-function subsetMatch(element: unknown, subset: Record<string, unknown>): boolean {
+function subsetMatch(
+  element: unknown,
+  subset: Record<string, unknown>,
+): boolean {
   if (element === null || typeof element !== 'object') return false
-  return Object.entries(subset).every(([k, v]) => deepEqual((element as Record<string, unknown>)[k], v))
+  return Object.entries(subset).every(([k, v]) =>
+    deepEqual((element as Record<string, unknown>)[k], v),
+  )
 }

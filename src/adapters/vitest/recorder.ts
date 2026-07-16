@@ -14,11 +14,11 @@ import { join } from 'node:path'
 import { canonicalDigest } from '../../digest.js'
 import { redactText, redactValue } from '../../redact.js'
 import {
-  SCHEMA_VERSION,
   type CompletenessStatus,
   type EvidenceError,
   type FailureFinding,
   type RunRecord,
+  SCHEMA_VERSION,
   type TestObservation,
   type Verdict,
 } from '../../schema.js'
@@ -64,9 +64,14 @@ export interface RecordContext {
   recordedAtMs: number
 }
 
-export function buildRunRecord(capture: Capture, ctx: RecordContext): RunRecord {
+export function buildRunRecord(
+  capture: Capture,
+  ctx: RecordContext,
+): RunRecord {
   if (capture.capture_version !== 1) {
-    throw new RecorderError(`unsupported capture version ${capture.capture_version}`)
+    throw new RecorderError(
+      `unsupported capture version ${capture.capture_version}`,
+    )
   }
 
   const observations: TestObservation[] = []
@@ -103,7 +108,8 @@ export function buildRunRecord(capture: Capture, ctx: RecordContext): RunRecord 
 
   const notRun = observations.filter((o) => o.verdict === 'not_run').length
   let status: CompletenessStatus = 'complete'
-  if (capture.unhandled_errors > 0 || capture.module_errors.length > 0) status = 'crashed'
+  if (capture.unhandled_errors > 0 || capture.module_errors.length > 0)
+    status = 'crashed'
   else if (capture.reason === 'interrupted' || notRun > 0) status = 'partial'
 
   return {
@@ -127,7 +133,9 @@ export function buildRunRecord(capture: Capture, ctx: RecordContext): RunRecord 
       runtime: `node ${process.version}`,
       os: process.platform,
       env_fingerprint: canonicalDigest(
-        Object.fromEntries(DECLARED_ENV_VARS.map((k) => [k, process.env[k] ?? null])),
+        Object.fromEntries(
+          DECLARED_ENV_VARS.map((k) => [k, process.env[k] ?? null]),
+        ),
       ),
     },
     provenance: {
@@ -171,7 +179,8 @@ function toObservation(t: CapturedTest, id: string): TestObservation {
   const { verdict, suppression } = mapVerdict(t)
   const obs: TestObservation = { test_id: id, verdict }
   if (suppression) obs.suppression = suppression
-  if (t.location_line !== null) obs.source_ref = { file: t.rel, line: t.location_line }
+  if (t.location_line !== null)
+    obs.source_ref = { file: t.rel, line: t.location_line }
   if (verdict === 'fail' || verdict === 'error') obs.finding = buildFinding(t)
   return obs
 }
@@ -191,11 +200,16 @@ function mapVerdict(t: CapturedTest): {
         ? { verdict: 'fail', suppression: { marker: 'fails' } }
         : { verdict: 'fail' }
     case 'skipped':
-      if (t.mode === 'skip') return { verdict: 'skip', suppression: { marker: 'skip' } }
-      if (t.mode === 'todo') return { verdict: 'skip', suppression: { marker: 'todo' } }
+      if (t.mode === 'skip')
+        return { verdict: 'skip', suppression: { marker: 'skip' } }
+      if (t.mode === 'todo')
+        return { verdict: 'skip', suppression: { marker: 'todo' } }
       return {
         verdict: 'skip',
-        suppression: { marker: 'runtime', ...(t.note !== undefined ? { note: t.note } : {}) },
+        suppression: {
+          marker: 'runtime',
+          ...(t.note !== undefined ? { note: t.note } : {}),
+        },
       }
     case 'pending':
       return { verdict: 'not_run' }
@@ -211,7 +225,10 @@ function buildFinding(t: CapturedTest): FailureFinding {
     ...(e.operator !== undefined ? { operator: e.operator } : {}),
     rel_offsets: relOffsets(t, e.frames),
   }))
-  const consoleEntries = t.console.map((c) => ({ type: c.type, content: redactText(c.content) }))
+  const consoleEntries = t.console.map((c) => ({
+    type: c.type,
+    content: redactText(c.content),
+  }))
   return {
     evidence_digest: canonicalDigest({ errors }),
     structural_fingerprint: canonicalDigest({
@@ -240,7 +257,9 @@ function relOffsets(
   frames: { file: string; line: number }[],
 ): number[] {
   if (t.location_line === null) return []
-  return frames.filter((f) => f.file === t.module_id).map((f) => f.line - t.location_line!)
+  return frames
+    .filter((f) => f.file === t.module_id)
+    .map((f) => f.line - t.location_line!)
 }
 
 function fileDigest(path: string): string | null {

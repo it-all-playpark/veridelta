@@ -3,20 +3,22 @@
  * the three delta axes, and comparison-report construction. Deterministic:
  * no timestamps, stable sort orders, recency = store insertion order.
  */
-import { DEGRADED_CAPABILITIES, COMPOSITION_ID } from './adapters/vitest/recorder.js'
-import { RunStore, StoreCorruptError } from './store.js'
 import {
-  SCHEMA_VERSION,
-  STREAM_KEY_FIELDS,
-  isRed,
+  COMPOSITION_ID,
+  DEGRADED_CAPABILITIES,
+} from './adapters/vitest/recorder.js'
+import {
   type BaselineMode,
   type Comparability,
   type ComparabilityDetail,
   type ComparisonReport,
+  isRed,
   type NearMiss,
   type NearMissMismatch,
   type NoneReason,
   type RunRecord,
+  SCHEMA_VERSION,
+  STREAM_KEY_FIELDS,
   type StillFailEntry,
   type StreamKeyField,
   type SurfaceEvent,
@@ -24,6 +26,7 @@ import {
   type Transitions,
   type UpdatedFailEntry,
 } from './schema.js'
+import { type RunStore, StoreCorruptError } from './store.js'
 
 export type BaselineSpec =
   | { mode: 'previous-comparable' }
@@ -76,12 +79,22 @@ function streamKeyFieldValue(r: RunRecord, field: StreamKeyField): string {
   }
 }
 
-function streamKeyFieldEqual(a: RunRecord, b: RunRecord, field: StreamKeyField): boolean {
+function streamKeyFieldEqual(
+  a: RunRecord,
+  b: RunRecord,
+  field: StreamKeyField,
+): boolean {
   if (field === 'invocation.command') {
-    return JSON.stringify(a.invocation.command) === JSON.stringify(b.invocation.command)
+    return (
+      JSON.stringify(a.invocation.command) ===
+      JSON.stringify(b.invocation.command)
+    )
   }
   if (field === 'invocation.selector') {
-    return JSON.stringify(a.invocation.selector) === JSON.stringify(b.invocation.selector)
+    return (
+      JSON.stringify(a.invocation.selector) ===
+      JSON.stringify(b.invocation.selector)
+    )
   }
   return streamKeyFieldValue(a, field) === streamKeyFieldValue(b, field)
 }
@@ -127,7 +140,10 @@ function sameInstrument(a: RunRecord, b: RunRecord): boolean {
 }
 
 function sameSelector(a: RunRecord, b: RunRecord): boolean {
-  return JSON.stringify(a.invocation.selector) === JSON.stringify(b.invocation.selector)
+  return (
+    JSON.stringify(a.invocation.selector) ===
+    JSON.stringify(b.invocation.selector)
+  )
 }
 
 function sameStreamScope(a: RunRecord, b: RunRecord): boolean {
@@ -136,7 +152,8 @@ function sameStreamScope(a: RunRecord, b: RunRecord): boolean {
     a.repo.worktree === b.repo.worktree &&
     a.repo.branch === b.repo.branch &&
     a.repo.cwd === b.repo.cwd &&
-    JSON.stringify(a.invocation.command) === JSON.stringify(b.invocation.command)
+    JSON.stringify(a.invocation.command) ===
+      JSON.stringify(b.invocation.command)
   )
 }
 
@@ -235,7 +252,10 @@ interface Judged {
   events: SurfaceEvent[]
 }
 
-function judgeComparability(baseline: RunRecord | null, current: RunRecord): Judged {
+function judgeComparability(
+  baseline: RunRecord | null,
+  current: RunRecord,
+): Judged {
   if (baseline === null) {
     return { comparability: 'none', events: [] }
   }
@@ -249,7 +269,8 @@ function judgeComparability(baseline: RunRecord | null, current: RunRecord): Jud
     ]
     if (
       baseline.instrument.adapter !== current.instrument.adapter ||
-      baseline.instrument.adapter_version !== current.instrument.adapter_version ||
+      baseline.instrument.adapter_version !==
+        current.instrument.adapter_version ||
       baseline.instrument.composition_id !== current.instrument.composition_id
     ) {
       events.push({
@@ -295,17 +316,26 @@ function judgeComparability(baseline: RunRecord | null, current: RunRecord): Jud
   }
   const bInventory = baseline.observations.map((o) => o.test_id).join('\n')
   const cInventory = current.observations.map((o) => o.test_id).join('\n')
-  return { comparability: bInventory === cInventory ? 'exact' : 'scope_changed', events: [] }
+  return {
+    comparability: bInventory === cInventory ? 'exact' : 'scope_changed',
+    events: [],
+  }
 }
 
-function configSourceEvents(baseline: RunRecord, current: RunRecord): SurfaceEvent[] {
+function configSourceEvents(
+  baseline: RunRecord,
+  current: RunRecord,
+): SurfaceEvent[] {
   const events: SurfaceEvent[] = []
   const paths = new Set([
     ...Object.keys(baseline.surface.config_sources),
     ...Object.keys(current.surface.config_sources),
   ])
   for (const path of [...paths].sort()) {
-    if (baseline.surface.config_sources[path] !== current.surface.config_sources[path]) {
+    if (
+      baseline.surface.config_sources[path] !==
+      current.surface.config_sources[path]
+    ) {
       events.push({ kind: 'config-source-changed', path })
     }
   }
@@ -328,12 +358,16 @@ function emptyTransitions(): Transitions {
 
 function coverage(record: RunRecord): string {
   const declared = record.observations.length
-  const observed = record.observations.filter((o) => o.verdict !== 'not_run').length
+  const observed = record.observations.filter(
+    (o) => o.verdict !== 'not_run',
+  ).length
   return `${observed}/${declared}`
 }
 
 function redIds(record: RunRecord): string[] {
-  return record.observations.filter((o) => isRed(o.verdict)).map((o) => o.test_id)
+  return record.observations
+    .filter((o) => isRed(o.verdict))
+    .map((o) => o.test_id)
 }
 
 function shortId(runId: string): string {
@@ -362,7 +396,12 @@ export function buildComparisonReport(
     resolution = resolveBaseline(store, current, currentId, spec)
   } catch (err) {
     if (err instanceof StoreCorruptError) {
-      return abstentionReport(current, currentId, { reason: 'store-corrupt', kind: 'failed' }, [])
+      return abstentionReport(
+        current,
+        currentId,
+        { reason: 'store-corrupt', kind: 'failed' },
+        [],
+      )
     }
     throw err
   }
@@ -371,14 +410,28 @@ export function buildComparisonReport(
   const judged = judgeComparability(baseline, current)
 
   if (judged.comparability === 'none') {
-    const detail = judged.detail ?? resolution.failure ?? {
-      reason: 'baseline-missing' as NoneReason,
-      kind: 'determined' as const,
-    }
-    return abstentionReport(current, currentId, detail, judged.events, baseline, resolution)
+    const detail = judged.detail ??
+      resolution.failure ?? {
+        reason: 'baseline-missing' as NoneReason,
+        kind: 'determined' as const,
+      }
+    return abstentionReport(
+      current,
+      currentId,
+      detail,
+      judged.events,
+      baseline,
+      resolution,
+    )
   }
 
-  return claimsReport(baseline!, resolution, current, currentId, judged.comparability)
+  return claimsReport(
+    baseline!,
+    resolution,
+    current,
+    currentId,
+    judged.comparability,
+  )
 }
 
 /** comparability `none`: structured current-run results only (contract §5.7, finding F-1). */
@@ -423,7 +476,10 @@ function abstentionReport(
     anchors,
   }
   if (events.length > 0) {
-    report.verification_surface = { status: 'changed', events: sortEvents(events) }
+    report.verification_surface = {
+      status: 'changed',
+      events: sortEvents(events),
+    }
   }
   return report
 }
@@ -454,8 +510,7 @@ function claimsReport(
 
   const testSourceChanged = (rel: string): boolean =>
     baseline.surface.test_sources[rel] !== current.surface.test_sources[rel]
-  const anyConfigChanged =
-    configSourceEvents(baseline, current).length > 0
+  const anyConfigChanged = configSourceEvents(baseline, current).length > 0
 
   for (const id of allIds) {
     const b = bByid.get(id)
@@ -505,7 +560,8 @@ function claimsReport(
           evidence_digest_before: bDigest ?? '',
           evidence_digest_after: cDigest ?? '',
           failure_mode_changed:
-            b.finding?.structural_fingerprint !== c.finding?.structural_fingerprint,
+            b.finding?.structural_fingerprint !==
+            c.finding?.structural_fingerprint,
           degraded_capabilities: [...DEGRADED_CAPABILITIES],
         }
         transitions.updated_fail.push(entry)
@@ -534,7 +590,9 @@ function claimsReport(
 
   // Source/config drift events (observed facts on every comparability level).
   const changedModules = new Set(
-    [...new Set([...allIds.map(relOf)])].filter((rel) => testSourceChanged(rel)),
+    [...new Set([...allIds.map(relOf)])].filter((rel) =>
+      testSourceChanged(rel),
+    ),
   )
   for (const id of allIds) {
     if (!bByid.has(id) || !cById.has(id)) continue
@@ -544,18 +602,30 @@ function claimsReport(
   }
   events.push(...configSourceEvents(baseline, current))
 
-  const lostObservation = transitions.not_observed.length > 0 || (partial && hasLostObservation(baseline, current))
+  const lostObservation =
+    transitions.not_observed.length > 0 ||
+    (partial && hasLostObservation(baseline, current))
   const reduced =
     transitions.fail_to_skip.length > 0 ||
     transitions.fail_to_xfail.length > 0 ||
-    events.some((e) => e.kind === 'test-removed' || e.kind === 'fail-to-skip' || e.kind === 'fail-to-xfail') ||
+    events.some(
+      (e) =>
+        e.kind === 'test-removed' ||
+        e.kind === 'fail-to-skip' ||
+        e.kind === 'fail-to-xfail',
+    ) ||
     lostObservation
-  const status: SurfaceStatus = reduced ? 'reduced' : events.length > 0 ? 'changed' : 'intact'
+  const status: SurfaceStatus = reduced
+    ? 'reduced'
+    : events.length > 0
+      ? 'changed'
+      : 'intact'
 
   const outcome = deriveOutcome(transitions, partial)
 
   const anchors: Record<string, string> = {}
-  for (const id of transitions.new_fail) anchors[`new_fail:${id}`] = showAnchor(currentId, id)
+  for (const id of transitions.new_fail)
+    anchors[`new_fail:${id}`] = showAnchor(currentId, id)
   for (const e of transitions.still_fail_unchanged) {
     const id = typeof e === 'string' ? e : e.test_id
     anchors[`still_fail_unchanged:${id}`] = showAnchor(currentId, id)
@@ -565,7 +635,8 @@ function claimsReport(
   }
   const currentRed = partial ? redIds(current) : undefined
   if (currentRed) {
-    for (const id of currentRed) anchors[`red:${id}`] = showAnchor(currentId, id)
+    for (const id of currentRed)
+      anchors[`red:${id}`] = showAnchor(currentId, id)
   }
   anchors.raw = `vdelta show ${shortId(currentId)} --raw`
 
@@ -603,7 +674,9 @@ function claimsReport(
 
 function hasLostObservation(baseline: RunRecord, current: RunRecord): boolean {
   const observedNow = new Set(
-    current.observations.filter((o) => o.verdict !== 'not_run').map((o) => o.test_id),
+    current.observations
+      .filter((o) => o.verdict !== 'not_run')
+      .map((o) => o.test_id),
   )
   return baseline.observations.some(
     (o) => o.verdict !== 'not_run' && !observedNow.has(o.test_id),
@@ -615,10 +688,16 @@ function relOf(testId: string): string {
   return sep === -1 ? testId : testId.slice(0, sep)
 }
 
-function deriveOutcome(t: Transitions, partial: boolean): ComparisonReport['outcome_verdict'] {
+function deriveOutcome(
+  t: Transitions,
+  partial: boolean,
+): ComparisonReport['outcome_verdict'] {
   if (t.new_fail.length > 0 || t.updated_fail.length > 0) return 'regressed'
   if (partial) return 'inconclusive'
-  if (t.repaired_same_surface.length > 0 || t.repaired_with_test_change.length > 0) {
+  if (
+    t.repaired_same_surface.length > 0 ||
+    t.repaired_with_test_change.length > 0
+  ) {
     return 'improved'
   }
   return 'unchanged'
@@ -637,5 +716,7 @@ function sortTransitions(t: Transitions): void {
     const kb = typeof b === 'string' ? b : b.test_id
     return ka < kb ? -1 : ka > kb ? 1 : 0
   })
-  t.updated_fail.sort((a, b) => (a.test_id < b.test_id ? -1 : a.test_id > b.test_id ? 1 : 0))
+  t.updated_fail.sort((a, b) =>
+    a.test_id < b.test_id ? -1 : a.test_id > b.test_id ? 1 : 0,
+  )
 }
