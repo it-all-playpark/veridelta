@@ -1,22 +1,78 @@
 {
   "name": "inv7-claims-bounded-by-comparability",
   "class": "invariant",
-  "spec_refs": ["INV-7", "§5.3", "§6.3", "§5.7"],
+  "spec_refs": [
+    "INV-7",
+    "§5.3",
+    "§6.3",
+    "§5.7"
+  ],
   "notes": "When no comparable baseline exists the comparator abstains from ALL transitions rather than falling back to a weaker match. A run is recorded only at commit c2; comparing against ref c1 (HEAD~1, no run recorded there) yields comparability none with reason baseline-missing/determined, baseline null, and transitions omitted. The current run's red set is still fully disclosed via current.red (INV-1 floor under none, contract §5.7).",
   "steps": [
-    {"do": "apply", "project": "base"},
-    {"do": "commit", "message": "c1 (no run recorded here)"},
-    {"do": "write-file", "path": "marker.txt", "content": "v2\n"},
-    {"do": "commit", "message": "c2"},
-    {"do": "run", "id": "B", "expectExit": 1},
-    {"do": "compare", "id": "cmp", "ref": "HEAD~1", "expectExit": 0}
+    {
+      "do": "apply",
+      "project": "base"
+    },
+    {
+      "do": "commit",
+      "message": "c1 (no run recorded here)"
+    },
+    {
+      "do": "write-file",
+      "path": "marker.txt",
+      "content": "v2\n"
+    },
+    {
+      "do": "commit",
+      "message": "c2"
+    },
+    {
+      "do": "run",
+      "id": "B",
+      "expectExit": 1
+    },
+    {
+      "do": "compare",
+      "id": "cmp",
+      "ref": "HEAD~1",
+      "expectExit": 0
+    }
   ],
   "assertions": [
-    {"report": "cmp", "path": "comparability", "eq": "none"},
-    {"report": "cmp", "path": "comparability_detail.reason", "eq": "baseline-missing"},
-    {"report": "cmp", "path": "comparability_detail.kind", "eq": "determined"},
-    {"report": "cmp", "path": "baseline", "eq": null},
-    {"report": "cmp", "path": "transitions", "defined": false},
-    {"report": "cmp", "path": "current.red", "contains": "tests/lonely.test.ts::no baseline here"}
+    {
+      "report": "cmp",
+      "path": "comparability",
+      "eq": "none"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability_detail.reason",
+      "eq": "baseline-missing"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability_detail.kind",
+      "eq": "determined"
+    },
+    {
+      "report": "cmp",
+      "path": "baseline",
+      "eq": null
+    },
+    {
+      "report": "cmp",
+      "path": "transitions",
+      "defined": false
+    },
+    {
+      "report": "cmp",
+      "path": "current.red",
+      "contains": "tests/lonely.test.ts::no baseline here"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability_detail.near_miss",
+      "defined": false
+    }
   ]
 }

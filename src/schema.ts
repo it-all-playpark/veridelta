@@ -28,6 +28,19 @@ export type NoneReason = (typeof NONE_REASONS)[number]
 export const DETAIL_KINDS = ['determined', 'failed'] as const
 export type DetailKind = (typeof DETAIL_KINDS)[number]
 
+export const STREAM_KEY_FIELDS = [
+  'repo.identity',
+  'repo.worktree',
+  'repo.branch',
+  'repo.cwd',
+  'invocation.command',
+  'invocation.selector',
+  'instrument.adapter',
+  'instrument.adapter_version',
+  'instrument.config_digest',
+] as const
+export type StreamKeyField = (typeof STREAM_KEY_FIELDS)[number]
+
 export const OUTCOME_VERDICTS = ['regressed', 'improved', 'unchanged', 'inconclusive'] as const
 export type OutcomeVerdict = (typeof OUTCOME_VERDICTS)[number]
 
@@ -88,9 +101,21 @@ export const TRANSITION_KEYS = [
 // ---------------------------------------------------------------------------
 // Types
 
+export interface NearMissMismatch {
+  field: StreamKeyField
+  recorded: string
+  current: string
+}
+
+export interface NearMiss {
+  run_id: string
+  mismatches: NearMissMismatch[]
+}
+
 export interface ComparabilityDetail {
   reason: NoneReason
   kind: DetailKind
+  near_miss?: NearMiss
 }
 
 export interface StillFailEntry {
@@ -317,6 +342,21 @@ function validateStringMap(v: unknown, path: string): void {
   for (const [k, val] of Object.entries(o)) asString(val, `${path}.${k}`)
 }
 
+function validateNearMiss(v: unknown, path: string): void {
+  const o = asObject(v, path)
+  checkKeys(o, path, ['run_id', 'mismatches'])
+  asString(o.run_id, `${path}.run_id`)
+  if (!Array.isArray(o.mismatches)) fail(`${path}.mismatches`, 'expected array')
+  if (o.mismatches.length === 0) fail(`${path}.mismatches`, 'expected non-empty array')
+  o.mismatches.forEach((m, i) => {
+    const mo = asObject(m, `${path}.mismatches[${i}]`)
+    checkKeys(mo, `${path}.mismatches[${i}]`, ['field', 'recorded', 'current'])
+    asEnum(mo.field, STREAM_KEY_FIELDS, `${path}.mismatches[${i}].field`)
+    asString(mo.recorded, `${path}.mismatches[${i}].recorded`)
+    asString(mo.current, `${path}.mismatches[${i}].current`)
+  })
+}
+
 function validateStillFailEntry(v: unknown, path: string): void {
   if (typeof v === 'string') return
   const o = asObject(v, path)
@@ -466,9 +506,10 @@ export function parseReport(value: unknown): ComparisonReport {
 
   if ('comparability_detail' in o) {
     const d = asObject(o.comparability_detail, 'report.comparability_detail')
-    checkKeys(d, 'report.comparability_detail', ['reason', 'kind'])
+    checkKeys(d, 'report.comparability_detail', ['reason', 'kind'], ['near_miss'])
     asEnum(d.reason, NONE_REASONS, 'report.comparability_detail.reason')
     asEnum(d.kind, DETAIL_KINDS, 'report.comparability_detail.kind')
+    if ('near_miss' in d) validateNearMiss(d.near_miss, 'report.comparability_detail.near_miss')
   } else if (comparability === 'none') {
     fail('report.comparability_detail', 'required when comparability is "none" (§6.3)')
   }

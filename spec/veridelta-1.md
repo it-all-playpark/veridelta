@@ -375,6 +375,37 @@ sufficient for the consumer to verify the choice (e.g.,
 comparator MUST abstain with comparability `none` (§6.3), never fall back
 silently to a weaker match.
 
+### 5.4. Near-miss disclosure
+
+When `previous-comparable` selection abstains with `baseline-missing` (§6.3)
+and the store contains at least one complete run other than the current run,
+the report MUST enrich `comparability_detail` with a `near_miss` disclosure
+identifying the nearest stored complete run and the stream-key component(s)
+(§5.1) on which it differs from the current run.
+
+Selection rule (normative, deterministic): candidates are all stored complete
+runs excluding the current run, in store insertion order; each candidate is
+scored by the number of mismatching components among the nine stream-key
+components in the canonical order `repo.identity, repo.worktree, repo.branch,
+repo.cwd, invocation.command, invocation.selector, instrument.adapter,
+instrument.adapter_version, instrument.config_digest`; the candidate with the
+fewest mismatches is selected; ties break by recency, where recency is store
+insertion order, never timestamps (§7.8).
+
+`mismatches` lists each differing component in the canonical order above with
+the candidate's recorded value and the current run's value; array-valued
+components (`invocation.command`, `invocation.selector`) are rendered as their
+elements joined by a single space. Values are drawn from stored run records,
+which are redacted before persistence (§15), so the disclosure never widens
+the exposure surface.
+
+The disclosure is informative context only: it MUST NOT alter baseline
+selection, the abstention reason, or comparability — the report still
+abstains with `baseline-missing`/`determined`, and this section does not
+weaken the stream key. Other baseline modes (`git-ref`, `explicit-run-id`,
+`previous-superset`) MUST NOT emit `near_miss`. The component-name vocabulary
+is a closed enum (§14).
+
 ## 6. Comparability
 
 ### 6.1. Levels and permitted claims
@@ -411,6 +442,9 @@ is REQUIRED whenever `comparability` is `none`:
 ```json
 { "reason": "baseline-missing", "kind": "determined" }
 ```
+
+For `previous-comparable` `baseline-missing`, `comparability_detail`
+additionally carries the `near_miss` disclosure when §5.4 requires it.
 
 | `reason` | `kind` |
 |---|---|
@@ -656,6 +690,10 @@ rendering of this schema with no independent logic.
 Additional REQUIRED-when-applicable fields:
 
 - `comparability_detail` when `comparability` is `none` (§6.3).
+- `comparability_detail.near_miss` when §5.4 applies — an object
+  `{"run_id": ..., "mismatches": [{"field": ..., "recorded": ..., "current": ...}]}`
+  where `field` is one of the nine stream-key component names (closed enum)
+  and `mismatches` is non-empty.
 - `budget_exceeded_for_safety: true` when §8's budget rule fires.
 - `masking_applied` with count and example when §7.6 dedup fired.
 - `trust.record_integrity`: `advisory | tamper-evident | trusted-environment`
