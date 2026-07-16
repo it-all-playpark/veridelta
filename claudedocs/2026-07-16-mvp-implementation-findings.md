@@ -74,6 +74,29 @@
 - **提案**: §7.1 に「runner の構造化マーカーによる suppression verdict への
   refine は verdict channel の一部とみなす」旨を追記する。
 
+## F-8. `partial` 下の red-in-both テストの開示先が未定義（fixture author 発見）
+
+- **観察**: §6.1 partial は `unchanged` の主張を禁じるが、baseline でも current
+  でも red で evidence が同一のテストは new_fail / updated_fail /
+  still_fail_unchanged のいずれにも置けない（still_fail_unchanged は
+  `unchanged` 主張）。INV-1 は開示を要求するのに、開示チャネルが無い。
+- **暫定判断**: `current.red`（F-1 と同じ機構）を partial でも出し、そこで
+  開示する。transitions には claimable な bucket（new_fail / updated_fail /
+  not_observed）のみ。
+- **提案**: §6.1 partial 行に red-in-both の開示チャネルを明記する。
+
+## F-9. `repaired_with_test_change` → `improved` は outcome 単読 consumer を欺く（fixture author 発見）
+
+- **観察**: §7.2/§7.5 に従うと test 改変による偽装修理も outcome_verdict は
+  `improved` になる。no-false-green の防衛線は transition class
+  （repaired_with_test_change ≠ repaired_same_surface）と surface event
+  （test-source-changed）にあり、outcome だけ読む consumer は騙される。
+- **暫定判断**: spec 設計通り実装（3軸は collapse しない）。conformance の
+  recall fixtures は transition class + surface event で no-false-green を
+  判定する。
+- **提案**: §9.4 consumer requirements に「outcome_verdict 単独での green 判定
+  は非適合。failure-mode 軸と verification-surface 軸を必ず読むこと」を明記。
+
 ## F-7. `partial` comparability 下の outcome_verdict
 
 - **観察**: §6.1 partial は repaired/missing/unchanged の主張を禁じるが、

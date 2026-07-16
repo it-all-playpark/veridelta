@@ -258,11 +258,18 @@ storage and digesting; replacement is `[REDACTED:<kind>]`:
   (by `test_id` / event kind + test_id / key).
 - `trust.record_integrity` is `"advisory"` for all MVP reports (local store,
   no signatures).
-- When `comparability` is `"none"`: `baseline` is `null`, `transitions` and
-  `verification_surface` are **omitted**, `comparability_detail` is present,
-  and the current run's red set is still fully disclosed (INV-1) as
-  `current.red`: a sorted array of red `test_id`s, each with a drill-down
-  anchor. (Spec gap recorded as a finding; this contract fixes the shape.)
+- When `comparability` is `"none"`: `baseline` is present with the JSON value
+  `null`, `transitions` and `verification_surface` keys are **omitted**
+  (not empty), `comparability_detail` is present, and the current run's red
+  set is still fully disclosed (INV-1) as `current.red`: a sorted array of
+  red `test_id` **strings**, each with a drill-down anchor in `anchors`.
+  (Spec gap recorded as a finding; this contract fixes the shape.)
+- `current.red` also appears under `partial` comparability: a test red in
+  both runs with identical evidence cannot be claimed `still_fail_unchanged`
+  there (that is an `unchanged` claim, §6.1), so its disclosure channel is
+  `current.red`. Under `partial`, `transitions` carries only the claimable
+  buckets (`new_fail`, `updated_fail`); `not_observed` lists in-scope
+  baseline IDs unobserved in the current run.
   Exception: when the reason is `instrument-changed`, observable
   `verification_surface` events (`runner-config-changed`,
   `adapter-capability-changed`, `selector-changed`) ARE reported (§11.5).
@@ -303,6 +310,22 @@ Run records embed the redacted raw child output under the `recording` group
 (excluded from `run_id`, §3.5). Tampering with any byte of a stored record is
 detectable by recomputing the content address (INV-10 fixtures use
 `edit-json` on `.veridelta/runs/{RUN:A}.json`).
+
+Further store semantics fixed by this contract:
+
+- **All volatile per-test data (durations, start times) lives under the
+  `recording` group**, never in `observations`. Consequence: two executions
+  of a deterministic suite at an identical tree produce byte-identical
+  content-addressed payloads and therefore the **same `run_id`** — the store
+  treats such re-records idempotently (no duplicate `index` line), and
+  `compare` accepts a self-comparison (baseline id == current id).
+- `previous-comparable` never selects the current run's own `run_id` as its
+  baseline; it picks the most recent *distinct* complete run of the stream.
+- Unparseable `index`, `last`, or run-record files map to
+  `comparability_detail: {"reason": "store-corrupt", "kind": "failed"}`;
+  `adapter-crashed` is reserved for capture/adapter-side failures. A
+  `compare` that can still produce a report (including a `none`/failed
+  abstention) exits `0`.
 
 ### 5.9. Gate specifics (MVP)
 
