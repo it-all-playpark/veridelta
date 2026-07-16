@@ -219,6 +219,12 @@ non-observation, §6.4) plus a `config-source-changed` event.
 - Stream key (§5.1): repo root + worktree + branch + cwd + canonical command
   (child argv minus injected flags minus selector args) + selector (vitest
   positional filters, sorted) + instrument identity.
+- Command/selector splitting treats every non-dash token after the vitest
+  token as a selector filter. Flags that take their value as a **separate
+  token** (`--config custom.ts`, `-t 'name'`) would leak the value into the
+  selector; use the `--flag=value` form in recorded invocations. A violation
+  degrades safely (streams split, comparisons abstain) but never produces a
+  false green.
 - `previous-comparable` picks the most recent **complete** run of the same
   stream by store insertion order (no timestamps; §7.8).
 - `git-ref` baseline: a complete run whose `provenance.head` equals the
@@ -307,9 +313,14 @@ storage and digesting; replacement is `[REDACTED:<kind>]`:
 ```
 
 Run records embed the redacted raw child output under the `recording` group
-(excluded from `run_id`, §3.5). Tampering with any byte of a stored record is
+(excluded from `run_id`, §3.5). Tampering with the **content-addressed
+portion** of a stored record (everything outside the `recording` group) is
 detectable by recomputing the content address (INV-10 fixtures use
-`edit-json` on `.veridelta/runs/{RUN:A}.json`).
+`edit-json` on `.veridelta/runs/{RUN:A}.json`). The `recording` group itself
+— raw output, durations, timestamps — is annex material outside the content
+address: its integrity is NOT witnessed by `run_id`, and `vdelta show --raw`
+output carries no tamper-evidence. This is the §3.5 trade-off that makes
+identical reruns collapse to one `run_id`.
 
 Further store semantics fixed by this contract:
 
@@ -341,10 +352,16 @@ Further store semantics fixed by this contract:
   `provenance.tree_digest`; mismatch ⇒ `gate.verdict: "inconclusive"`,
   `staleness.match: false`.
 - `gate.triggered` lists the gate-relevant findings (default set: `new_fail`,
-  `updated_fail`, `verification_surface_reduced`).
-- Gate verdict: `fail` when any gate-relevant finding exists, `pass` when the
-  comparison succeeded with none, `inconclusive` for
-  none/partial comparability, staleness mismatch, or integrity failure.
+  `updated_fail`, `verification_surface_reduced`). It is a statement of
+  observed facts and is populated independently of the verdict.
+- Gate verdict precedence (highest first): record-integrity failure ⇒
+  `inconclusive`; staleness mismatch ⇒ `inconclusive`; comparability
+  `none`/`partial` ⇒ `inconclusive`; any gate-relevant finding ⇒ `fail`;
+  otherwise `pass`. Consequently `triggered` may be non-empty on an
+  `inconclusive` verdict (e.g. an observed `new_fail` under `partial`
+  comparability): the facts are disclosed, but the gate abstains from a
+  `fail`/`pass` judgment it cannot fully ground. No combination ever yields
+  `pass` while `triggered` is non-empty.
 
 ### 5.10. Degraded path (INV-5)
 

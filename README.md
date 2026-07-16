@@ -125,6 +125,10 @@ consumers must treat unknown values as hard errors.
   vitest invocation; your config needs no changes. Evidence-affecting
   settings you *do* set (like `chaiConfig.truncateThreshold`) become part of
   the measuring-instrument identity.
+- Positional arguments after the vitest token are recorded as the run's
+  selector. If you pass vitest flags that take a value, use the
+  `--flag=value` form (a separate value token would be read as a selector
+  filter — comparisons then abstain; nothing false-greens).
 - Evidence digests are built from vitest's structured channel only
   (exception type, message, structured expected/actual, operator, and
   line-shift-stable relative positions). Durations, absolute paths/lines,
