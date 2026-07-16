@@ -2,7 +2,7 @@
 
 This document is the **shared interface contract** between the conformance
 fixture author and the `vdelta` implementer. It exists so that fixtures can be
-written against the spec (`spec/veridelta-1.md`, revision 0.3.0) without ever
+written against the spec (`spec/veridelta-1.md`, revision 0.3.1) without ever
 reading `src/`, and so that the implementation can execute fixtures without
 ever editing `conformance/`.
 
