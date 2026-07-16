@@ -7,9 +7,17 @@ const minimalNoneReport: ComparisonReport = {
   outcome_verdict: 'inconclusive',
   comparability: 'none',
   baseline: null,
-  current: { run_id: `run_${'0'.repeat(64)}`, complete: true, child_exit_code: 1, red: [] },
+  current: {
+    run_id: `run_${'0'.repeat(64)}`,
+    complete: true,
+    child_exit_code: 1,
+    red: [],
+  },
   observation_coverage: { current: '1/1' },
-  failure_evidence: { composition_id: 'vitest-native/1', degraded_capabilities: [] },
+  failure_evidence: {
+    composition_id: 'vitest-native/1',
+    degraded_capabilities: [],
+  },
   trust: { record_integrity: 'advisory' },
   anchors: { raw: 'vdelta show x --raw' },
 }
@@ -24,15 +32,23 @@ describe('renderReport near-miss (§9.1)', () => {
         near_miss: {
           run_id: `run_abc${'0'.repeat(61)}`,
           mismatches: [
-            { field: 'invocation.command', recorded: 'npx vitest run', current: 'vitest run' },
+            {
+              field: 'invocation.command',
+              recorded: 'npx vitest run',
+              current: 'vitest run',
+            },
           ],
         },
       },
     }
     const out = renderReport(report)
     expect(out).toContain('  reason: baseline-missing (determined)')
-    const nearMissLine = out.split('\n').find((l) => l.startsWith('  near-miss: '))
-    expect(nearMissLine).toBe(`  near-miss: ${`run_abc${'0'.repeat(61)}`.slice(0, 12)}`)
+    const nearMissLine = out
+      .split('\n')
+      .find((l) => l.startsWith('  near-miss: '))
+    expect(nearMissLine).toBe(
+      `  near-miss: ${`run_abc${'0'.repeat(61)}`.slice(0, 12)}`,
+    )
     expect(out).toContain(
       '    invocation.command: recorded="npx vitest run" current="vitest run"',
     )
@@ -47,7 +63,11 @@ describe('renderReport near-miss (§9.1)', () => {
         near_miss: {
           run_id: `run_def${'0'.repeat(61)}`,
           mismatches: [
-            { field: 'invocation.command', recorded: 'npx vitest run', current: 'vitest run' },
+            {
+              field: 'invocation.command',
+              recorded: 'npx vitest run',
+              current: 'vitest run',
+            },
             { field: 'repo.branch', recorded: 'main', current: 'feature/x' },
           ],
         },
@@ -58,7 +78,9 @@ describe('renderReport near-miss (§9.1)', () => {
     const commandIdx = lines.indexOf(
       '    invocation.command: recorded="npx vitest run" current="vitest run"',
     )
-    const branchIdx = lines.indexOf('    repo.branch: recorded="main" current="feature/x"')
+    const branchIdx = lines.indexOf(
+      '    repo.branch: recorded="main" current="feature/x"',
+    )
     expect(commandIdx).toBeGreaterThanOrEqual(0)
     expect(branchIdx).toBeGreaterThan(commandIdx)
   })

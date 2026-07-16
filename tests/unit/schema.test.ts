@@ -7,9 +7,17 @@ const minimalNoneReport = {
   comparability: 'none',
   comparability_detail: { reason: 'baseline-missing', kind: 'determined' },
   baseline: null,
-  current: { run_id: `run_${'0'.repeat(64)}`, complete: true, child_exit_code: 1, red: [] },
+  current: {
+    run_id: `run_${'0'.repeat(64)}`,
+    complete: true,
+    child_exit_code: 1,
+    red: [],
+  },
   observation_coverage: { current: '1/1' },
-  failure_evidence: { composition_id: 'vitest-native/1', degraded_capabilities: [] },
+  failure_evidence: {
+    composition_id: 'vitest-native/1',
+    degraded_capabilities: [],
+  },
   trust: { record_integrity: 'advisory' },
   anchors: {},
 }
@@ -20,13 +28,15 @@ describe('consumer parser hard errors (§9.4, §14)', () => {
   })
 
   it('throws on unknown enum values', () => {
-    expect(() => parseReport({ ...minimalNoneReport, comparability: 'kinda' })).toThrow(
-      SchemaViolationError,
-    )
+    expect(() =>
+      parseReport({ ...minimalNoneReport, comparability: 'kinda' }),
+    ).toThrow(SchemaViolationError)
   })
 
   it('throws on unknown fields', () => {
-    expect(() => parseReport({ ...minimalNoneReport, surprise: 1 })).toThrow(SchemaViolationError)
+    expect(() => parseReport({ ...minimalNoneReport, surprise: 1 })).toThrow(
+      SchemaViolationError,
+    )
   })
 
   it('requires comparability_detail under none', () => {
@@ -43,7 +53,13 @@ describe('comparability_detail.near_miss (§5.4/§9.1)', () => {
       kind: 'determined',
       near_miss: {
         run_id: `run_${'0'.repeat(64)}`,
-        mismatches: [{ field: 'invocation.command', recorded: 'npx vitest run', current: 'vitest run' }],
+        mismatches: [
+          {
+            field: 'invocation.command',
+            recorded: 'npx vitest run',
+            current: 'vitest run',
+          },
+        ],
       },
     },
   }
@@ -86,7 +102,10 @@ describe('comparability_detail.near_miss (§5.4/§9.1)', () => {
       ...withNearMiss,
       comparability_detail: {
         ...withNearMiss.comparability_detail,
-        near_miss: { ...withNearMiss.comparability_detail.near_miss, mismatches: [] },
+        near_miss: {
+          ...withNearMiss.comparability_detail.near_miss,
+          mismatches: [],
+        },
       },
     }
     expect(() => parseReport(bad)).toThrow(SchemaViolationError)
@@ -99,7 +118,9 @@ describe('comparability_detail.near_miss (§5.4/§9.1)', () => {
         ...withNearMiss.comparability_detail,
         near_miss: {
           ...withNearMiss.comparability_detail.near_miss,
-          mismatches: [{ field: 'invocation.command', recorded: 'npx vitest run' }],
+          mismatches: [
+            { field: 'invocation.command', recorded: 'npx vitest run' },
+          ],
         },
       },
     }

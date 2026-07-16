@@ -3,18 +3,19 @@
  * fail-open advisory lock, enforced gitignore. Recency is store insertion
  * order (the append-only index), never timestamps (§7.8).
  */
+
+import { randomUUID } from 'node:crypto'
 import {
   appendFileSync,
   existsSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmdirSync,
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 import { canonicalJson } from './canonical.js'
 import { sha256Hex } from './digest.js'
 import { parseRunRecord, type RunRecord } from './schema.js'
@@ -121,7 +122,8 @@ export class RunStore {
     for (const line of raw.split('\n')) {
       const id = line.trim()
       if (id === '') continue
-      if (!RUN_ID_RE.test(id)) throw new StoreCorruptError(`malformed index line: ${id}`)
+      if (!RUN_ID_RE.test(id))
+        throw new StoreCorruptError(`malformed index line: ${id}`)
       if (!seen.has(id)) {
         seen.add(id)
         out.push(id)
@@ -133,14 +135,17 @@ export class RunStore {
   lastRunId(): string | null {
     if (!existsSync(this.lastPath)) return null
     const id = readFileSync(this.lastPath, 'utf8').trim()
-    if (!RUN_ID_RE.test(id)) throw new StoreCorruptError(`malformed last pointer: ${id}`)
+    if (!RUN_ID_RE.test(id))
+      throw new StoreCorruptError(`malformed last pointer: ${id}`)
     return id
   }
 
   /** Resolve a possibly-prefixed run id to a stored full id (§3.5 MAY). */
   resolveRunId(idOrPrefix: string): string | null {
     if (RUN_ID_RE.test(idOrPrefix)) {
-      return existsSync(join(this.runsDir, `${idOrPrefix}.json`)) ? idOrPrefix : null
+      return existsSync(join(this.runsDir, `${idOrPrefix}.json`))
+        ? idOrPrefix
+        : null
     }
     if (!existsSync(this.runsDir)) return null
     const matches = readdirSync(this.runsDir)

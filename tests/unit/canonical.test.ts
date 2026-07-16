@@ -3,7 +3,9 @@ import { canonicalJson, NonCanonicalValueError } from '../../src/canonical.js'
 
 describe('canonicalJson (§3.5)', () => {
   it('sorts keys lexicographically and strips whitespace', () => {
-    expect(canonicalJson({ b: 1, a: { d: 2, c: 3 } })).toBe('{"a":{"c":3,"d":2},"b":1}')
+    expect(canonicalJson({ b: 1, a: { d: 2, c: 3 } })).toBe(
+      '{"a":{"c":3,"d":2},"b":1}',
+    )
   })
 
   it('drops undefined-valued keys', () => {
@@ -11,7 +13,9 @@ describe('canonicalJson (§3.5)', () => {
   })
 
   it('rejects non-integer numbers', () => {
-    expect(() => canonicalJson({ duration: 1.5 })).toThrow(NonCanonicalValueError)
+    expect(() => canonicalJson({ duration: 1.5 })).toThrow(
+      NonCanonicalValueError,
+    )
   })
 
   it('is stable across key insertion order', () => {

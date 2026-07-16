@@ -16,13 +16,17 @@ interface RedactionRule {
 const RULES: readonly RedactionRule[] = [
   {
     kind: 'private-key',
-    pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    pattern:
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
   },
   { kind: 'aws-access-key-id', pattern: /AKIA[0-9A-Z]{16}/g },
   { kind: 'github-token', pattern: /gh[pousr]_[A-Za-z0-9]{36,255}/g },
   { kind: 'github-token', pattern: /github_pat_[A-Za-z0-9_]{22,255}/g },
   { kind: 'slack-token', pattern: /xox[baprs]-[A-Za-z0-9-]{10,}/g },
-  { kind: 'jwt', pattern: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{10,}/g },
+  {
+    kind: 'jwt',
+    pattern: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{10,}/g,
+  },
   {
     kind: 'bearer-token',
     pattern: /([Bb]earer\s+)[A-Za-z0-9._~+/=-]{16,}/g,
@@ -46,7 +50,8 @@ export function redactText(text: string): string {
 /** Recursively redact every string in a JSON-like structure. */
 export function redactValue<T>(value: T): T {
   if (typeof value === 'string') return redactText(value) as unknown as T
-  if (Array.isArray(value)) return value.map((v) => redactValue(v)) as unknown as T
+  if (Array.isArray(value))
+    return value.map((v) => redactValue(v)) as unknown as T
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {

@@ -7,8 +7,19 @@
  * a project's vitest config (ambient recording, §4.2).
  */
 import { writeFileSync } from 'node:fs'
-import type { Reporter, TestCase, TestModule, TestSpecification, Vitest } from 'vitest/node'
-import { CAPTURE_VERSION, type Capture, type CapturedError, type CapturedTest } from './capture.js'
+import type {
+  Reporter,
+  TestCase,
+  TestModule,
+  TestSpecification,
+  Vitest,
+} from 'vitest/node'
+import {
+  CAPTURE_VERSION,
+  type Capture,
+  type CapturedError,
+  type CapturedTest,
+} from './capture.js'
 
 type SerializedErrorLike = {
   name?: unknown
@@ -31,7 +42,11 @@ export default class VdeltaReporter implements Reporter {
     this.consoleByTask.clear()
   }
 
-  onUserConsoleLog(log: { taskId?: string; type: string; content: string }): void {
+  onUserConsoleLog(log: {
+    taskId?: string
+    type: string
+    content: string
+  }): void {
     if (log.taskId === undefined) return
     const entries = this.consoleByTask.get(log.taskId) ?? []
     entries.push({ type: log.type, content: log.content })
@@ -53,7 +68,9 @@ export default class VdeltaReporter implements Reporter {
       if (modErrors.length > 0) {
         moduleErrors.push({
           rel: mod.relativeModuleId,
-          messages: modErrors.map((e) => String((e as { message?: unknown }).message ?? '')),
+          messages: modErrors.map((e) =>
+            String((e as { message?: unknown }).message ?? ''),
+          ),
         })
       }
       for (const tc of mod.children.allTests()) {
@@ -62,8 +79,9 @@ export default class VdeltaReporter implements Reporter {
     }
 
     const config = this.ctx?.config
-    const chaiConfig = (config as { chaiConfig?: { truncateThreshold?: number } } | undefined)
-      ?.chaiConfig
+    const chaiConfig = (
+      config as { chaiConfig?: { truncateThreshold?: number } } | undefined
+    )?.chaiConfig
     const capture: Capture = {
       capture_version: CAPTURE_VERSION,
       runner: 'vitest',
@@ -72,7 +90,8 @@ export default class VdeltaReporter implements Reporter {
       unhandled_errors: unhandledErrors.length,
       config: {
         include_task_location:
-          (config as { includeTaskLocation?: boolean } | undefined)?.includeTaskLocation === true,
+          (config as { includeTaskLocation?: boolean } | undefined)
+            ?.includeTaskLocation === true,
         truncate_threshold: chaiConfig?.truncateThreshold ?? null,
       },
       tests,
@@ -88,14 +107,19 @@ export default class VdeltaReporter implements Reporter {
       const err = e as SerializedErrorLike
       return {
         name: typeof err.name === 'string' ? err.name : 'Error',
-        message: typeof err.message === 'string' ? err.message : String(err.message ?? ''),
+        message:
+          typeof err.message === 'string'
+            ? err.message
+            : String(err.message ?? ''),
         ...(typeof err.expected === 'string' ? { expected: err.expected } : {}),
         ...(typeof err.actual === 'string' ? { actual: err.actual } : {}),
         ...(typeof err.operator === 'string' ? { operator: err.operator } : {}),
         frames: (err.stacks ?? [])
           .filter(
             (f): f is { file: string; line: number; column: number } =>
-              typeof f.file === 'string' && typeof f.line === 'number' && typeof f.column === 'number',
+              typeof f.file === 'string' &&
+              typeof f.line === 'number' &&
+              typeof f.column === 'number',
           )
           .map((f) => ({ file: f.file, line: f.line, column: f.column })),
       }
@@ -107,7 +131,9 @@ export default class VdeltaReporter implements Reporter {
       state: result.state,
       mode: tc.options.mode,
       fails: tc.options.fails === true,
-      ...(result.state === 'skipped' && result.note !== undefined ? { note: result.note } : {}),
+      ...(result.state === 'skipped' && result.note !== undefined
+        ? { note: result.note }
+        : {}),
       location_line: tc.location?.line ?? null,
       errors,
       console: this.consoleByTask.get(tc.id) ?? [],

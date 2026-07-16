@@ -7,19 +7,31 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runFixture, type Manifest } from './runner.js'
+import { type Manifest, runFixture } from './runner.js'
 
-const FIXTURES_DIR = join(import.meta.dirname, '..', '..', 'conformance', 'fixtures')
+const FIXTURES_DIR = join(
+  import.meta.dirname,
+  '..',
+  '..',
+  'conformance',
+  'fixtures',
+)
 
 const fixtureNames = readdirSync(FIXTURES_DIR, { withFileTypes: true })
-  .filter((e) => e.isDirectory() && existsSync(join(FIXTURES_DIR, e.name, 'manifest.json')))
+  .filter(
+    (e) =>
+      e.isDirectory() &&
+      existsSync(join(FIXTURES_DIR, e.name, 'manifest.json')),
+  )
   .map((e) => e.name)
   .sort()
 
 const manifests = new Map<string, Manifest>(
   fixtureNames.map((name) => [
     name,
-    JSON.parse(readFileSync(join(FIXTURES_DIR, name, 'manifest.json'), 'utf8')) as Manifest,
+    JSON.parse(
+      readFileSync(join(FIXTURES_DIR, name, 'manifest.json'), 'utf8'),
+    ) as Manifest,
   ]),
 )
 
@@ -34,7 +46,9 @@ describe('veridelta/1 conformance', () => {
   }
 
   it('recall: 100% detection, zero false green on the cheat corpus (§13.2.5)', () => {
-    const recall = fixtureNames.filter((n) => manifests.get(n)?.class === 'recall')
+    const recall = fixtureNames.filter(
+      (n) => manifests.get(n)?.class === 'recall',
+    )
     expect(recall.length).toBeGreaterThanOrEqual(10)
     const failedRecall = recall.filter((n) => !passed.has(n))
     expect(failedRecall, 'recall fixtures that did not pass').toEqual([])

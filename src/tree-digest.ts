@@ -7,19 +7,23 @@
  * Rendered as a bare 40-hex OID (documented deviation from sha256:).
  */
 import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 
 const execFileP = promisify(execFile)
 
 const PIN = [
-  '-c', 'core.autocrlf=false',
-  '-c', 'core.eol=lf',
-  '-c', 'core.excludesFile=/dev/null',
-  '-c', 'advice.addEmbeddedRepo=false',
+  '-c',
+  'core.autocrlf=false',
+  '-c',
+  'core.eol=lf',
+  '-c',
+  'core.excludesFile=/dev/null',
+  '-c',
+  'advice.addEmbeddedRepo=false',
 ]
 
 async function git(
@@ -87,7 +91,11 @@ export async function resolveRef(
   ref: string,
 ): Promise<{ commit: string; tree: string } | null> {
   try {
-    const commit = await git(worktree, ['rev-parse', '--verify', `${ref}^{commit}`])
+    const commit = await git(worktree, [
+      'rev-parse',
+      '--verify',
+      `${ref}^{commit}`,
+    ])
     const tree = await git(worktree, ['rev-parse', '--verify', `${ref}^{tree}`])
     return { commit, tree }
   } catch {
@@ -98,7 +106,11 @@ export async function resolveRef(
 /** Deterministic digest material for the dirty state (status + diff vs HEAD). */
 export async function dirtyDiffMaterial(worktree: string): Promise<string> {
   try {
-    const status = await git(worktree, ['status', '--porcelain=v1', '--untracked-files=all'])
+    const status = await git(worktree, [
+      'status',
+      '--porcelain=v1',
+      '--untracked-files=all',
+    ])
     let diff = ''
     if ((await gitHead(worktree)) !== null) {
       diff = await git(worktree, ['diff', 'HEAD', '--no-color'])

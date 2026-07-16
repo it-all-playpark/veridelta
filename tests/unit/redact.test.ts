@@ -3,7 +3,9 @@ import { redactText } from '../../src/redact.js'
 
 describe('secret redaction (§15, contract §5.6)', () => {
   it('redacts AWS access key ids', () => {
-    expect(redactText('key=AKIAIOSFODNN7EXAMPLE end')).toBe('key=[REDACTED:aws-access-key-id] end')
+    expect(redactText('key=AKIAIOSFODNN7EXAMPLE end')).toBe(
+      'key=[REDACTED:aws-access-key-id] end',
+    )
   })
 
   it('redacts github tokens', () => {

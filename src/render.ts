@@ -6,7 +6,9 @@ import type { ComparisonReport } from './schema.js'
 
 export function renderReport(report: ComparisonReport): string {
   const lines: string[] = []
-  lines.push(`veridelta/1 ${report.outcome_verdict} (comparability: ${report.comparability})`)
+  lines.push(
+    `veridelta/1 ${report.outcome_verdict} (comparability: ${report.comparability})`,
+  )
   if (report.comparability_detail) {
     lines.push(
       `  reason: ${report.comparability_detail.reason} (${report.comparability_detail.kind})`,
@@ -15,12 +17,16 @@ export function renderReport(report: ComparisonReport): string {
     if (nm) {
       lines.push(`  near-miss: ${nm.run_id.slice(0, 12)}`)
       for (const m of nm.mismatches) {
-        lines.push(`    ${m.field}: recorded="${m.recorded}" current="${m.current}"`)
+        lines.push(
+          `    ${m.field}: recorded="${m.recorded}" current="${m.current}"`,
+        )
       }
     }
   }
   if (report.baseline) {
-    lines.push(`  baseline: ${report.baseline.run_id.slice(0, 12)} [${report.baseline.mode}]`)
+    lines.push(
+      `  baseline: ${report.baseline.run_id.slice(0, 12)} [${report.baseline.mode}]`,
+    )
   } else {
     lines.push('  baseline: none')
   }
@@ -38,14 +44,19 @@ export function renderReport(report: ComparisonReport): string {
       lines.push(`  ${label} (${items.length}):`)
       for (const item of items) {
         const id =
-          typeof item === 'string' ? item : (item as { test_id: string }).test_id
+          typeof item === 'string'
+            ? item
+            : (item as { test_id: string }).test_id
         lines.push(`    ${label === 'repaired' ? '✓' : '✗'} ${id}`)
       }
     }
     bucket('new_fail', t.new_fail)
     bucket('updated_fail', t.updated_fail)
     bucket('still_fail_unchanged', t.still_fail_unchanged)
-    if (t.repaired_same_surface.length + t.repaired_with_test_change.length > 0) {
+    if (
+      t.repaired_same_surface.length + t.repaired_with_test_change.length >
+      0
+    ) {
       lines.push(
         `  repaired: ${t.repaired_same_surface.length} same-surface, ${t.repaired_with_test_change.length} with-test-change`,
       )

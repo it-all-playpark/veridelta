@@ -4,16 +4,20 @@
  * tree_digest equality with the judged workspace — binary equality, no
  * proximity rescue. Local-store verdicts are always advisory (§11.2).
  */
-import { buildComparisonReport, type BaselineSpec } from './compare.js'
-import { gitHead, resolveRef, treeDigest } from './tree-digest.js'
-import { RunStore, StoreCorruptError } from './store.js'
+
 import {
-  SCHEMA_VERSION,
+  COMPOSITION_ID,
+  DEGRADED_CAPABILITIES,
+} from './adapters/vitest/recorder.js'
+import { type BaselineSpec, buildComparisonReport } from './compare.js'
+import {
   type ComparisonReport,
   type GateReport,
   type GateVerdict,
+  SCHEMA_VERSION,
 } from './schema.js'
-import { COMPOSITION_ID, DEGRADED_CAPABILITIES } from './adapters/vitest/recorder.js'
+import { type RunStore, StoreCorruptError } from './store.js'
+import { gitHead, resolveRef, treeDigest } from './tree-digest.js'
 
 export class GateOperationError extends Error {
   constructor(message: string) {
@@ -37,10 +41,15 @@ export async function buildGateReport(
     throw new GateOperationError(`cannot resolve ref: ${opts.ref}`)
   }
 
-  const currentId = opts.runId !== undefined ? store.resolveRunId(opts.runId) : store.lastRunId()
+  const currentId =
+    opts.runId !== undefined
+      ? store.resolveRunId(opts.runId)
+      : store.lastRunId()
   if (currentId === null) {
     throw new GateOperationError(
-      opts.runId !== undefined ? `unknown run id: ${opts.runId}` : 'no recorded run to gate',
+      opts.runId !== undefined
+        ? `unknown run id: ${opts.runId}`
+        : 'no recorded run to gate',
     )
   }
 
@@ -84,7 +93,8 @@ export async function buildGateReport(
   const triggered: string[] = []
   if (report.transitions !== undefined) {
     if (report.transitions.new_fail.length > 0) triggered.push('new_fail')
-    if (report.transitions.updated_fail.length > 0) triggered.push('updated_fail')
+    if (report.transitions.updated_fail.length > 0)
+      triggered.push('updated_fail')
   }
   if (report.verification_surface?.status === 'reduced') {
     triggered.push('verification_surface_reduced')
@@ -93,7 +103,10 @@ export async function buildGateReport(
   let verdict: GateVerdict
   if (!stalenessMatch) {
     verdict = 'inconclusive'
-  } else if (report.comparability === 'none' || report.comparability === 'partial') {
+  } else if (
+    report.comparability === 'none' ||
+    report.comparability === 'partial'
+  ) {
     verdict = 'inconclusive'
   } else if (triggered.length > 0) {
     verdict = 'fail'
@@ -119,7 +132,12 @@ export async function buildGateReport(
 
 function integrityFailedReport(
   currentId: string,
-  ctx: { headSha: string; baseSha: string; runTree: string; targetTree: string },
+  ctx: {
+    headSha: string
+    baseSha: string
+    runTree: string
+    targetTree: string
+  },
 ): ComparisonReport {
   // The record cannot be trusted: no red list, no transitions — only the
   // structural failure (§11.2). Reporting floor still discloses the anchor.

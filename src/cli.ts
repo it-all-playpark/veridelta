@@ -8,13 +8,17 @@
  *   gate    — report-only: 0 whenever a report is produced, 2 otherwise
  * The report goes to stdout; vdelta diagnostics go to stderr only.
  */
-import { buildComparisonReport, CompareOperationError, type BaselineSpec } from './compare.js'
+import {
+  type BaselineSpec,
+  buildComparisonReport,
+  CompareOperationError,
+} from './compare.js'
 import { buildGateReport, GateOperationError } from './gate.js'
 import { renderReport } from './render.js'
 import { runAndRecord, VDELTA_VERSION } from './run.js'
+import type { ComparisonReport, RunRecord } from './schema.js'
 import { RunStore, StoreCorruptError } from './store.js'
 import { gitRepoRoot, resolveRef } from './tree-digest.js'
-import type { ComparisonReport } from './schema.js'
 
 type ReportFormat = 'json' | 'text'
 
@@ -26,18 +30,23 @@ function emit(report: ComparisonReport, format: ReportFormat): void {
   }
 }
 
-function parseReportFlag(args: string[]): { format: ReportFormat; rest: string[] } {
+function parseReportFlag(args: string[]): {
+  format: ReportFormat
+  rest: string[]
+} {
   let format: ReportFormat = 'text'
   const rest: string[] = []
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!
     if (a === '--report') {
       const v = args[++i]
-      if (v !== 'json' && v !== 'text') die(`--report expects json|text, got ${v ?? '(none)'}`)
+      if (v !== 'json' && v !== 'text')
+        die(`--report expects json|text, got ${v ?? '(none)'}`)
       format = v
     } else if (a.startsWith('--report=')) {
       const v = a.slice('--report='.length)
-      if (v !== 'json' && v !== 'text') die(`--report expects json|text, got ${v}`)
+      if (v !== 'json' && v !== 'text')
+        die(`--report expects json|text, got ${v}`)
       format = v
     } else {
       rest.push(a)
@@ -102,8 +111,16 @@ async function cmdCompare(argv: string[]): Promise<never> {
     if (ref !== undefined) {
       const resolved = await resolveRef(worktree, ref)
       if (resolved === null) die(`cannot resolve ref: ${ref}`)
-      spec = { mode: 'git-ref', ref, commit: resolved.commit, tree: resolved.tree }
-      currentId = positional[0] !== undefined ? store.resolveRunId(positional[0]) : store.lastRunId()
+      spec = {
+        mode: 'git-ref',
+        ref,
+        commit: resolved.commit,
+        tree: resolved.tree,
+      }
+      currentId =
+        positional[0] !== undefined
+          ? store.resolveRunId(positional[0])
+          : store.lastRunId()
     } else if (positional.length === 2) {
       spec = { mode: 'explicit-run-id', runId: positional[0]! }
       currentId = store.resolveRunId(positional[1]!)
@@ -111,7 +128,9 @@ async function cmdCompare(argv: string[]): Promise<never> {
       spec = { mode: 'previous-comparable' }
       currentId = store.lastRunId()
     } else {
-      die('usage: vdelta compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]')
+      die(
+        'usage: vdelta compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]',
+      )
     }
 
     if (currentId === null) die('cannot resolve the current run')
@@ -143,12 +162,13 @@ async function cmdShow(argv: string[]): Promise<never> {
       positional.push(a)
     }
   }
-  if (positional.length !== 1) die('usage: vdelta show <run-id> [--test <test-id> | --raw]')
+  if (positional.length !== 1)
+    die('usage: vdelta show <run-id> [--test <test-id> | --raw]')
 
   const { store } = await requireStore()
   const runId = store.resolveRunId(positional[0]!)
   if (runId === null) die(`unknown run id: ${positional[0]}`)
-  let record
+  let record: RunRecord
   try {
     record = store.readRun(runId)
   } catch (err) {
@@ -187,9 +207,16 @@ async function cmdGate(argv: string[]): Promise<never> {
     else die(`unknown option: ${a}`, 2)
   }
   if (policy !== 'report-only') {
-    die(`policy "${policy}" is not implemented in this MVP (report-only only, §11.1)`, 2)
+    die(
+      `policy "${policy}" is not implemented in this MVP (report-only only, §11.1)`,
+      2,
+    )
   }
-  if (ref === undefined) die('usage: vdelta gate --ref <git-ref> [--run <run-id>] [--policy report-only]', 2)
+  if (ref === undefined)
+    die(
+      'usage: vdelta gate --ref <git-ref> [--run <run-id>] [--policy report-only]',
+      2,
+    )
 
   const worktree = await gitRepoRoot(process.cwd())
   if (worktree === null) die('not inside a git worktree', 2)
@@ -204,7 +231,8 @@ async function cmdGate(argv: string[]): Promise<never> {
     process.exit(0)
   } catch (err) {
     if (err instanceof GateOperationError) die(err.message, 2)
-    if (err instanceof StoreCorruptError) die(`store corrupt: ${err.message}`, 2)
+    if (err instanceof StoreCorruptError)
+      die(`store corrupt: ${err.message}`, 2)
     throw err
   }
 }
@@ -236,6 +264,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  process.stderr.write(`vdelta: internal error: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`)
+  process.stderr.write(
+    `vdelta: internal error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+  )
   process.exit(1)
 })

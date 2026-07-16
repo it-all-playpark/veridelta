@@ -11,13 +11,22 @@ import { readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildRunRecord, type RecordContext } from './adapters/vitest/recorder.js'
 import type { Capture } from './adapters/vitest/capture.js'
+import {
+  buildRunRecord,
+  type RecordContext,
+} from './adapters/vitest/recorder.js'
 import { buildComparisonReport } from './compare.js'
 import { canonicalDigest } from './digest.js'
-import { LockHeldError, RunStore } from './store.js'
-import { dirtyDiffMaterial, gitBranch, gitHead, gitRepoRoot, treeDigest } from './tree-digest.js'
 import type { ComparisonReport } from './schema.js'
+import { LockHeldError, RunStore } from './store.js'
+import {
+  dirtyDiffMaterial,
+  gitBranch,
+  gitHead,
+  gitRepoRoot,
+  treeDigest,
+} from './tree-digest.js'
 
 export const VDELTA_VERSION = '0.1.0'
 
@@ -37,14 +46,20 @@ interface ChildOutcome {
 }
 
 function reporterModulePath(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), 'adapters', 'vitest', 'reporter.js')
+  return join(
+    dirname(fileURLToPath(import.meta.url)),
+    'adapters',
+    'vitest',
+    'reporter.js',
+  )
 }
 
 /** Locate the vitest invocation inside the child argv; null when absent. */
 function findVitestToken(cmd: string[]): number | null {
   for (let i = 0; i < cmd.length; i++) {
     const token = cmd[i]!
-    if (/(^|[\\/])vitest(\.mjs|\.js)?$/.test(token) || token === 'vitest') return i
+    if (/(^|[\\/])vitest(\.mjs|\.js)?$/.test(token) || token === 'vitest')
+      return i
   }
   return null
 }
@@ -53,7 +68,10 @@ function findVitestToken(cmd: string[]): number | null {
  * The invocation's selector is its inclusion intent (§6.4): the vitest CLI
  * positional filters. The canonical command excludes them (§5.1).
  */
-export function splitCommandSelector(cmd: string[]): { command: string[]; selector: string[] } {
+export function splitCommandSelector(cmd: string[]): {
+  command: string[]
+  selector: string[]
+} {
   const idx = findVitestToken(cmd)
   if (idx === null) return { command: cmd, selector: [] }
   const command: string[] = cmd.slice(0, idx + 1)
@@ -84,28 +102,48 @@ function runChild(cmd: string[], captureFile: string): Promise<ChildOutcome> {
     child.on('error', reject)
     child.on('close', (code, signal) => {
       const exitCode =
-        code !== null ? code : 128 + (signal !== null ? signalNumber(signal) : 0)
-      resolve({ exitCode, stdout: Buffer.concat(out), stderr: Buffer.concat(err) })
+        code !== null
+          ? code
+          : 128 + (signal !== null ? signalNumber(signal) : 0)
+      resolve({
+        exitCode,
+        stdout: Buffer.concat(out),
+        stderr: Buffer.concat(err),
+      })
     })
   })
 }
 
 function signalNumber(signal: NodeJS.Signals): number {
   const table: Partial<Record<NodeJS.Signals, number>> = {
-    SIGHUP: 1, SIGINT: 2, SIGQUIT: 3, SIGABRT: 6, SIGKILL: 9,
-    SIGSEGV: 11, SIGPIPE: 13, SIGTERM: 15,
+    SIGHUP: 1,
+    SIGINT: 2,
+    SIGQUIT: 3,
+    SIGABRT: 6,
+    SIGKILL: 9,
+    SIGSEGV: 11,
+    SIGPIPE: 13,
+    SIGTERM: 15,
   }
   return table[signal] ?? 15
 }
 
-export async function runAndRecord(cmd: string[], cwd: string): Promise<RunResult> {
+export async function runAndRecord(
+  cmd: string[],
+  cwd: string,
+): Promise<RunResult> {
   const diagnostics: string[] = []
   const captureFile = join(tmpdir(), `vdelta-capture-${randomUUID()}.json`)
 
   const vitestIdx = findVitestToken(cmd)
   const childCmd =
     vitestIdx !== null
-      ? [...cmd, '--reporter=default', `--reporter=${reporterModulePath()}`, '--includeTaskLocation']
+      ? [
+          ...cmd,
+          '--reporter=default',
+          `--reporter=${reporterModulePath()}`,
+          '--includeTaskLocation',
+        ]
       : cmd
 
   const child = await runChild(childCmd, captureFile)
@@ -126,7 +164,9 @@ export async function runAndRecord(cmd: string[], cwd: string): Promise<RunResul
   try {
     capture = JSON.parse(readFileSync(captureFile, 'utf8')) as Capture
   } catch {
-    return degraded('no capture from the vitest reporter — is the child a vitest invocation?')
+    return degraded(
+      'no capture from the vitest reporter — is the child a vitest invocation?',
+    )
   } finally {
     rmSync(captureFile, { force: true })
   }
@@ -164,7 +204,9 @@ export async function runAndRecord(cmd: string[], cwd: string): Promise<RunResul
       store.releaseLock()
     }
 
-    const report = buildComparisonReport(store, runId, { mode: 'previous-comparable' })
+    const report = buildComparisonReport(store, runId, {
+      mode: 'previous-comparable',
+    })
     return {
       exitCode: child.exitCode,
       report,
