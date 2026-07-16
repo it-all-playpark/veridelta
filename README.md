@@ -18,7 +18,7 @@ another" — a verification delta can, and when two runs are not comparable it
 - Runner support (MVP): **vitest v4** (native reporter, structured channel only)
 - Zero runtime dependencies; Node ≥ 20
 - Machine-verified against the [conformance suite](conformance/) —
-  38 fixtures covering the spec's invariants, adversarial inputs, and a
+  39 fixtures covering the spec's invariants, adversarial inputs, and a
   10-mutation cheating corpus with 100% detection recall
 
 ## Quickstart (5 minutes)
@@ -142,6 +142,14 @@ consumers must treat unknown values as hard errors.
   or digested.
 - The run store lives in `.veridelta/` (repo-local, self-gitignored,
   content-addressed, immutable).
+- veridelta is read-only with respect to the observed repository: the only
+  things it writes are its own `.veridelta/` store and throwaway files under
+  the OS temp directory. Tree digesting uses a private index
+  (`GIT_INDEX_FILE`) and a private object directory
+  (`GIT_OBJECT_DIRECTORY`, with the repo's real objects supplied read-only
+  via `GIT_ALTERNATE_OBJECT_DIRECTORIES`), so no loose objects are ever
+  added to your `.git` — recording works even when the object database is
+  not writable (e.g. sandboxed environments).
 
 ## Protocol
 
@@ -154,7 +162,7 @@ intended success mode.
 
 ```bash
 npm test                     # unit + full conformance suite
-npm run test:conformance     # the 38-fixture suite only
+npm run test:conformance     # the 39-fixture suite only
 ```
 
 The suite is authored independently of this implementation (the fixture
@@ -163,8 +171,10 @@ author reads only the spec and the harness contract in
 and mechanically verifies, among the spec's §13.2 classes: byte-identical
 determinism of re-executed comparisons, 100% detection recall on the
 cheating corpus, zero false green, fail-open degradation (INV-5),
-record-integrity tampering detection (INV-10), and exact tree-digest
-staleness (INV-11).
+record-integrity tampering detection (INV-10), exact tree-digest
+staleness (INV-11), and read-only object-database recording (tree
+digesting never writes loose objects into the observed repository's
+`.git`, even when it is not writable).
 
 ## License
 

@@ -5,12 +5,20 @@
  * excluding committed-gitignore'd paths, computed against a dedicated
  * throwaway index seeded from HEAD, with host-dependent git settings pinned.
  * Rendered as a bare 40-hex OID (documented deviation from sha256:).
+ *
+ * treeDigest() is read-only with respect to the observed repo: all git
+ * object writes (blobs from `add -A`, the tree from `write-tree`) are
+ * redirected to a throwaway GIT_OBJECT_DIRECTORY under tmpdir(), while the
+ * repo's real objects (resolved via `--git-path objects`, which also
+ * handles linked worktrees whose objects live in the common dir) are made
+ * available for reads through GIT_ALTERNATE_OBJECT_DIRECTORIES. The
+ * throwaway directory is removed again once the digest has been computed.
  */
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { rm } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileP = promisify(execFile)
@@ -40,8 +48,25 @@ async function git(
 
 export async function treeDigest(worktree: string): Promise<string> {
   const idx = join(tmpdir(), `vd-idx-${randomUUID()}`)
-  const idxEnv = { GIT_INDEX_FILE: idx }
+  const objDir = join(tmpdir(), `vd-obj-${randomUUID()}`)
   try {
+    await mkdir(objDir, { recursive: true })
+    const realObjects = await git(worktree, [
+      'rev-parse',
+      '--path-format=absolute',
+      '--git-path',
+      'objects',
+    ])
+    const existingAlternates = process.env.GIT_ALTERNATE_OBJECT_DIRECTORIES
+    const alternates = existingAlternates
+      ? `${realObjects}${delimiter}${existingAlternates}`
+      : realObjects
+    const env = {
+      GIT_INDEX_FILE: idx,
+      GIT_OBJECT_DIRECTORY: objDir,
+      GIT_ALTERNATE_OBJECT_DIRECTORIES: alternates,
+    }
+
     let hasHead = true
     try {
       await git(worktree, ['rev-parse', '--verify', '-q', 'HEAD'])
@@ -49,14 +74,15 @@ export async function treeDigest(worktree: string): Promise<string> {
       hasHead = false
     }
     if (hasHead) {
-      await git(worktree, ['read-tree', 'HEAD'], idxEnv)
+      await git(worktree, ['read-tree', 'HEAD'], env)
     } else {
-      await git(worktree, ['read-tree', '--empty'], idxEnv)
+      await git(worktree, ['read-tree', '--empty'], env)
     }
-    await git(worktree, ['add', '-A'], idxEnv)
-    return await git(worktree, ['write-tree'], idxEnv)
+    await git(worktree, ['add', '-A'], env)
+    return await git(worktree, ['write-tree'], env)
   } finally {
     await rm(idx, { force: true })
+    await rm(objDir, { recursive: true, force: true })
   }
 }
 

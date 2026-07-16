@@ -1,0 +1,22 @@
+{
+  "name": "adv-readonly-object-db",
+  "class": "adversarial",
+  "spec_refs": ["§13.2", "§3.5", "§9.1"],
+  "notes": "tree objects are content-addressed, so redirecting the write destination cannot change the digest: a run against a write-protected object DB must produce the same run_id as a writable run at the identical tree, and must NOT degrade to raw passthrough (INV-5 is for genuinely unrecordable states, not for a read-only .git).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed red"},
+    {"do": "run", "id": "W", "expectExit": 1},
+    {"do": "chmod-readonly", "path": ".git/objects"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"sameValue": [{"report": "W", "path": "current.run_id"}, {"report": "A", "path": "current.run_id"}]},
+    {"sameValue": [{"report": "A", "path": "current.run_id"}, {"report": "B", "path": "current.run_id"}]},
+    {"report": "A", "path": "current.run_id", "matches": "^run_[0-9a-f]{64}$"},
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/ro.test.ts::red under readonly objects"}}
+  ]
+}
