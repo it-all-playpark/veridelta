@@ -21,7 +21,7 @@ target
 #.idea/
 
 # Node / TypeScript (vdelta reference implementation)
-node_modules/
+node_modules
 dist/
 *.tsbuildinfo
 

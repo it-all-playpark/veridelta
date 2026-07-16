@@ -3,6 +3,24 @@
   "version": "0.1.0",
   "description": "Reference implementation of veridelta/1 — proof-carrying verification deltas for coding-agent development loops",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/it-all-playpark/veridelta.git"
+  },
+  "homepage": "https://github.com/it-all-playpark/veridelta#readme",
+  "bugs": {
+    "url": "https://github.com/it-all-playpark/veridelta/issues"
+  },
+  "keywords": [
+    "verification",
+    "testing",
+    "test-evidence",
+    "provenance",
+    "coding-agent",
+    "ai-agent",
+    "vitest",
+    "quality-gate"
+  ],
   "type": "module",
   "bin": {
     "vdelta": "./dist/cli.js"
@@ -21,6 +39,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm run test",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:conformance": "vitest run --project conformance",
