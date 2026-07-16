@@ -27,6 +27,17 @@ import { parseReport, parseRunRecord } from '../../src/index.js'
 
 const execFileP = promisify(execFile)
 
+/**
+ * Fixtures replay a developer's local loop, so CI markers must not leak into
+ * the child vitest: CI mode rejects the .only cheat outright (allowOnly
+ * defaults to !CI) and GITHUB_ACTIONS injects an extra reporter into the
+ * recorded raw output.
+ */
+const LOCAL_ENV: NodeJS.ProcessEnv = { ...process.env }
+delete LOCAL_ENV.CI
+delete LOCAL_ENV.CONTINUOUS_INTEGRATION
+delete LOCAL_ENV.GITHUB_ACTIONS
+
 const REPO_ROOT = join(import.meta.dirname, '..', '..')
 const CLI = join(REPO_ROOT, 'dist', 'cli.js')
 const VITEST_MJS = join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs')
@@ -116,7 +127,7 @@ class FixtureContext {
         [CLI, ...args],
         {
           cwd: this.workspace,
-          env: { ...process.env, ...env },
+          env: { ...LOCAL_ENV, ...env },
           maxBuffer: 64 * 1024 * 1024,
         },
         (error, stdout, stderr) => {
