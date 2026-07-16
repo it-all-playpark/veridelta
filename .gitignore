@@ -19,3 +19,14 @@ target
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Node / TypeScript (vdelta reference implementation)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# veridelta run store (repo-local, never versioned — spec §4.1)
+.veridelta/
+
+# local claude session artifacts
+.claude/

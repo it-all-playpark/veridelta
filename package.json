@@ -1,0 +1,34 @@
+{
+  "name": "vdelta",
+  "version": "0.1.0",
+  "description": "Reference implementation of veridelta/1 — proof-carrying verification deltas for coding-agent development loops",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "vdelta": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./vitest": "./dist/adapters/vitest/reporter.js"
+  },
+  "files": [
+    "dist",
+    "spec"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:conformance": "vitest run --project conformance",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}
