@@ -1,0 +1,23 @@
+{
+  "name": "inv4-partial-no-false-repaired",
+  "class": "invariant",
+  "spec_refs": ["INV-4", "§6.1", "§5.5"],
+  "notes": "Completeness gate. Baseline run A observes three reds (complete). Current run B enables bail:1, so t1 fails, bails, and t2/t3 record as not_run (partial). t2/t3 were red at baseline but are unobserved now: they MUST NOT be reported repaired/missing. Under partial comparability the verdict caps at inconclusive (no observed new_fail/updated_fail). observation_coverage exposes '1/3'. Note (finding): the spec does not fix how an observed red that was ALSO red at baseline (t1) is labelled under partial, since 'unchanged' is forbidden; this fixture does not assert t1's bucket.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed three reds, no bail"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "vitest.config.ts", "content": "import { defineConfig } from 'vitest/config'\nexport default defineConfig({ test: { bail: 1 } })\n"},
+    {"do": "commit", "message": "enable bail:1"},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "partial"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "inconclusive"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "empty": true},
+    {"report": "cmp", "path": "observation_coverage.baseline", "eq": "3/3"},
+    {"report": "cmp", "path": "observation_coverage.current", "eq": "1/3"}
+  ]
+}

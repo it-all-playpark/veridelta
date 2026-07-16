@@ -1,0 +1,46 @@
+{
+  "schema_version": "veridelta/1",
+  "outcome_verdict": "regressed",
+  "comparability": "exact",
+  "surprise_field": "consumers must reject unknown fields",
+  "baseline": {
+    "run_id": "run_fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "mode": "previous-comparable",
+    "selection_reason": "same-worktree-command-config-scope"
+  },
+  "current": {
+    "run_id": "run_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "complete": true,
+    "child_exit_code": 1
+  },
+  "observation_coverage": {
+    "baseline": "3/3",
+    "current": "3/3"
+  },
+  "verification_surface": {
+    "status": "changed",
+    "events": []
+  },
+  "transitions": {
+    "new_fail": ["tests/api.test.ts::creates user"],
+    "still_fail_unchanged": [],
+    "updated_fail": [],
+    "repaired_same_surface": [],
+    "repaired_with_test_change": [],
+    "fail_to_skip": [],
+    "fail_to_xfail": [],
+    "removed": [],
+    "not_observed": []
+  },
+  "failure_evidence": {
+    "composition_id": "vitest-native/1",
+    "degraded_capabilities": ["source-region-text"]
+  },
+  "trust": {
+    "record_integrity": "advisory"
+  },
+  "anchors": {
+    "new_fail:tests/api.test.ts::creates user": "vdelta show run_01234567 --test 'tests/api.test.ts::creates user'",
+    "raw": "vdelta show run_01234567 --raw"
+  }
+}

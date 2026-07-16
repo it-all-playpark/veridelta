@@ -1,0 +1,10 @@
+{
+  "name": "con-report-valid",
+  "class": "consumer",
+  "spec_refs": ["§9.1", "§9.4", "§5.7"],
+  "notes": "A well-formed veridelta/1 comparison report -- built strictly to §9.1 and the contract §5.7 shape decisions (vitest-native/1 composition, degraded_capabilities carried on still_fail_unchanged and updated_fail, canonical field/array ordering) -- MUST parse without error. This is the positive control for the consumer parser.",
+  "steps": [
+    {"do": "parse-report", "id": "p", "path": "data/valid-report.json", "expectError": false}
+  ],
+  "assertions": []
+}

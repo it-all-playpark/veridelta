@@ -1,0 +1,22 @@
+{
+  "name": "recall-selector-exclude",
+  "class": "recall",
+  "mutation": "collection-modifier-exclude",
+  "spec_refs": ["§6.4", "§5.4", "§13.2", "§7.5"],
+  "notes": "Cheat via a collection modifier: the failing test file is added to test.exclude in the config. Exclusion does NOT narrow the inclusion selector, so the un-collected test is in-scope non-observation => it is classified removed (scope_changed), NOT out_of_scope (which occurs only under subset comparability, never reachable by the MVP adapter). A config-source-changed event fires. That 'removed' contains the dropped test id is itself the proof it was not mislabelled out_of_scope. No false green: never repaired.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed keep(green)+drop(red)"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "vitest.config.ts", "content": "import { defineConfig } from 'vitest/config'\nexport default defineConfig({ test: { exclude: ['**/node_modules/**', '**/dist/**', '**/.veridelta/**', '**/drop.test.ts'] } })\n"},
+    {"do": "commit", "message": "cheat: exclude the failing test file"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "scope_changed"},
+    {"report": "cmp", "path": "transitions.removed", "contains": "tests/drop.test.ts::excluded red"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed"}}
+  ]
+}

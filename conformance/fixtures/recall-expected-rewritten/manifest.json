@@ -1,0 +1,23 @@
+{
+  "name": "recall-expected-rewritten",
+  "class": "recall",
+  "mutation": "expected-rewritten-to-actual",
+  "spec_refs": ["§7.5", "§7.4", "INV-9"],
+  "notes": "Cheat: the expected value is rewritten to match the actual (toBe(200) -> toBe(500)), so the test passes while the implementation is unchanged and still wrong. Because the test source changed, the repair is repaired_with_test_change with a test-source-changed event, never repaired_same_surface.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing assertion"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/svc.test.ts", "content": "import { test, expect } from 'vitest'\nimport { getStatus } from '../src'\n\ntest('status is ok', () => {\n  expect(getStatus()).toBe(500)\n})\n"},
+    {"do": "commit", "message": "cheat: rewrite expected to actual"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "contains": "tests/svc.test.ts::status is ok"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "test-source-changed", "test_id": "tests/svc.test.ts::status is ok"}},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

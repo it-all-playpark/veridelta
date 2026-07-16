@@ -1,0 +1,20 @@
+{
+  "name": "inv5-fail-open-held-lock",
+  "class": "invariant",
+  "spec_refs": ["INV-5", "§4.4", "§5.10", "§10"],
+  "notes": "Advisory locks are fail-open. With .veridelta/lock held, `vdelta run` degrades to transparent passthrough: no report is emitted (expectReport:false) and the child's exit code passes through unchanged. Once the lock is released, recording resumes normally and a comparison succeeds -- proving veridelta is never worse than its absence, and that the degradation is transient, not corrupting.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "mkdir", "path": ".veridelta/lock"},
+    {"do": "run", "id": "A", "expectReport": false, "expectExit": 1},
+    {"do": "delete", "path": ".veridelta/lock"},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "run", "id": "C", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "B", "current": "C", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/locked.test.ts::still fails"}}
+  ]
+}

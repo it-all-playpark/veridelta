@@ -1,0 +1,20 @@
+{
+  "name": "inv2-accounting-no-omission",
+  "class": "invariant",
+  "spec_refs": ["INV-2", "§9.1"],
+  "notes": "Passing tests have their detail suppressed, but their existence is still accounted for in observation_coverage. Coverage is '3/3' on both sides even though only the red (beta) appears in transitions. Only the DETAIL of unchanged/passing items may be suppressed, never their existence in the coverage census.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed 2 pass + 1 fail"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "observation_coverage.baseline", "eq": "3/3"},
+    {"report": "cmp", "path": "observation_coverage.current", "eq": "3/3"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/account.test.ts::beta fails"}},
+    {"report": "cmp", "path": "transitions.new_fail", "empty": true}
+  ]
+}

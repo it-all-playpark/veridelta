@@ -1,0 +1,18 @@
+{
+  "name": "inv10-gate-record-integrity",
+  "class": "invariant",
+  "spec_refs": ["INV-10", "§11.2", "§6.3"],
+  "notes": "The threat model includes the deceiving agent. After recording run A, the agent shells into the local store and flips the single failing observation's verdict from fail to pass in .veridelta/runs/<A>.json. Because run_id is the content address of the record (recording group excluded), the gate recomputes the address, detects the mismatch, and abstains: comparability_detail record-integrity-failed/failed and gate.verdict inconclusive. Tampering is caught structurally, not by trusting the stored bytes.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"observations.0.verdict": "pass"}},
+    {"do": "gate", "id": "g", "ref": "HEAD", "run": "A", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "g", "path": "gate.verdict", "eq": "inconclusive"},
+    {"report": "g", "path": "comparability_detail.reason", "eq": "record-integrity-failed"},
+    {"report": "g", "path": "comparability_detail.kind", "eq": "failed"}
+  ]
+}

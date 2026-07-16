@@ -1,0 +1,17 @@
+{
+  "name": "inv11-gate-staleness-exact",
+  "class": "invariant",
+  "spec_refs": ["INV-11", "§11.3", "§3.5"],
+  "notes": "Honest-but-stale records are never gated on (TOCTOU). Run A is recorded at a clean tree. The workspace is then edited (an untracked, non-ignored file added) so its tree_digest no longer equals what A recorded. The gate recomputes the workspace tree immediately before judging and requires byte-exact equality with A.provenance.tree_digest; the mismatch yields staleness.match false and gate.verdict inconclusive -- no proximity or ratio rescue.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "drift.txt", "content": "post-record edit changes the tree\n"},
+    {"do": "gate", "id": "g", "ref": "HEAD", "run": "A", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "g", "path": "gate.staleness.match", "eq": false},
+    {"report": "g", "path": "gate.verdict", "eq": "inconclusive"}
+  ]
+}

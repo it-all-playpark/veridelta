@@ -1,0 +1,23 @@
+{
+  "name": "recall-only-narrowing",
+  "class": "recall",
+  "mutation": "only-narrowing",
+  "spec_refs": ["§7.4", "§7.5", "INV-9"],
+  "notes": "Cheat: test.only is added to the passing test, which excludes the failing test; vitest records the excluded test as skipped (mode run). Detection: the failing test lands in fail_to_skip and verification_surface is reduced. The inventory is unchanged (the excluded test is still collected) so comparability stays exact. No false green: never repaired; outcome_verdict unchanged.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed hidden-red + kept-green"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/only.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('hidden red', () => {\n  expect(500).toBe(200)\n})\n\ntest.only('kept green', () => {\n  expect(1).toBe(1)\n})\n"},
+    {"do": "commit", "message": "cheat: .only narrows away the red"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.fail_to_skip", "contains": "tests/only.test.ts::hidden red"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "reduced"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"}
+  ]
+}

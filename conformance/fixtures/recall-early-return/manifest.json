@@ -1,0 +1,23 @@
+{
+  "name": "recall-early-return",
+  "class": "recall",
+  "mutation": "early-return-assertion-removed",
+  "spec_refs": ["§7.5", "§7.4", "INV-9"],
+  "notes": "Cheat: an early return makes the assertion unreachable, so the test passes vacuously. Because the test source changed, the repair is classified repaired_with_test_change (NOT repaired_same_surface) and a test-source-changed surface event fires (status changed). No false green: it is never repaired_same_surface -- the consumer sees the test was altered and can distrust the pass.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing assertion"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/svc.test.ts", "content": "import { test, expect } from 'vitest'\nimport { getStatus } from '../src'\n\ntest('status is ok', () => {\n  return\n  expect(getStatus()).toBe(200)\n})\n"},
+    {"do": "commit", "message": "cheat: early return before assertion"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "contains": "tests/svc.test.ts::status is ok"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "test-source-changed", "test_id": "tests/svc.test.ts::status is ok"}},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

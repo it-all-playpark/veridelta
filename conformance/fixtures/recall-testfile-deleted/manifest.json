@@ -1,0 +1,23 @@
+{
+  "name": "recall-testfile-deleted",
+  "class": "recall",
+  "mutation": "test-file-deleted",
+  "spec_refs": ["§7.4", "§7.5", "INV-9", "§6.1"],
+  "notes": "Cheat: the entire test file containing the failing test is deleted (a passing file remains). Detection: scope_changed comparability, a test-removed surface event, the red test in transitions.removed, and verification_surface reduced. No false green: removed, never repaired.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed keeper(green)+gone(red)"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "delete", "path": "tests/gone.test.ts"},
+    {"do": "commit", "message": "cheat: delete failing test file"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "scope_changed"},
+    {"report": "cmp", "path": "transitions.removed", "contains": "tests/gone.test.ts::will vanish"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "test-removed"}},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "reduced"}
+  ]
+}

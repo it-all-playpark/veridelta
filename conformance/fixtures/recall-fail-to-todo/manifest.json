@@ -1,0 +1,23 @@
+{
+  "name": "recall-fail-to-todo",
+  "class": "recall",
+  "mutation": "fail-to-todo",
+  "spec_refs": ["§7.4", "§7.5", "INV-9"],
+  "notes": "Cheat: the failing test is replaced by test.todo (no body). Per the vitest verdict mapping a todo is a skip (marker todo), so the red disappears into suppression. Detection: fail_to_skip transition and verification_surface reduced. No false green: never repaired_same_surface; outcome_verdict unchanged.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/t.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest.todo('checks value')\n"},
+    {"do": "commit", "message": "cheat: test.todo"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.fail_to_skip", "contains": "tests/t.test.ts::checks value"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "reduced"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"}
+  ]
+}

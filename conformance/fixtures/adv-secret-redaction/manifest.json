@@ -1,0 +1,17 @@
+{
+  "name": "adv-secret-redaction",
+  "class": "adversarial",
+  "spec_refs": ["§15", "§3.5", "§5.6"],
+  "notes": "Known secret shapes are redacted deterministically before storage AND digesting. The failing test embeds an AWS access key id in the asserted value (failure message channel) and a GitHub token in console output (captured-output annex channel). Neither raw secret may appear anywhere under .veridelta/; both must be replaced by their [REDACTED:<kind>] markers.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed secret-bearing test"},
+    {"do": "run", "id": "A", "expectExit": 1}
+  ],
+  "assertions": [
+    {"storeNotContains": "AKIAIOSFODNN7EXAMPLE"},
+    {"storeNotContains": "ghp_0123456789abcdefghijklmnopqrstuvwxyz"},
+    {"storeContains": "[REDACTED:aws-access-key-id]"},
+    {"storeContains": "[REDACTED:github-token]"}
+  ]
+}

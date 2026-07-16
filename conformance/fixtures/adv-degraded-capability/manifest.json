@@ -1,0 +1,18 @@
+{
+  "name": "adv-degraded-capability",
+  "class": "adversarial",
+  "spec_refs": ["§13.2(c)", "§9.1", "§3.6"],
+  "notes": "vitest's structured channel provides no failing-source-region text, so the adapter declares source-region-text unsupported. Because degraded_capabilities is therefore always non-empty, every red-in-both claim must carry it: the report's failure_evidence.degraded_capabilities is [\"source-region-text\"], composition_id is vitest-native/1, and each still_fail_unchanged entry is an object carrying the same degraded_capabilities array.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed red in both"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "failure_evidence.composition_id", "eq": "vitest-native/1"},
+    {"report": "cmp", "path": "failure_evidence.degraded_capabilities", "eq": ["source-region-text"]},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/deg.test.ts::red in both", "degraded_capabilities": ["source-region-text"]}}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "inv6-determinism-byte-identical",
+  "class": "invariant",
+  "spec_refs": ["INV-6", "§7.8", "§13.3"],
+  "notes": "Same inputs + same config => byte-identical report. assertDeterministic re-executes the identical compare command and byte-compares the two stdout reports. Any timestamp leak, unstable sort, or nondeterministic field would break the byte comparison.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pass+fail suite"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/det.test.ts::red one"}}
+  ]
+}

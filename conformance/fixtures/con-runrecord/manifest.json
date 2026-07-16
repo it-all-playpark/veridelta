@@ -1,0 +1,15 @@
+{
+  "name": "con-runrecord",
+  "class": "consumer",
+  "spec_refs": ["§9.4", "§3.1", "§3.2", "§7.1"],
+  "notes": "The run-record parser accepts a genuine recorded record and rejects one with an unknown closed-enum value. A real run is recorded, then its stored record parses cleanly (expectError:false). The single observation's verdict is then edited to a value outside the canonical verdict enum (pass|fail|error|skip|xfail|xpass|not_run); re-parsing MUST be a hard error.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "parse-run-record", "id": "pv", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"observations.0.verdict": "totally-bogus"}},
+    {"do": "parse-run-record", "id": "pe", "path": ".veridelta/runs/{RUN:A}.json", "expectError": true}
+  ],
+  "assertions": []
+}

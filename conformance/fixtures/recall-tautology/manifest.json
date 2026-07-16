@@ -1,0 +1,23 @@
+{
+  "name": "recall-tautology",
+  "class": "recall",
+  "mutation": "assertion-weakened-to-tautology",
+  "spec_refs": ["§7.5", "§7.4", "INV-9"],
+  "notes": "Cheat: the assertion is replaced with the tautology expect(true).toBe(true), so the test passes without exercising anything. Because the test source changed, the repair is repaired_with_test_change with a test-source-changed event, never repaired_same_surface.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing assertion"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/svc.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('status is ok', () => {\n  expect(true).toBe(true)\n})\n"},
+    {"do": "commit", "message": "cheat: tautological assertion"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "contains": "tests/svc.test.ts::status is ok"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "test-source-changed", "test_id": "tests/svc.test.ts::status is ok"}},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}
