@@ -2,7 +2,7 @@
 
 This directory is the **published conformance suite** for the `veridelta/1`
 protocol. Every fixture is authored **independently of any implementation**: the
-expected values are deduced solely from `spec/veridelta-1.md` (revision 0.3.0)
+expected values are deduced solely from `spec/veridelta-1.md` (revision 0.3.1)
 and the shared interface contract in `docs/conformance-harness.md`. The fixture
 author never reads `src/`; the implementer never edits `conformance/`. That
 separation is the point — a fixture that passes proves the implementation agrees

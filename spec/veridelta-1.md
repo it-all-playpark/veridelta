@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft |
 | **Schema identifier** | `veridelta/1` |
-| **Spec revision** | 0.3.0 — 2026-07-16 |
+| **Spec revision** | 0.3.1 — 2026-07-16 |
 | **License** | MIT |
 | **Reference implementation** | `vdelta` (this repository; in development) |
 
@@ -920,9 +920,17 @@ Adapter roadmap for the reference implementation (informative): `vitest`
 native reporter first — agent-authored code skews heavily toward TS/JS, the
 maintainer's own repositories (the cheapest dogfood subjects) are TypeScript,
 and empirical probing confirmed the channel satisfies §3.6 with no
-stale-cache path in run mode. `pytest` native second (its richer structured
-channel is already probed and its composition pre-designed); JUnit XML third,
-for CI breadth, under the constraints above.
+stale-cache path in run mode. Playwright native reporter second, by the same
+dogfood-first criterion: maintained end-to-end suites are available as
+dogfood subjects, e2e suites are where flakiness attribution and fail-closed
+delta gating pay most, and first-class retries, per-project repetition of
+the same title, and worker parallelism exercise adapter-interface edges
+vitest does not. Commitment is contingent on an empirical probe confirming
+the structured reporter channel satisfies §3.6. `pytest` native is
+demand-driven rather than scheduled — its structured channel is already
+probed and its composition pre-designed, so the banked design does not decay
+while parked. JUnit XML is likewise demand-driven, for CI breadth, under the
+constraints above.
 
 ## 13. Conformance
 
@@ -1071,6 +1079,14 @@ None violates an invariant; each is disclosed rather than papered over.
 
 ## Revision history
 
+- **0.3.1 (2026-07-16)** — Adapter roadmap reordered (§12, informative):
+  Playwright second, by the same dogfood-first criterion that flipped the
+  first target to vitest in 0.3.0 — maintained e2e suites are available as
+  dogfood subjects, flakiness attribution and fail-closed gating pay most in
+  e2e, and retries/projects/worker parallelism exercise adapter-interface
+  edges vitest lacks — contingent on a §3.6 probe of its structured reporter
+  channel. `pytest` and JUnit XML moved to demand-driven; pytest's probe
+  results and pre-designed composition remain banked. No normative changes.
 - **0.3.0 (2026-07-16)** — First adapter target flipped to vitest after an
   empirical probe confirmed §3.6 satisfiability (core digest stable across
   rerun/line-shift/unrelated-edit, sensitive only to genuine signal; no
