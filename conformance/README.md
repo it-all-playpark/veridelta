@@ -96,7 +96,8 @@ Fixture classes 1–5 of spec §13.2 / contract §6 are all covered.
 (`adv-partial-bail`), flaky sequence (`adv-flaky-no-inference`), secret-bearing
 output (`adv-secret-redaction`), branch crossing (`adv-branch-cross`), plus
 §13.2 (a) `adv-rerun-stability`, (b) `adv-stale-cache-collision`,
-(c) `adv-degraded-capability`.
+(c) `adv-degraded-capability`, and a write-protected object database
+(`adv-readonly-object-db`).
 
 **Class 3 — operational pitfalls:** wrong target (`pit-wrong-target`),
 instrument drift (`pit-instrument-drift`), duplicate records
@@ -146,6 +147,7 @@ it).
 | adv-rerun-stability | §13.2(a), §3.6 | two runs at an identical tree produce the same `run_id` (⇒ identical `evidence_digest`) |
 | adv-stale-cache-collision | §13.2(b), §4.5 | same-size 500→404→500 revert under frozen mtime reports current source; C matches A, not B |
 | adv-degraded-capability | §13.2(c), §9.1 | red-in-both claims carry `degraded_capabilities:["source-region-text"]`; composition `vitest-native/1` |
+| adv-readonly-object-db | §13.2, §3.5 | a run against a chmod-readonly `.git/objects` yields the same `run_id` as a writable run at the identical tree; no INV-5 passthrough degrade |
 
 ### Operational pitfall (`pit-*`)
 

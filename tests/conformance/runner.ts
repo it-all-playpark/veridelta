@@ -8,6 +8,7 @@
  */
 import { execFile } from 'node:child_process'
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -87,6 +88,7 @@ class FixtureContext {
   readonly reports = new Map<string, unknown>()
   readonly rawOutputs = new Map<string, string>()
   readonly runIds = new Map<string, string>()
+  private readonly readonlyPaths: string[] = []
 
   constructor(
     private readonly fixtureDir: string,
@@ -106,6 +108,9 @@ class FixtureContext {
   }
 
   cleanup(): void {
+    // macOS/Linux refuse to rmSync a write-protected directory, so restore
+    // write permission on every chmod-readonly'd path before deleting.
+    for (const p of this.readonlyPaths) restoreWritable(p)
     rmSync(this.workspace, { recursive: true, force: true })
   }
 
@@ -187,6 +192,8 @@ class FixtureContext {
       case 'mkdir':
         mkdirSync(join(this.workspace, String(step.path)), { recursive: true })
         return
+      case 'chmod-readonly':
+        return this.stepChmodReadonly(step)
       case 'parse-report':
         return this.stepParse(step, 'report')
       case 'parse-run-record':
@@ -236,6 +243,17 @@ class FixtureContext {
         }
       }
     }
+  }
+
+  /**
+   * Recursively remove the write bit from every file/directory under
+   * `step.path`, and record the root so cleanup() can restore it before
+   * rmSync (write-protected dirs otherwise can't be removed on macOS).
+   */
+  private stepChmodReadonly(step: Step): void {
+    const target = join(this.workspace, String(step.path))
+    this.readonlyPaths.push(target)
+    chmodReadonlyRecursive(target)
   }
 
   private async stepRun(step: Step): Promise<void> {
@@ -594,6 +612,33 @@ class FixtureContext {
 
 // ---------------------------------------------------------------------------
 // helpers
+
+/** Recursively strip the write bit (owner/group/other) from root and its
+ * contents (files and directories alike). Symlinks are left untouched. */
+function chmodReadonlyRecursive(root: string): void {
+  const st = statSync(root)
+  if (st.isDirectory()) {
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) continue
+      chmodReadonlyRecursive(join(root, entry.name))
+    }
+  }
+  chmodSync(root, st.mode & ~0o222)
+}
+
+/** Recursively restore the owner write bit under root (inverse of
+ * chmodReadonlyRecursive), so the workspace can be torn down. */
+function restoreWritable(root: string): void {
+  if (!existsSync(root)) return
+  const st = statSync(root)
+  chmodSync(root, st.mode | 0o200)
+  if (st.isDirectory()) {
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) continue
+      restoreWritable(join(root, entry.name))
+    }
+  }
+}
 
 function walkFiles(root: string, excludeTop: string[]): string[] {
   const out: string[] = []

@@ -98,6 +98,7 @@ the fixture):
 | `{"do": "edit-json", "path": "...", "set": {"<dot.path>": <value>}}` | Load a JSON file, set the given dot-paths (array indices allowed, e.g. `observations.0.verdict`), write it back. `{RUN:A}` inside `path` expands to the run id recorded by step `A`. |
 | `{"do": "delete", "path": "..."}` | Delete a file or directory in the workspace. |
 | `{"do": "mkdir", "path": "..."}` | Create a directory (e.g. `.veridelta/lock` to simulate held advisory lock). |
+| `{"do": "chmod-readonly", "path": "..."}` | Recursively remove write permission from the given workspace-relative path (files and directories). Used to prove the implementation never writes to the observed repository's object database. The runner restores permissions during cleanup. |
 | `{"do": "parse-report", "id": "p", "path": "data/whatever.json", "expectError": true|false}` | Feed a static JSON file to the implementation's consumer entry point (report parser). `expectError: true` asserts it throws a hard error (§9.4); `false` asserts it parses. |
 | `{"do": "parse-run-record", "id": "p", "path": "...", "expectError": true|false}` | Same, for stored run records. `{RUN:A}` expansion applies. |
 
