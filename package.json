@@ -23,7 +23,7 @@
   ],
   "type": "module",
   "bin": {
-    "vdelta": "./dist/cli.js"
+    "vdelta": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "exports": {
