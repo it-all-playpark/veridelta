@@ -11,6 +11,13 @@ export function renderReport(report: ComparisonReport): string {
     lines.push(
       `  reason: ${report.comparability_detail.reason} (${report.comparability_detail.kind})`,
     )
+    const nm = report.comparability_detail.near_miss
+    if (nm) {
+      lines.push(`  near-miss: ${nm.run_id.slice(0, 12)}`)
+      for (const m of nm.mismatches) {
+        lines.push(`    ${m.field}: recorded="${m.recorded}" current="${m.current}"`)
+      }
+    }
   }
   if (report.baseline) {
     lines.push(`  baseline: ${report.baseline.run_id.slice(0, 12)} [${report.baseline.mode}]`)

@@ -1,25 +1,108 @@
 {
   "name": "adv-branch-cross",
   "class": "adversarial",
-  "spec_refs": ["§5.1", "§5.2", "§6.3"],
+  "spec_refs": [
+    "§5.1",
+    "§5.2",
+    "§6.3"
+  ],
   "notes": "Branch is part of the stream key, so streams do not leak across branches. On main, two runs (A1 at c1, A2 at c2) are in the same stream: previous-comparable picks A1 as baseline for A2 (exact). After switching to a new branch, run B starts a fresh stream: previous-comparable finds no prior run in the feature stream and abstains with baseline-missing -- A1/A2 are comparable in content but are NOT selected because they belong to the main stream.",
   "steps": [
-    {"do": "apply", "project": "base"},
-    {"do": "commit", "message": "c1 on main"},
-    {"do": "run", "id": "A1", "expectExit": 1},
-    {"do": "write-file", "path": "marker.txt", "content": "c2\n"},
-    {"do": "commit", "message": "c2 on main"},
-    {"do": "run", "id": "A2", "expectExit": 1},
-    {"do": "compare", "id": "cmpMain", "expectExit": 0},
-    {"do": "branch", "name": "feature"},
-    {"do": "run", "id": "B", "expectExit": 1},
-    {"do": "compare", "id": "cmpFeat", "expectExit": 0}
+    {
+      "do": "apply",
+      "project": "base"
+    },
+    {
+      "do": "commit",
+      "message": "c1 on main"
+    },
+    {
+      "do": "run",
+      "id": "A1",
+      "expectExit": 1
+    },
+    {
+      "do": "write-file",
+      "path": "marker.txt",
+      "content": "c2\n"
+    },
+    {
+      "do": "commit",
+      "message": "c2 on main"
+    },
+    {
+      "do": "run",
+      "id": "A2",
+      "expectExit": 1
+    },
+    {
+      "do": "compare",
+      "id": "cmpMain",
+      "expectExit": 0
+    },
+    {
+      "do": "branch",
+      "name": "feature"
+    },
+    {
+      "do": "run",
+      "id": "B",
+      "expectExit": 1
+    },
+    {
+      "do": "compare",
+      "id": "cmpFeat",
+      "expectExit": 0
+    }
   ],
   "assertions": [
-    {"report": "cmpMain", "path": "comparability", "eq": "exact"},
-    {"report": "cmpMain", "path": "baseline", "defined": true},
-    {"report": "cmpFeat", "path": "comparability", "eq": "none"},
-    {"report": "cmpFeat", "path": "comparability_detail.reason", "eq": "baseline-missing"},
-    {"report": "cmpFeat", "path": "comparability_detail.kind", "eq": "determined"}
+    {
+      "report": "cmpMain",
+      "path": "comparability",
+      "eq": "exact"
+    },
+    {
+      "report": "cmpMain",
+      "path": "baseline",
+      "defined": true
+    },
+    {
+      "report": "cmpFeat",
+      "path": "comparability",
+      "eq": "none"
+    },
+    {
+      "report": "cmpFeat",
+      "path": "comparability_detail.reason",
+      "eq": "baseline-missing"
+    },
+    {
+      "report": "cmpFeat",
+      "path": "comparability_detail.kind",
+      "eq": "determined"
+    },
+    {
+      "sameValue": [
+        {
+          "report": "cmpFeat",
+          "path": "comparability_detail.near_miss.run_id"
+        },
+        {
+          "report": "cmpMain",
+          "path": "current.run_id"
+        }
+      ]
+    },
+    {
+      "report": "cmpFeat",
+      "path": "comparability_detail.near_miss.mismatches",
+      "eq": [
+        {
+          "field": "repo.branch",
+          "recorded": "main",
+          "current": "feature"
+        }
+      ]
+    }
   ]
 }

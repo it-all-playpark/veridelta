@@ -7,14 +7,18 @@ import { DEGRADED_CAPABILITIES, COMPOSITION_ID } from './adapters/vitest/recorde
 import { RunStore, StoreCorruptError } from './store.js'
 import {
   SCHEMA_VERSION,
+  STREAM_KEY_FIELDS,
   isRed,
   type BaselineMode,
   type Comparability,
   type ComparabilityDetail,
   type ComparisonReport,
+  type NearMiss,
+  type NearMissMismatch,
   type NoneReason,
   type RunRecord,
   type StillFailEntry,
+  type StreamKeyField,
   type SurfaceEvent,
   type SurfaceStatus,
   type Transitions,
@@ -46,6 +50,71 @@ export function streamKey(r: RunRecord): string {
     r.instrument.adapter_version,
     r.instrument.config_digest,
   ])
+}
+
+/** Stream-key component value, rendered for near-miss disclosure (array fields joined with a single space). */
+function streamKeyFieldValue(r: RunRecord, field: StreamKeyField): string {
+  switch (field) {
+    case 'repo.identity':
+      return r.repo.identity
+    case 'repo.worktree':
+      return r.repo.worktree
+    case 'repo.branch':
+      return r.repo.branch
+    case 'repo.cwd':
+      return r.repo.cwd
+    case 'invocation.command':
+      return r.invocation.command.join(' ')
+    case 'invocation.selector':
+      return r.invocation.selector.join(' ')
+    case 'instrument.adapter':
+      return r.instrument.adapter
+    case 'instrument.adapter_version':
+      return r.instrument.adapter_version
+    case 'instrument.config_digest':
+      return r.instrument.config_digest
+  }
+}
+
+function streamKeyFieldEqual(a: RunRecord, b: RunRecord, field: StreamKeyField): boolean {
+  if (field === 'invocation.command') {
+    return JSON.stringify(a.invocation.command) === JSON.stringify(b.invocation.command)
+  }
+  if (field === 'invocation.selector') {
+    return JSON.stringify(a.invocation.selector) === JSON.stringify(b.invocation.selector)
+  }
+  return streamKeyFieldValue(a, field) === streamKeyFieldValue(b, field)
+}
+
+/**
+ * Near-miss disclosure (§5.4): given `candidates` (complete stored runs
+ * excluding the current run, oldest-first insertion order), select the
+ * candidate with the fewest mismatching stream-key components. Ties break
+ * on recency = latest store insertion order (last element wins). Returns
+ * undefined when there are no candidates. Deterministic: no timestamps.
+ */
+export function nearMissDisclosure(
+  current: RunRecord,
+  candidates: readonly { runId: string; record: RunRecord }[],
+): NearMiss | undefined {
+  let best: { runId: string; mismatches: NearMissMismatch[] } | undefined
+  for (const { runId, record } of candidates) {
+    const mismatches: NearMissMismatch[] = []
+    for (const field of STREAM_KEY_FIELDS) {
+      if (!streamKeyFieldEqual(record, current, field)) {
+        mismatches.push({
+          field,
+          recorded: streamKeyFieldValue(record, field),
+          current: streamKeyFieldValue(current, field),
+        })
+      }
+    }
+    if (best === undefined || mismatches.length <= best.mismatches.length) {
+      best = { runId, mismatches }
+    }
+  }
+  if (best === undefined) return undefined
+  return { run_id: best.runId, mismatches: best.mismatches }
 }
 
 function sameInstrument(a: RunRecord, b: RunRecord): boolean {
@@ -105,11 +174,13 @@ export function resolveBaseline(
     case 'previous-comparable': {
       const ids = store.listRunIds()
       const key = streamKey(current)
+      const candidates: { runId: string; record: RunRecord }[] = []
       for (let i = ids.length - 1; i >= 0; i--) {
         const id = ids[i]!
         if (id === currentId) continue
         const record = store.readRun(id)
         if (record.completeness.status !== 'complete') continue
+        candidates.push({ runId: id, record })
         if (streamKey(record) !== key) continue
         return {
           record,
@@ -118,12 +189,18 @@ export function resolveBaseline(
           selectionReason: 'same-worktree-command-config-scope',
         }
       }
+      candidates.reverse()
+      const nm = nearMissDisclosure(current, candidates)
       return {
         record: null,
         runId: null,
         mode: 'previous-comparable',
         selectionReason: 'no-complete-run-in-stream',
-        failure: { reason: 'baseline-missing', kind: 'determined' },
+        failure: {
+          reason: 'baseline-missing',
+          kind: 'determined',
+          ...(nm !== undefined ? { near_miss: nm } : {}),
+        },
       }
     }
     case 'git-ref': {
