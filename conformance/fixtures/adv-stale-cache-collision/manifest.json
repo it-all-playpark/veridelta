@@ -1,0 +1,25 @@
+{
+  "name": "adv-stale-cache-collision",
+  "class": "adversarial",
+  "spec_refs": ["§13.2(b)", "§4.5"],
+  "notes": "A same-size source revert under coarse mtime resolution MUST NOT reproduce evidence from a prior source state. getStatus() returns 500, then 404, then 500 again -- all three bodies are byte-size-identical, and preserveMtime freezes src.ts's mtime across the flips so a naive mtime+size cache would serve stale bytecode. Run C (reverted to 500) must report 500, matching run A: compare(A,C) is still_fail_unchanged (identical tree, identical evidence), while compare(A,B) is updated_fail. If a stale transform cache existed, C would echo B's 404 and compare(A,C) would wrongly be updated_fail. The vitest adapter declares no neutralization; this fixture arbitrates that declaration.",
+  "steps": [
+    {"do": "apply", "project": "v500"},
+    {"do": "commit", "message": "impl 500"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "apply", "project": "v404", "preserveMtime": true},
+    {"do": "commit", "message": "impl 404 (same size, frozen mtime)"},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "apply", "project": "v500b", "preserveMtime": true},
+    {"do": "commit", "message": "revert to 500 (same size, frozen mtime)"},
+    {"do": "run", "id": "C", "expectExit": 1},
+    {"do": "compare", "id": "cmpAC", "baseline": "A", "current": "C", "expectExit": 0},
+    {"do": "compare", "id": "cmpAB", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmpAC", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/svc.test.ts::status equals expected"}},
+    {"report": "cmpAC", "path": "transitions.updated_fail", "empty": true},
+    {"report": "cmpAB", "path": "transitions.updated_fail", "containsMatch": {"test_id": "tests/svc.test.ts::status equals expected"}},
+    {"report": "cmpAB", "path": "transitions.still_fail_unchanged", "empty": true}
+  ]
+}

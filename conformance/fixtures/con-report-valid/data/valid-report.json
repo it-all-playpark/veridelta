@@ -1,0 +1,59 @@
+{
+  "schema_version": "veridelta/1",
+  "outcome_verdict": "regressed",
+  "comparability": "exact",
+  "baseline": {
+    "run_id": "run_fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "mode": "previous-comparable",
+    "selection_reason": "same-worktree-command-config-scope"
+  },
+  "current": {
+    "run_id": "run_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "complete": true,
+    "child_exit_code": 1
+  },
+  "observation_coverage": {
+    "baseline": "3/3",
+    "current": "3/3"
+  },
+  "verification_surface": {
+    "status": "changed",
+    "events": [
+      { "kind": "test-source-changed", "test_id": "tests/api.test.ts::updates user" }
+    ]
+  },
+  "transitions": {
+    "new_fail": ["tests/api.test.ts::creates user"],
+    "still_fail_unchanged": [
+      { "test_id": "tests/legacy.test.ts::imports v2", "degraded_capabilities": ["source-region-text"] }
+    ],
+    "updated_fail": [
+      {
+        "test_id": "tests/legacy.test.ts::imports v1",
+        "evidence_digest_before": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "evidence_digest_after": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "failure_mode_changed": true,
+        "degraded_capabilities": ["source-region-text"]
+      }
+    ],
+    "repaired_same_surface": [],
+    "repaired_with_test_change": ["tests/api.test.ts::updates user"],
+    "fail_to_skip": [],
+    "fail_to_xfail": [],
+    "removed": [],
+    "not_observed": []
+  },
+  "failure_evidence": {
+    "composition_id": "vitest-native/1",
+    "degraded_capabilities": ["source-region-text"]
+  },
+  "trust": {
+    "record_integrity": "advisory"
+  },
+  "anchors": {
+    "new_fail:tests/api.test.ts::creates user": "vdelta show run_01234567 --test 'tests/api.test.ts::creates user'",
+    "still_fail_unchanged:tests/legacy.test.ts::imports v2": "vdelta show run_01234567 --test 'tests/legacy.test.ts::imports v2'",
+    "updated_fail:tests/legacy.test.ts::imports v1": "vdelta show run_01234567 --test 'tests/legacy.test.ts::imports v1'",
+    "raw": "vdelta show run_01234567 --raw"
+  }
+}

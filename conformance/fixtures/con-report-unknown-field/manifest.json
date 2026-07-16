@@ -1,0 +1,10 @@
+{
+  "name": "con-report-unknown-field",
+  "class": "consumer",
+  "spec_refs": ["§9.4", "§14"],
+  "notes": "An otherwise-valid report carrying an unknown top-level field ('surprise_field') MUST be rejected. Consumers MUST NOT reinterpret unknown fields; unknown fields are rejected, never silently ignored (contract §6 consumer obligations).",
+  "steps": [
+    {"do": "parse-report", "id": "p", "path": "data/unknown-field-report.json", "expectError": true}
+  ],
+  "assertions": []
+}

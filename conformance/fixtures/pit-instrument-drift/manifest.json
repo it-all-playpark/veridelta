@@ -1,0 +1,21 @@
+{
+  "name": "pit-instrument-drift",
+  "class": "pitfall",
+  "spec_refs": ["§6.2", "§5.4", "§7.4", "§5.7"],
+  "notes": "Instrument drift must not pass undetected. chaiConfig.truncateThreshold is an evidence-affecting setting that enters the instrument config_digest. Changing it between two runs changes the measuring instrument, so the comparator must NOT claim exact: it reports comparability none with reason instrument-changed, and (per the instrument-changed exception) still surfaces the observable runner-config-changed verification_surface event.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "truncateThreshold 40"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "vitest.config.ts", "content": "import { defineConfig } from 'vitest/config'\nexport default defineConfig({ test: { chaiConfig: { truncateThreshold: 9999 } } })\n"},
+    {"do": "commit", "message": "truncateThreshold 9999"},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "none"},
+    {"report": "cmp", "path": "comparability_detail.reason", "eq": "instrument-changed"},
+    {"report": "cmp", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "runner-config-changed"}}
+  ]
+}

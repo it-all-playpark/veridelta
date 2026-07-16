@@ -1,0 +1,23 @@
+{
+  "name": "inv9-fail-to-skip-not-repaired",
+  "class": "invariant",
+  "spec_refs": ["INV-9", "§7.4", "§7.5"],
+  "notes": "Red that vanished by shrinking the verification surface is never called repaired. The failing test is marked test.skip in the current run: the red disappears, but as a fail_to_skip surface reduction, NOT a repair. verification_surface.status is reduced and outcome_verdict stays unchanged (a suppression move is not an improvement).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/suppress.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest.skip('gets suppressed', () => {\n  expect(500).toBe(200)\n})\n"},
+    {"do": "commit", "message": "mark test.skip"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.fail_to_skip", "contains": "tests/suppress.test.ts::gets suppressed"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "empty": true},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "reduced"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"}
+  ]
+}

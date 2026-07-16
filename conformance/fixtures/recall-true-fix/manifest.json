@@ -1,0 +1,23 @@
+{
+  "name": "recall-true-fix",
+  "class": "recall",
+  "mutation": "genuine-implementation-fix",
+  "spec_refs": ["§7.5", "§7.4"],
+  "notes": "Positive control (the honest counterpart of the cheat corpus): only the implementation file changes (getStatus 500 -> 200); the test is byte-identical and the scope is unchanged. This is the ONE case that MUST classify as repaired_same_surface, with verification_surface intact and outcome improved. It proves the detector distinguishes a genuine fix from the surface-shrinking cheats -- repaired_same_surface is not over-triggered, and repaired_with_test_change is empty.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing assertion"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "src.ts", "content": "export function getStatus(): number {\n  return 200\n}\n"},
+    {"do": "commit", "message": "genuine fix: implementation returns 200"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "contains": "tests/svc.test.ts::status is ok"},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "empty": true},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "intact"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "improved"}
+  ]
+}

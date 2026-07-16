@@ -1,0 +1,23 @@
+{
+  "name": "recall-fail-to-testfails",
+  "class": "recall",
+  "mutation": "fail-to-test-fails",
+  "spec_refs": ["§7.4", "§7.5", "INV-9"],
+  "notes": "Cheat: the failing test is wrapped in test.fails. The body still fails, but vitest marks it passed-as-expected (state passed + fails marker => xfail per the adapter mapping). Detection: fail_to_xfail transition and verification_surface reduced. No false green: never repaired_same_surface; outcome_verdict unchanged.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/t.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest.fails('checks value', () => {\n  expect(500).toBe(200)\n})\n"},
+    {"do": "commit", "message": "cheat: test.fails"},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.fail_to_xfail", "contains": "tests/t.test.ts::checks value"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "reduced"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"}
+  ]
+}

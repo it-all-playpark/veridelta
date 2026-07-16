@@ -1,0 +1,19 @@
+{
+  "name": "inv3-verdict-channel-not-text",
+  "class": "invariant",
+  "spec_refs": ["INV-3", "§7.1"],
+  "notes": "Verdicts derive ONLY from the runner's verdict channel, never from output text. 'pass emits fail text' prints AssertionError-looking text yet PASSES; it must not be classified red, so its name never appears in the report. 'fail emits pass text' prints reassuring text yet FAILS; it must be red (still_fail_unchanged). Green->red concealment via console text is structurally impossible.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed misleading-console suite"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/verdict.test.ts::fail emits pass text"}},
+    {"report": "cmp", "path": "observation_coverage.current", "eq": "2/2"},
+    {"reportNotContains": {"report": "cmp", "text": "pass emits fail text"}},
+    {"reportNotContains": {"report": "cmp", "text": "AssertionError: expected 1 to be 2"}}
+  ]
+}

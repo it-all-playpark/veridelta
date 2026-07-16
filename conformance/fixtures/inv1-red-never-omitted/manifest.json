@@ -1,0 +1,22 @@
+{
+  "name": "inv1-red-never-omitted",
+  "class": "invariant",
+  "spec_refs": ["INV-1", "§7.3", "§8"],
+  "notes": "A test red in both runs is disclosed in still_fail_unchanged (listed by ID), never omitted and never folded into a green verdict, even though a passing test coexists and its detail is suppressed. outcome_verdict stays 'unchanged' (no repair claimed). Per contract §5.3 the still_fail_unchanged entry is an object carrying degraded_capabilities.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed red+green suite"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "unchanged"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/mix.test.ts::red stays red", "degraded_capabilities": ["source-region-text"]}},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "transitions.new_fail", "empty": true},
+    {"report": "cmp", "path": "observation_coverage.current", "eq": "2/2"},
+    {"report": "cmp", "path": "observation_coverage.baseline", "eq": "2/2"}
+  ]
+}

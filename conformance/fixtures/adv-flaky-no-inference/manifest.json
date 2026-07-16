@@ -1,0 +1,20 @@
+{
+  "name": "adv-flaky-no-inference",
+  "class": "adversarial",
+  "spec_refs": ["§7.7", "§7.5"],
+  "notes": "Implementations MUST NOT infer flakiness from a two-run alternation. A gitignored state file makes the test fail on its first execution and pass on its second, with the source tree byte-identical across both runs. veridelta reports the factual two-run transition -- repaired_same_surface (test/config digests unchanged) with outcome improved -- and attaches NO flaky label. The state file is ignored, so it triggers no verification_surface event.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed state-driven test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "contains": "tests/alt.test.ts::alternates by state"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "improved"},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "intact"},
+    {"reportNotContains": {"report": "cmp", "text": "flaky"}}
+  ]
+}

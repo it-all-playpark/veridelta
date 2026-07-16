@@ -1,0 +1,10 @@
+{
+  "name": "con-report-unknown-enum",
+  "class": "consumer",
+  "spec_refs": ["§9.4", "§14", "§6.1"],
+  "notes": "comparability is a closed enum (exact|scope_changed|subset|partial|none). A report carrying 'kinda-comparable' MUST be a hard error -- consumers treat an unknown value in any closed enum as a throw, never as a default or silent skip. Backward-compatibility scaffolding around unknown enum values is non-conforming.",
+  "steps": [
+    {"do": "parse-report", "id": "p", "path": "data/unknown-enum-report.json", "expectError": true}
+  ],
+  "assertions": []
+}

@@ -1,0 +1,25 @@
+{
+  "name": "inv8-updated-fail-value-mutation",
+  "class": "invariant",
+  "spec_refs": ["INV-8", "§7.3", "§3.6"],
+  "notes": "Red->red value mutation is never buried in still_fail_unchanged. The test asserts getStatus()===200; the implementation returns 500 at baseline and 404 after an implementation-only edit. Same test line, same exception type/operator/relOffset => structural_fingerprint stable => failure_mode_changed:false, but the canonical evidence (expected/actual/message) changed => evidence_digest changed => transition is updated_fail, NOT still_fail_unchanged. Editing src.ts (not a test/config source) raises no verification_surface event, so the change surfaces purely on the failure-mode axis.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "impl returns 500"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "src.ts", "content": "export function getStatus(): number {\n  return 404\n}\n"},
+    {"do": "commit", "message": "impl returns 404"},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "empty": true},
+    {"report": "cmp", "path": "transitions.updated_fail", "containsMatch": {"test_id": "tests/status.test.ts::status is ok", "failure_mode_changed": false}},
+    {"report": "cmp", "path": "transitions.updated_fail.0.degraded_capabilities", "eq": ["source-region-text"]},
+    {"report": "cmp", "path": "transitions.updated_fail.0.evidence_digest_before", "matches": "^sha256:[0-9a-f]{64}$"},
+    {"report": "cmp", "path": "transitions.updated_fail.0.evidence_digest_after", "matches": "^sha256:[0-9a-f]{64}$"},
+    {"differentValue": [{"report": "cmp", "path": "transitions.updated_fail.0.evidence_digest_before"}, {"report": "cmp", "path": "transitions.updated_fail.0.evidence_digest_after"}]},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "intact"}
+  ]
+}

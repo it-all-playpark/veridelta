@@ -1,0 +1,21 @@
+{
+  "name": "pit-fail-open-vs-closed",
+  "class": "pitfall",
+  "spec_refs": ["§6.3", "INV-5", "§5.10"],
+  "notes": "Fail-open and fail-closed are DIFFERENT paths and must not be confused. A corrupt store makes `compare` fail CLOSED: it abstains with comparability none, reason store-corrupt, kind failed -- it does not guess a comparison. A held advisory lock makes `run` fail OPEN: it degrades to transparent passthrough (no report, child exit passed through) -- veridelta is never worse than its absence. The same store trouble routes to opposite, correct behaviors depending on the command.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed failing test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "write-file", "path": ".veridelta/index", "content": "this is not a valid run id line -- store corrupted\n"},
+    {"do": "compare", "id": "cmp"},
+    {"do": "mkdir", "path": ".veridelta/lock"},
+    {"do": "run", "id": "C", "expectReport": false, "expectExit": 1}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "none"},
+    {"report": "cmp", "path": "comparability_detail.reason", "eq": "store-corrupt"},
+    {"report": "cmp", "path": "comparability_detail.kind", "eq": "failed"}
+  ]
+}

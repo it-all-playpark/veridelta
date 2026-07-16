@@ -1,0 +1,19 @@
+{
+  "name": "adv-rerun-stability",
+  "class": "adversarial",
+  "spec_refs": ["§13.2(a)", "§3.6", "§3.5"],
+  "notes": "Two executions of a deterministically failing test at an identical tree_digest MUST yield identical evidence. Because run_id is the content address of the whole record excluding only the recording group (timestamps), and evidence_digest is part of that record, two reruns at the same tree produce the SAME run_id -- a superset proof of evidence_digest stability. If durations or wall-clock leaked into the digest, the run_ids would diverge. The comparison is additionally byte-deterministic.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed deterministic red"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"sameValue": [{"report": "A", "path": "current.run_id"}, {"report": "B", "path": "current.run_id"}]},
+    {"report": "A", "path": "current.run_id", "matches": "^run_[0-9a-f]{64}$"},
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/rerun.test.ts::deterministic red"}}
+  ]
+}

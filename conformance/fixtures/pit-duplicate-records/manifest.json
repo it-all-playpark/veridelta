@@ -1,0 +1,23 @@
+{
+  "name": "pit-duplicate-records",
+  "class": "pitfall",
+  "spec_refs": ["§4.3", "§3.5", "§5.5"],
+  "notes": "Duplicate records must not be double-counted in baseline selection. A0 (impl 500) and A1 (impl 404) are two distinct runs. Re-running at A1's identical tree produces a byte-identical record => the SAME content-addressed run_id (a duplicate). previous-comparable for the current run must resolve its baseline to A0 (the real prior distinct run) and report the genuine 500->404 updated_fail -- never mistake the duplicate of the current run for a baseline (which would collapse to a self-comparison with no transitions).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "c1 impl 500"},
+    {"do": "run", "id": "A0", "expectExit": 1},
+    {"do": "write-file", "path": "src.ts", "content": "export function getStatus(): number {\n  return 404\n}\n"},
+    {"do": "commit", "message": "c2 impl 404"},
+    {"do": "run", "id": "A1", "expectExit": 1},
+    {"do": "run", "id": "A1dup", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.updated_fail", "containsMatch": {"test_id": "tests/dup.test.ts::value check"}},
+    {"sameValue": [{"report": "cmp", "path": "baseline.run_id"}, {"report": "A0", "path": "current.run_id"}]},
+    {"differentValue": [{"report": "cmp", "path": "baseline.run_id"}, {"report": "A1", "path": "current.run_id"}]},
+    {"sameValue": [{"report": "A1", "path": "current.run_id"}, {"report": "A1dup", "path": "current.run_id"}]}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "adv-parallel-order",
+  "class": "adversarial",
+  "spec_refs": ["§7.8", "INV-6"],
+  "notes": "Parallel workers deliver results in nondeterministic order; the recorder MUST order observations canonically by test_id so records and reports are arrival-order-independent. Three single-test files run under fileParallelism. Both run records must have observations sorted ascending by test_id, and the comparison must be byte-deterministic across re-execution.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed three parallel files"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "B", "expectExit": 1},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"observationsSorted": {"run": "A"}},
+    {"observationsSorted": {"run": "B"}},
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/alpha.test.ts::a is red"}},
+    {"report": "cmp", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/zebra.test.ts::z is red"}}
+  ]
+}

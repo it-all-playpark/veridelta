@@ -1,0 +1,18 @@
+{
+  "name": "pit-wrong-target",
+  "class": "pitfall",
+  "spec_refs": ["§11.3", "§11.5", "INV-11"],
+  "notes": "Operational pitfall: the gate is pointed at run A (recorded at c1) while the workspace has already moved to c2, where the test now passes. A gate that ignored provenance could emit a spurious pass. The staleness check recomputes the workspace tree immediately before judging and compares it byte-exactly with A.provenance.tree_digest; the mismatch forces inconclusive. The head-side run must execute against the tree being judged -- judging a run whose tree differs from the checkout is non-conforming.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "c1: test red"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "write-file", "path": "tests/target.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('target', () => {\n  expect(200).toBe(200)\n})\n"},
+    {"do": "commit", "message": "c2: test now green (workspace moved)"},
+    {"do": "gate", "id": "g", "ref": "HEAD~1", "run": "A", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "g", "path": "gate.staleness.match", "eq": false},
+    {"report": "g", "path": "gate.verdict", "eq": "inconclusive"}
+  ]
+}
