@@ -1,115 +1,70 @@
 # Releasing vdelta
 
-`vdelta` を npm パッケージとして再現可能にリリースするための手順。以下の順に実施する。
+`vdelta` のリリースは release-please + npm Trusted Publishing で自動化されている。
+日常の手作業は **Release PR をマージするだけ**。
 
-## 1. Preconditions
+## リリースフロー
 
-- `main` ブランチにいること、working tree が clean であること:
+1. 通常どおり Conventional Commits（`feat:` / `fix:` / `feat!:` など）で開発し、PR を `main` にマージする。
+2. `main` に releasable な commit（`feat:` / `fix:` / breaking change）が積まれると、
+   release-please が **Release PR** を自動作成・更新する。この PR には次が含まれる:
+   - `package.json` / `package-lock.json` の version bump
+     （Conventional Commits から自動算出。0.x の間は breaking change でも minor bump: `bump-minor-pre-major`）
+   - `CHANGELOG.md` の更新
+3. リリースしたいタイミングで Release PR をマージする。これをトリガーに自動で:
+   - `vX.Y.Z` tag と GitHub Release が作成される
+   - publish job が `npm ci && npm publish` を実行する
+     （`prepublishOnly` フックが lint → build → test を publish 前ゲートとして実行。
+     認証は npm Trusted Publishing（OIDC）で、トークンの手動管理は不要）
 
-  ```sh
-  git checkout main
-  git pull
-  git status
-  ```
+`ci:` / `docs:` / `chore:` などの type はリリース対象外なので、Release PR の version には影響しない。
 
-- リリース対象の fix commit が `main` にマージ済みであることを確認する:
+`src` 側のバージョン文字列は手動編集不要。`src/run.ts` は `package.json` の `version` を
+実行時に単一ソースとして読み込む構成で、`tests/unit/version.test.ts` が一致を保証する。
 
-  ```sh
-  git log --oneline
-  ```
+## 検証
 
-  対象 fix commit のハッシュが `main` の履歴（祖先）に含まれていることを目視で確認する。
-  祖先関係を厳密に確認したい場合は `git merge-base --is-ancestor <fix-commit> main` を使う
-  （終了コード 0 なら祖先）。
+publish 後に確認する場合:
 
-## 2. Version bump
+```sh
+npm view vdelta version   # 新しい version が返ること
+npm view vdelta gitHead   # main 上の release commit を指すこと
+```
 
-- `package.json` の `version` と `package-lock.json` を同時に、原子的に更新する:
+対象 fix commit が公開物に含まれることを厳密に確認したい場合
+（終了コード 0 なら祖先関係が成立）:
 
-  ```sh
-  npm version <patch|minor|major> --no-git-tag-version
-  ```
+```sh
+git merge-base --is-ancestor <fix-commit> "$(npm view vdelta gitHead)"
+```
 
-  `--no-git-tag-version` を必ず付ける（このコマンド単体でタグ・コミットを作らせない。
-  タグ付けは publish 後の手順4で行う）。
+## publish job が失敗したとき
 
-- `src` コード側のバージョン文字列は手動編集しない。`src/run.ts` は
-  `createRequire(import.meta.url)('../package.json')` で `package.json` の `version` を
-  実行時に単一ソースとして読み込む構成であり、`VDELTA_VERSION` は自動的に追随する。
-  `tests/unit/version.test.ts` が `VDELTA_VERSION === package.json version` の一致を保証する。
+- **Trusted Publisher 未設定 / 認証エラー**: npmjs.com の `vdelta` → Settings → Trusted Publisher に
+  GitHub Actions（repo: `it-all-playpark/veridelta`, workflow: `release-please.yml`）が
+  登録されているか確認し、登録後に失敗した job を re-run する。
+- **`prepublishOnly`（lint / build / test）失敗**: 原因を修正して `main` にマージ後、job を re-run する。
+- tag と GitHub Release は publish より先に作成されるが、re-run は安全
+  （同一 version の二重 publish は npm レジストリ側で拒否される）。
 
-- version bump は直接 `main` に push せず、通常の開発フローに従う: feature branch を切って
-  `package.json` / `package-lock.json` の変更をコミット → PR 作成 → レビュー → `main` へマージ。
+## 一回だけの初期設定（メンテナ向けメモ）
 
-## 3. Publish
+- npmjs.com: `vdelta` に Trusted Publisher を登録（GitHub Actions / `it-all-playpark/veridelta` / `release-please.yml`）
+- GitHub repo settings → Actions → General: "Allow GitHub Actions to create and approve pull requests" を ON
+  （release-please が Release PR を作成するために必要）
+- `main` の branch protection で CI チェックを必須にしている場合:
+  fine-grained PAT（contents / pull-requests: write）を `RELEASE_PLEASE_TOKEN` secret に登録する。
+  `GITHUB_TOKEN` が作成した PR には CI がトリガーされないという GitHub の制約のため。
+  workflow は `RELEASE_PLEASE_TOKEN` があればそれを使い、なければ `github.token` にフォールバックする。
 
-- `main` を最新化した状態で publish する:
+## Downstream への伝播
 
-  ```sh
-  git checkout main
-  git pull
-  npm publish
-  ```
+vdelta を利用するリポジトリ（skills / corporate-site）には Renovate が設定されており、
+新しい version の publish 後、自動で依存 bump PR が作成され CI green で automerge される。
+手動で即時更新したい場合は各リポジトリで:
 
-  `prepublishOnly` フックが lint・build・test を自動実行し、publish 前のゲートとして機能する
-  （これらが失敗すると publish は中断される）。npm は publish 時点の `HEAD` commit を
-  パッケージの `gitHead` メタデータに自動記録する。
-
-- publish 後、release tag を付与して push する:
-
-  ```sh
-  git tag v<X.Y.Z>
-  git push origin v<X.Y.Z>
-  ```
-
-## 4. Post-publish verification
-
-- 公開された version を確認する:
-
-  ```sh
-  npm view vdelta version
-  ```
-
-  新しい version（例: `0.1.1`）が返ることを確認する。
-
-- 公開物が `main` 上の commit を指しており、対象 fix commit を祖先に含むことを確認する:
-
-  ```sh
-  npm view vdelta gitHead
-  ```
-
-  例えば 0.1.1 では、#9 の実 fix commit `907240f` が祖先であることを次のコマンドで確認する
-  （終了コード 0 なら祖先関係が成立）:
-
-  ```sh
-  git merge-base --is-ancestor 907240f "$(npm view vdelta gitHead)"
-  ```
-
-## 5. Downstream propagation
-
-- vdelta を利用する側のリポジトリ（例: skills repo）で依存を更新する:
-
-  ```sh
-  npm update vdelta
-  ```
-
-- 新しい version が反映されていることを確認する:
-
-  ```sh
-  node -p "require('vdelta/package.json').version"
-  ```
-
-  または:
-
-  ```sh
-  cat node_modules/vdelta/package.json
-  ```
-
-  の `version` フィールドを直接確認してもよい。
-
-- 更新された lockfile（`package-lock.json` など）を commit する:
-
-  ```sh
-  git add package-lock.json
-  git commit -m "chore: update vdelta to <X.Y.Z>"
-  ```
+```sh
+npm update vdelta
+git add package.json package-lock.json
+git commit -m "chore: update vdelta to <X.Y.Z>"
+```
