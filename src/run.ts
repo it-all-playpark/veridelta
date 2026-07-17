@@ -222,7 +222,10 @@ export async function runAndRecord(
     }
   } catch (err) {
     if (err instanceof LockHeldError) {
-      return degraded('advisory lock is held')
+      // err.message already carries the lock path and the `rm -rf` recovery
+      // hint (see LockHeldError in store.ts); acquireLock() has already
+      // auto-reclaimed any stale lock, so reaching here means a live holder.
+      return degraded(err.message)
     }
     return degraded(err instanceof Error ? err.message : String(err))
   }
