@@ -201,7 +201,12 @@ export async function runAndRecord(
 
     const store = new RunStore(worktree)
     store.ensure()
-    store.acquireLock()
+    const { reclaimed } = store.acquireLock()
+    if (reclaimed) {
+      diagnostics.push(
+        `vdelta: reclaimed stale advisory lock at ${join(store.dir, 'lock')}`,
+      )
+    }
     let runId: string
     try {
       runId = store.writeRun(record).runId
@@ -246,7 +251,10 @@ export async function runAndRecord(
     }
   } catch (err) {
     if (err instanceof LockHeldError) {
-      return degraded('advisory lock is held')
+      // err.message already carries the lock path and the `rm -rf` recovery
+      // hint (see LockHeldError in store.ts); acquireLock() has already
+      // auto-reclaimed any stale lock, so reaching here means a live holder.
+      return degraded(err.message)
     }
     return degraded(err instanceof Error ? err.message : String(err))
   }

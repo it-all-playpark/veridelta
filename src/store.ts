@@ -2,6 +2,28 @@
  * Content-addressed run store (spec §4): immutable records, atomic writes,
  * fail-open advisory lock, enforced gitignore. Recency is store insertion
  * order (the append-only index), never timestamps (§7.8).
+ *
+ * The advisory lock (`.veridelta/lock`, mkdir-based for atomicity) is
+ * fail-open per INV-5: a lock that cannot be proven live degrades the
+ * caller to transparent passthrough rather than blocking indefinitely.
+ * On top of that, acquireLock() auto-reclaims *stale* locks so a crashed
+ * process doesn't wedge recording forever:
+ *   - if the lock carries `meta.json` ({pid, acquired_at_ms}), staleness is
+ *     decided purely by PID liveness (dead PID => stale, reclaim now;
+ *     regardless of age otherwise a live holder is never stolen);
+ *   - if `meta.json` is missing or unreadable/malformed (a legacy lock, or
+ *     a write that failed), staleness falls back to an mtime threshold
+ *     (`staleLockMs`, default 10 minutes) — this also preserves INV-5 for
+ *     the existing fail-open-held-lock conformance fixture, whose fresh
+ *     bare-mkdir lock must still degrade to passthrough.
+ * Reclaim moves the stale lock dir aside via renameSync (atomic: at most
+ * one concurrent reclaimer can walk off with that specific directory —
+ * a second racer's rename fails outright instead of silently trampling
+ * whatever now occupies the path) and deletes the moved-aside copy, then
+ * retries mkdir once; if that retry loses the race, we throw
+ * LockHeldError (fail-open), never loop. acquireLock() reports back
+ * whether it reclaimed a stale lock (and that lock's prior meta, if any)
+ * so callers can surface the event instead of reclaiming silently.
  */
 
 import { randomUUID } from 'node:crypto'
@@ -12,7 +34,6 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
-  rmdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -35,8 +56,10 @@ export class StoreCorruptError extends Error {
 }
 
 export class LockHeldError extends Error {
-  constructor() {
-    super('advisory lock is held')
+  constructor(readonly lockPath: string) {
+    super(
+      `advisory lock is held at ${lockPath} — if no other vdelta run is active, remove it: rm -rf ${lockPath}`,
+    )
     this.name = 'LockHeldError'
   }
 }
@@ -220,11 +243,49 @@ function extractRunMeta(value: unknown, runId: string): RunMeta {
   return { repo, invocation, instrument, provenance, completeness }
 }
 
+/** Options for RunStore's advisory lock stale-detection (testability + tuning). */
+export interface RunStoreOptions {
+  /** mtime threshold (ms) for reclaiming a meta-less legacy lock. Default 10 minutes. */
+  staleLockMs?: number
+  /** PID liveness probe. Default: process.kill(pid, 0) (ESRCH => dead, else alive). */
+  isPidAlive?: (pid: number) => boolean
+}
+
+/** Parsed contents of a lock's `meta.json`. */
+export interface LockMeta {
+  pid: number
+  acquired_at_ms: number
+}
+
+/** Result of acquireLock(): whether a stale lock had to be reclaimed. */
+export interface AcquireLockResult {
+  /** True if the lock we now hold was reclaimed from a stale prior holder. */
+  reclaimed: boolean
+  /** The reclaimed lock's prior meta.json, if it had one and it was readable. */
+  staleMeta: LockMeta | null
+}
+
+function defaultIsPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (e) {
+    // ESRCH: no such process => dead. Anything else (EPERM, unknown) means
+    // we cannot prove it's dead, so treat as alive — never steal a lock we
+    // cannot prove is unheld.
+    return (e as NodeJS.ErrnoException).code !== 'ESRCH'
+  }
+}
+
 export class RunStore {
   readonly dir: string
+  private readonly staleLockMs: number
+  private readonly isPidAlive: (pid: number) => boolean
 
-  constructor(worktreeRoot: string) {
+  constructor(worktreeRoot: string, options?: RunStoreOptions) {
     this.dir = join(worktreeRoot, '.veridelta')
+    this.staleLockMs = options?.staleLockMs ?? 10 * 60_000
+    this.isPidAlive = options?.isPidAlive ?? defaultIsPidAlive
   }
 
   private get runsDir(): string {
@@ -243,24 +304,141 @@ export class RunStore {
     return join(this.dir, 'lock')
   }
 
+  private get lockMetaPath(): string {
+    return join(this.lockPath, 'meta.json')
+  }
+
   ensure(): void {
     mkdirSync(this.runsDir, { recursive: true })
     const gi = join(this.dir, '.gitignore')
     if (!existsSync(gi)) writeFileSync(gi, '*\n')
   }
 
-  /** Advisory lock via mkdir; throws LockHeldError when already held (fail-open at the caller, INV-5). */
-  acquireLock(): void {
+  /** Best-effort: write lock metadata for future stale-detection. Never throws. */
+  private writeLockMeta(): void {
+    try {
+      writeFileSync(
+        this.lockMetaPath,
+        JSON.stringify({ pid: process.pid, acquired_at_ms: Date.now() }),
+      )
+    } catch {
+      // advisory only: an unwritten meta.json just makes this lock behave
+      // like a legacy lock (mtime-only staleness) for the next acquirer
+    }
+  }
+
+  /**
+   * Read and parse the currently-held lock's meta.json.
+   * Returns null if it's missing, unreadable, unparseable, or malformed
+   * (no finite numeric `pid`) — i.e. whenever the lock must be treated as
+   * a legacy, meta-less lock.
+   */
+  private readLockMeta(): LockMeta | null {
+    let raw: string
+    try {
+      raw = readFileSync(this.lockMetaPath, 'utf8')
+    } catch {
+      return null
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return null
+    }
+    const pid = (parsed as { pid?: unknown } | null)?.pid
+    if (typeof pid !== 'number' || !Number.isFinite(pid)) {
+      return null
+    }
+    const acquiredAtMs = (parsed as { acquired_at_ms?: unknown } | null)
+      ?.acquired_at_ms
+    return {
+      pid,
+      acquired_at_ms:
+        typeof acquiredAtMs === 'number' ? acquiredAtMs : Number.NaN,
+    }
+  }
+
+  /**
+   * Decide whether the currently-held lock is stale and may be reclaimed.
+   * - meta.json present and parseable with a finite numeric pid: stale iff
+   *   that pid is not alive (PID liveness is authoritative, any age).
+   * - meta.json missing/unreadable/unparseable/malformed (legacy lock):
+   *   stale iff the lock dir's mtime is older than staleLockMs (strict >).
+   */
+  private isLockStale(): boolean {
+    const meta = this.readLockMeta()
+    if (meta === null) return this.isLegacyLockStale()
+    return !this.isPidAlive(meta.pid)
+  }
+
+  private isLegacyLockStale(): boolean {
+    let mtimeMs: number
+    try {
+      mtimeMs = statSync(this.lockPath).mtimeMs
+    } catch {
+      // lock vanished concurrently: safe to treat as stale and retry
+      return true
+    }
+    return Date.now() - mtimeMs > this.staleLockMs
+  }
+
+  /**
+   * Move the stale lock dir aside (renameSync, atomic) and delete the
+   * moved-aside copy. If the rename fails — another process already moved
+   * or recreated the lock — we do nothing further: the mkdir retry in
+   * acquireLock() is the sole arbiter of who actually ends up holding the
+   * lock, so a lost race here just falls through to that retry instead of
+   * blindly deleting whatever now occupies the path (which is what let two
+   * racers both end up "holding" the lock under a plain rmSync).
+   */
+  private reclaimStaleLock(): void {
+    const tombstone = `${this.lockPath}.stale-${randomUUID()}`
+    try {
+      renameSync(this.lockPath, tombstone)
+    } catch {
+      return
+    }
+    rmSync(tombstone, { recursive: true, force: true })
+  }
+
+  /**
+   * Advisory lock via mkdir (atomic). A stale lock (dead PID, or an aged
+   * legacy lock past staleLockMs) is auto-reclaimed: rename the stale dir
+   * aside and delete it, then retry mkdir once. If the lock is live, or
+   * the retry loses a race, throws LockHeldError — fail-open at the
+   * caller (INV-5). The return value reports whether a reclaim happened
+   * (and the reclaimed lock's prior meta, if any) so callers can surface
+   * the event rather than reclaiming silently.
+   */
+  acquireLock(): AcquireLockResult {
+    try {
+      mkdirSync(this.lockPath)
+      this.writeLockMeta()
+      return { reclaimed: false, staleMeta: null }
+    } catch {
+      // fall through to stale-reclaim below
+    }
+
+    if (!this.isLockStale()) {
+      throw new LockHeldError(this.lockPath)
+    }
+    const staleMeta = this.readLockMeta()
+
+    this.reclaimStaleLock()
+
     try {
       mkdirSync(this.lockPath)
     } catch {
-      throw new LockHeldError()
+      throw new LockHeldError(this.lockPath)
     }
+    this.writeLockMeta()
+    return { reclaimed: true, staleMeta }
   }
 
   releaseLock(): void {
     try {
-      rmdirSync(this.lockPath)
+      rmSync(this.lockPath, { recursive: true, force: true })
     } catch {
       // releasing a lock we no longer hold is not an error path worth failing on
     }
