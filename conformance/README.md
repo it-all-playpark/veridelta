@@ -157,6 +157,8 @@ it).
 | pit-instrument-drift | §6.2, §5.4 | a `truncateThreshold` change → `instrument-changed`/none + a `runner-config-changed` event |
 | pit-duplicate-records | §4.3, §3.5 | a content-identical re-record is not double-counted; baseline resolves to the real prior distinct run |
 | pit-fail-open-vs-closed | §6.3, INV-5 | corrupt store → `compare` abstains `store-corrupt` (fail-closed); held lock → `run` passthrough (fail-open) |
+| pit-flag-value-forms | §5.1, §6.4 | `--flag=value` and `--flag value` normalize to the same canonical command / stream key; baseline resolves across the two invocation forms |
+| pit-selector-changed | §6.4, §5.1, §11.1 | a selector-bearing run compares exact against a same-selector prior run; a selector change abstains `selector-relation-unknown` with a `selector-changed` event |
 
 ### Consumer (`con-*`)
 
