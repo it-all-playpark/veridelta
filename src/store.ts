@@ -384,8 +384,9 @@ export class RunStore {
   /**
    * Enforce a retention policy (§4.1 SHOULD be bounded). Evicts whole
    * records (file + index entry), oldest first, until both limits are
-   * satisfied. The record pointed to by `last` is never evicted, even if it
-   * alone exceeds maxBytes (AC-3).
+   * satisfied. The record pointed to by `last`, and any id passed in
+   * `protectedIds` (e.g. a baseline just selected for a comparison), are
+   * never evicted, even if one alone exceeds maxBytes (AC-3).
    *
    * PRECONDITION: the caller holds the advisory lock (see acquireLock()).
    * gc() itself does not take the lock — callers that gc concurrently with a
@@ -394,8 +395,10 @@ export class RunStore {
    * Index ids whose record file is already missing (dangling) are dropped
    * from the index unconditionally, independent of the policy limits.
    */
-  gc(policy: GcPolicy): GcResult {
+  gc(policy: GcPolicy, protectedIds: readonly string[] = []): GcResult {
     const lastId = this.lastRunId()
+    const protectedSet = new Set(protectedIds)
+    if (lastId !== null) protectedSet.add(lastId)
 
     if (policy.maxCount === undefined && policy.maxBytes === undefined) {
       const ids = this.listRunIds()
@@ -431,7 +434,7 @@ export class RunStore {
       policy.maxBytes !== undefined && totalBytes > policy.maxBytes
 
     while (overCount() || overBytes()) {
-      const idx = kept.findIndex((e) => e.id !== lastId)
+      const idx = kept.findIndex((e) => !protectedSet.has(e.id))
       if (idx === -1) break
       const [evicted] = kept.splice(idx, 1)
       if (!evicted) break

@@ -183,6 +183,26 @@ describe('RunStore.gc (§4.1 retention)', () => {
     expect(store.listRunIds()).toEqual([ids[1], ids[2]])
   })
 
+  it('protects an explicit protectedIds entry beyond last (baseline survives gc)', () => {
+    const store = makeStore()
+    const ids = seed(store, 5)
+    const last = store.lastRunId()
+    expect(last).toBe(ids[4])
+    // ids[1] stands in for a baseline resolved for the current comparison:
+    // without protectedIds it would be the oldest-but-one candidate for
+    // eviction under maxCount: 2.
+    const baselineId = ids[1]!
+
+    const result = store.gc({ maxCount: 2 }, [baselineId])
+
+    expect(store.listRunIds()).toContain(baselineId)
+    expect(store.listRunIds()).toContain(last)
+    expect(result.removed).not.toContain(baselineId)
+    expect(() =>
+      statSync(join(store.dir, 'runs', `${baselineId}.json`)),
+    ).not.toThrow()
+  })
+
   it('is a no-op when both limits are undefined', () => {
     const store = makeStore()
     const ids = seed(store, 3)
