@@ -201,7 +201,12 @@ export async function runAndRecord(
 
     const store = new RunStore(worktree)
     store.ensure()
-    store.acquireLock()
+    const { reclaimed } = store.acquireLock()
+    if (reclaimed) {
+      diagnostics.push(
+        `vdelta: reclaimed stale advisory lock at ${join(store.dir, 'lock')}`,
+      )
+    }
     let runId: string
     try {
       runId = store.writeRun(record).runId

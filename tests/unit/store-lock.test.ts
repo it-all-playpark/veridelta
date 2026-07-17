@@ -14,9 +14,19 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RunRecord } from '../../src/schema.js'
 import { LockHeldError, RunStore } from '../../src/store.js'
+
+// Partial mock of node:fs: renameSync is wrapped in a spy that delegates to
+// the real implementation by default, so only the one test that needs to
+// force a lost reclaim-race (a renameSync failure) overrides it — every
+// other test (and every other RunStore call) still hits the real fs.
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return { ...actual, renameSync: vi.fn(actual.renameSync) }
+})
+const { renameSync: mockedRenameSync } = await import('node:fs')
 
 const scratchDirs: string[] = []
 
@@ -55,7 +65,12 @@ describe('RunStore lock stale-detection and auto-reclaim', () => {
       JSON.stringify({ pid: 999999, acquired_at_ms: Date.now() }),
     )
 
-    expect(() => store.acquireLock()).not.toThrow()
+    let result: { reclaimed: boolean; staleMeta: { pid: number } | null }
+    expect(() => {
+      result = store.acquireLock()
+    }).not.toThrow()
+    expect(result!.reclaimed).toBe(true)
+    expect(result!.staleMeta?.pid).toBe(999999)
 
     const { runId } = store.writeRun(minimalRecord)
     expect(runId).toMatch(/^run_[0-9a-f]{64}$/)
@@ -133,10 +148,70 @@ describe('RunStore lock stale-detection and auto-reclaim', () => {
     const store = new RunStore(worktree)
     store.ensure()
 
-    store.acquireLock()
+    expect(store.acquireLock()).toEqual({ reclaimed: false, staleMeta: null })
     store.releaseLock()
 
     expect(() => store.acquireLock()).not.toThrow()
     store.releaseLock()
+  })
+
+  it('(8) a lost reclaim race (renameSync fails because another process already moved the stale dir aside) falls through to a plain mkdir retry instead of throwing or corrupting state', () => {
+    const worktree = makeScratchDir()
+    const store = new RunStore(worktree, { isPidAlive: () => false })
+    store.ensure()
+    mkdirSync(lockDirPath(worktree))
+    writeFileSync(
+      metaPath(worktree),
+      JSON.stringify({ pid: 999999, acquired_at_ms: Date.now() }),
+    )
+
+    // Simulate a racing process winning the renameSync just before ours runs
+    // (e.g. it already moved the stale dir aside and hasn't recreated it
+    // yet): our renameSync call fails, and reclaimStaleLock() must swallow
+    // that and let the subsequent mkdir retry be the sole arbiter — it
+    // must not fall back to an unconditional rmSync that could delete a
+    // fresh lock the racer has since created.
+    // biome-ignore lint/suspicious/noExplicitAny: vi.fn-wrapped mock of a fs export
+    ;(mockedRenameSync as any).mockImplementationOnce(() => {
+      // Model the racer having already won: by the time our renameSync
+      // call runs, the stale dir is already gone (moved aside elsewhere),
+      // so our rename fails with ENOENT — and the path is free for the
+      // subsequent plain mkdir to claim.
+      rmSync(lockDirPath(worktree), { recursive: true, force: true })
+      throw Object.assign(new Error('ENOENT: no such file or directory'), {
+        code: 'ENOENT',
+      })
+    })
+
+    const result = store.acquireLock()
+    expect(result.reclaimed).toBe(true)
+    expect(result.staleMeta?.pid).toBe(999999)
+    // The lock dir still exists (we won the subsequent plain mkdir) and now
+    // carries our own fresh meta, proving the reclaim completed cleanly
+    // despite the lost rename race.
+    const meta = JSON.parse(readFileSync(metaPath(worktree), 'utf8'))
+    expect(meta.pid).toBe(process.pid)
+  })
+
+  it('(9) a stale lock reclaimed once yields a live lock that a second acquirer cannot also reclaim', () => {
+    const worktree = makeScratchDir()
+    // Only PID 999999 (the dead prior holder) is dead; our own PID (written
+    // by writeLockMeta on reclaim) is alive, as real PID liveness would be.
+    const store = new RunStore(worktree, {
+      isPidAlive: (pid) => pid !== 999999,
+    })
+    store.ensure()
+    mkdirSync(lockDirPath(worktree))
+    writeFileSync(
+      metaPath(worktree),
+      JSON.stringify({ pid: 999999, acquired_at_ms: Date.now() }),
+    )
+
+    const first = store.acquireLock()
+    expect(first.reclaimed).toBe(true)
+
+    // A second acquireLock() while we already hold the (now-fresh, live)
+    // lock must fail-open, never silently succeed alongside us.
+    expect(() => store.acquireLock()).toThrow(LockHeldError)
   })
 })
