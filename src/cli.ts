@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { writeAll } from './cli-io.js'
 /**
  * vdelta CLI (spec §10). Exit-code contract:
@@ -18,7 +20,13 @@ import { buildGateReport, GateOperationError } from './gate.js'
 import { renderReport } from './render.js'
 import { runAndRecord, VDELTA_VERSION } from './run.js'
 import type { ComparisonReport, RunRecord } from './schema.js'
-import { RunStore, StoreCorruptError } from './store.js'
+import {
+  defaultGcPolicy,
+  type GcPolicy,
+  LockHeldError,
+  RunStore,
+  StoreCorruptError,
+} from './store.js'
 import { gitRepoRoot, resolveRef } from './tree-digest.js'
 
 type ReportFormat = 'json' | 'text'
@@ -249,6 +257,78 @@ async function cmdGate(argv: string[]): Promise<number> {
   }
 }
 
+function parsePositiveIntFlag(value: string, flag: string): number {
+  if (!/^[0-9]+$/.test(value))
+    die(`${flag} expects a positive integer, got ${value}`)
+  const n = Number(value)
+  if (!Number.isInteger(n) || n <= 0)
+    die(`${flag} expects a positive integer, got ${value}`)
+  return n
+}
+
+async function cmdGc(argv: string[]): Promise<number> {
+  const policy: GcPolicy = defaultGcPolicy()
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!
+    if (a === '--max-count') {
+      const v = argv[++i]
+      if (v === undefined) die('--max-count expects a value')
+      policy.maxCount = parsePositiveIntFlag(v, '--max-count')
+    } else if (a.startsWith('--max-count=')) {
+      policy.maxCount = parsePositiveIntFlag(
+        a.slice('--max-count='.length),
+        '--max-count',
+      )
+    } else if (a === '--max-bytes') {
+      const v = argv[++i]
+      if (v === undefined) die('--max-bytes expects a value')
+      policy.maxBytes = parsePositiveIntFlag(v, '--max-bytes')
+    } else if (a.startsWith('--max-bytes=')) {
+      policy.maxBytes = parsePositiveIntFlag(
+        a.slice('--max-bytes='.length),
+        '--max-bytes',
+      )
+    } else {
+      die(`unknown option: ${a}`)
+    }
+  }
+
+  const { store, worktree } = await requireStore()
+
+  // Cheap existence check up front: gc must not take the advisory lock (nor
+  // create the store) when there is nothing to collect (feedback
+  // gc-missing-store-dir).
+  const runsDir = join(worktree, '.veridelta', 'runs')
+  const indexPath = join(worktree, '.veridelta', 'index')
+  if (!existsSync(runsDir) || !existsSync(indexPath)) {
+    await writeAll(process.stdout, 'gc: nothing to collect\n')
+    return 0
+  }
+
+  try {
+    store.acquireLock()
+  } catch (err) {
+    if (err instanceof LockHeldError)
+      die(
+        'advisory lock is held; another vdelta process may be running — retry later',
+      )
+    throw err
+  }
+  try {
+    const r = store.gc(policy)
+    await writeAll(
+      process.stdout,
+      `gc: removed ${r.removed.length} run(s), kept ${r.keptCount} run(s) (${r.keptBytes} bytes)\n`,
+    )
+    return 0
+  } catch (err) {
+    if (err instanceof StoreCorruptError) die(`store corrupt: ${err.message}`)
+    throw err
+  } finally {
+    store.releaseLock()
+  }
+}
+
 async function main(): Promise<number> {
   const [, , command, ...argv] = process.argv
   switch (command) {
@@ -260,17 +340,20 @@ async function main(): Promise<number> {
       return cmdShow(argv)
     case 'gate':
       return cmdGate(argv)
+    case 'gc':
+      return cmdGc(argv)
     case '--version':
     case 'version':
       await writeAll(process.stdout, `vdelta ${VDELTA_VERSION} (veridelta/1)\n`)
       return 0
     default:
       die(
-        `usage: vdelta <run|compare|show|gate> ...\n` +
+        `usage: vdelta <run|compare|show|gate|gc> ...\n` +
           `  run [--report json|text] -- <command...>\n` +
           `  compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]\n` +
           `  show <run-id> [--test <test-id> | --raw]\n` +
-          `  gate --ref <git-ref> [--run <run-id>] [--policy report-only] [--report json|text]`,
+          `  gate --ref <git-ref> [--run <run-id>] [--policy report-only] [--report json|text]\n` +
+          `  gc [--max-count <n>] [--max-bytes <n>]`,
       )
   }
 }

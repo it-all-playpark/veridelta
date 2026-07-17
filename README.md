@@ -95,8 +95,17 @@ judges anything.
 | `vdelta compare [<baseline> <current>] [--ref <git-ref>]` | Compare recorded runs (explicit ids, a git ref, or the previous comparable run) | 0 when the comparison ran (an `inconclusive` result is a successful comparison); 1 on operation failure |
 | `vdelta show <run-id> [--test <id>\|--raw]` | Drill down into a run record | Retrieval success |
 | `vdelta gate --ref <git-ref> [--policy report-only]` | Policy verdict for CI/agent loops | report-only: 0 when a report was produced; 2 otherwise |
+| `vdelta gc [--max-count <n>] [--max-bytes <n>]` | Reclaim run records beyond the retention policy | 0 = reclaimed or no-op; 1 = failed |
 
 Run ids may be abbreviated to any unambiguous prefix.
+
+`vdelta run` also runs this retention policy automatically after recording
+each run (a failure there only downgrades to a stderr diagnostic — it never
+fails the run). The policy is bounded by count and/or total bytes, whichever
+is hit first; the record `last` points to is always kept. Defaults are 100
+runs / 64MiB, overridable via `VDELTA_GC_MAX_COUNT` / `VDELTA_GC_MAX_BYTES`
+(positive integers; unset/invalid falls back to the default, `0` or
+non-numeric disables that limit).
 
 ## What the report separates (and why)
 

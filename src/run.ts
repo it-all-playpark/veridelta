@@ -20,7 +20,7 @@ import {
 import { buildComparisonReport } from './compare.js'
 import { canonicalDigest } from './digest.js'
 import type { ComparisonReport } from './schema.js'
-import { LockHeldError, RunStore } from './store.js'
+import { defaultGcPolicy, LockHeldError, RunStore } from './store.js'
 import {
   dirtyDiffMaterial,
   gitBranch,
@@ -217,6 +217,30 @@ export async function runAndRecord(
     const report = buildComparisonReport(store, runId, {
       mode: 'previous-comparable',
     })
+
+    // Auto-GC (§4.1 SHOULD be bounded): keep the store from growing
+    // unbounded across repeated `vdelta run` invocations. Runs *after* the
+    // comparison above so the baseline it just resolved cannot be evicted
+    // out from under it — a comparison performed here always saw its
+    // baseline still present. The record just written is `last` and the
+    // resolved baseline (if any) are both protected for this pass, so
+    // neither is evicted even under a tight VDELTA_GC_MAX_COUNT/BYTES
+    // (AC-3). A GC failure (including a held lock) must not fail the run
+    // itself (INV-5 spirit) — it only downgrades to a diagnostic.
+    try {
+      store.acquireLock()
+      try {
+        const protectedIds = report.baseline ? [report.baseline.run_id] : []
+        store.gc(defaultGcPolicy(), protectedIds)
+      } finally {
+        store.releaseLock()
+      }
+    } catch (e) {
+      diagnostics.push(
+        `vdelta: gc skipped (${e instanceof Error ? e.message : String(e)})`,
+      )
+    }
+
     return {
       exitCode: child.exitCode,
       report,

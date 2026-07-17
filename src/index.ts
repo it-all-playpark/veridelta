@@ -41,7 +41,11 @@ export {
 } from './schema.js'
 export {
   computeRunId,
+  defaultGcPolicy,
+  type GcPolicy,
+  type GcResult,
   LockHeldError,
+  type RunMeta,
   RunStore,
   StoreCorruptError,
 } from './store.js'
