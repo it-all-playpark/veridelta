@@ -20,14 +20,23 @@ function createSlowSink() {
   return { stream, chunks }
 }
 
-/** Failing sink: every write fails, simulating a downstream EPIPE. */
-function createFailingSink() {
+/**
+ * Failing sink: every write fails with the given error, simulating a
+ * downstream failure such as EPIPE or ENOSPC.
+ */
+function createFailingSink(err: NodeJS.ErrnoException) {
   const stream = new Writable({
     write(_chunk, _encoding, callback) {
-      callback(new Error('EPIPE'))
+      callback(err)
     },
   })
   return stream
+}
+
+function epipeError(): NodeJS.ErrnoException {
+  const err = new Error('EPIPE') as NodeJS.ErrnoException
+  err.code = 'EPIPE'
+  return err
 }
 
 describe('writeAll (issue #12)', () => {
@@ -42,13 +51,21 @@ describe('writeAll (issue #12)', () => {
   })
 
   it('resolves (does not reject or crash) when the downstream write fails with EPIPE', async () => {
-    const stream = createFailingSink()
+    const stream = createFailingSink(epipeError())
 
     await expect(writeAll(stream, 'hello')).resolves.toBeUndefined()
   })
 
+  it('rejects when the downstream write fails with a non-EPIPE error (e.g. ENOSPC)', async () => {
+    const err = new Error('ENOSPC') as NodeJS.ErrnoException
+    err.code = 'ENOSPC'
+    const stream = createFailingSink(err)
+
+    await expect(writeAll(stream, 'hello')).rejects.toThrow('ENOSPC')
+  })
+
   it('does not let an unhandled error event crash the process', async () => {
-    const stream = createFailingSink()
+    const stream = createFailingSink(epipeError())
     let crashed = false
     const onUncaught = () => {
       crashed = true
@@ -63,13 +80,33 @@ describe('writeAll (issue #12)', () => {
     expect(crashed).toBe(false)
   })
 
+  it('does not accumulate error listeners across repeated calls on the same stream', async () => {
+    // A stream whose writes succeed, mirroring the common case (repeated
+    // writes to process.stdout/process.stderr across many exit paths):
+    // regardless of write outcome, only one persistent 'error' listener
+    // should ever be registered per stream (issue #12 review follow-up).
+    const chunks: Buffer[] = []
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(Buffer.from(chunk))
+        callback()
+      },
+    })
+
+    for (let i = 0; i < 12; i++) {
+      await writeAll(stream, 'hello')
+    }
+
+    expect(stream.listenerCount('error')).toBe(1)
+  })
+
   it('resolves immediately for an empty string chunk', async () => {
-    const stream = createFailingSink()
+    const stream = createFailingSink(epipeError())
     await expect(writeAll(stream, '')).resolves.toBeUndefined()
   })
 
   it('resolves immediately for an empty Uint8Array chunk', async () => {
-    const stream = createFailingSink()
+    const stream = createFailingSink(epipeError())
     await expect(writeAll(stream, new Uint8Array(0))).resolves.toBeUndefined()
   })
 })
