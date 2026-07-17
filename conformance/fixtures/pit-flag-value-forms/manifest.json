@@ -1,0 +1,20 @@
+{
+  "name": "pit-flag-value-forms",
+  "class": "pitfall",
+  "spec_refs": ["§5.1", "§6.4"],
+  "notes": "Operational pitfall: flag-form drift (`--flag=value` vs `--flag value`) for the same value-taking CLI flag must not split a single logical invocation into two streams. If a space-separated value leaked into the selector, run B's stream key would diverge from run A's and previous-comparable would abstain with a spurious `baseline-missing` even though both invocations select the same `unit` vitest project. The command/selector splitter normalizes both forms to the same canonical `--project=unit` command token, so B's automatic previous-comparable resolves A as its baseline (exact). A marker commit between A and B keeps the two runs content-distinct (different tree) so the store does not collapse them to a single idempotent run_id (§3.5/§5.8), letting the baseline-resolution proof stand on its own record.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed green test"},
+    {"do": "run", "id": "A", "args": ["--project=unit"], "expectExit": 0},
+    {"do": "write-file", "path": "marker.txt", "content": "b\n"},
+    {"do": "commit", "message": "advance tree before B (keep A and B content-distinct)"},
+    {"do": "run", "id": "B", "args": ["--project", "unit"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "B", "path": "comparability", "eq": "exact"},
+    {"sameValue": [{"report": "B", "path": "baseline.run_id"}, {"report": "A", "path": "current.run_id"}]}
+  ]
+}

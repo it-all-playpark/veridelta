@@ -1,0 +1,24 @@
+{
+  "name": "pit-selector-changed",
+  "class": "pitfall",
+  "spec_refs": ["§6.4", "§5.1", "§11.1"],
+  "notes": "Operational pitfall: a selector-bearing run must still be recorded and compared like any other invocation -- two runs with the identical selector (`tests/alpha.test.ts`) are exact-comparable and previous-comparable correctly resolves the earlier one as baseline. But when the selector changes between runs (`tests/alpha.test.ts` -> `tests/beta.test.ts`), the MVP adapter declares no `selector-relation` capability, so containment between the two scopes is unproven: the comparison must abstain (`comparability: 'none'`, reason `selector-relation-unknown`) with a `selector-changed` surface event rather than silently comparing across incompatible scopes or guessing a verdict. A marker commit between A and B keeps the two same-selector runs content-distinct (different tree) so the store does not collapse them to a single idempotent run_id (§3.5/§5.8).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed two green test files"},
+    {"do": "run", "id": "A", "args": ["tests/alpha.test.ts"], "expectExit": 0},
+    {"do": "write-file", "path": "marker.txt", "content": "b\n"},
+    {"do": "commit", "message": "advance tree before B (keep A and B content-distinct)"},
+    {"do": "run", "id": "B", "args": ["tests/alpha.test.ts"], "expectExit": 0},
+    {"do": "compare", "id": "same", "baseline": "A", "current": "B", "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["tests/beta.test.ts"], "expectExit": 0},
+    {"do": "compare", "id": "cross", "baseline": "A", "current": "C", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "same", "path": "comparability", "eq": "exact"},
+    {"sameValue": [{"report": "B", "path": "baseline.run_id"}, {"report": "A", "path": "current.run_id"}]},
+    {"report": "cross", "path": "comparability", "eq": "none"},
+    {"report": "cross", "path": "comparability_detail.reason", "eq": "selector-relation-unknown"},
+    {"report": "cross", "path": "verification_surface.events", "containsMatch": {"kind": "selector-changed"}}
+  ]
+}

@@ -18,7 +18,7 @@ another" — a verification delta can, and when two runs are not comparable it
 - Runner support (MVP): **vitest v4** (native reporter, structured channel only)
 - Zero runtime dependencies; Node ≥ 20
 - Machine-verified against the [conformance suite](conformance/) —
-  39 fixtures covering the spec's invariants, adversarial inputs, and a
+  41 fixtures covering the spec's invariants, adversarial inputs, and a
   10-mutation cheating corpus with 100% detection recall
 
 ## Quickstart (5 minutes)
@@ -135,9 +135,18 @@ consumers must treat unknown values as hard errors.
   settings you *do* set (like `chaiConfig.truncateThreshold`) become part of
   the measuring-instrument identity.
 - Positional arguments after the vitest token are recorded as the run's
-  selector. If you pass vitest flags that take a value, use the
-  `--flag=value` form (a separate value token would be read as a selector
-  filter — comparisons then abstain; nothing false-greens).
+  selector. Known value-taking vitest flags (`--project`, `--config`/`-c`,
+  `--root`/`-r`, `--dir`, `--reporter`, `--outputFile`, `--pool`,
+  `--maxWorkers`, `--minWorkers`, `--environment`,
+  `--testNamePattern`/`-t`, `--testTimeout`, `--hookTimeout`,
+  `--teardownTimeout`, `--retry`, `--bail`, `--maxConcurrency`, `--shard`,
+  `--exclude`, `--mode`, `--workspace`) keep their space-separated value on
+  the canonical command side instead of leaking it into the selector; the
+  `--flag=value` and `--flag value` forms normalize to the same stream
+  key. Value-taking flags outside this list still have their
+  space-separated value read as a selector filter (the historical
+  behavior), which splits the stream and makes comparisons abstain rather
+  than false-green — for those, prefer the `--flag=value` form.
 - Evidence digests are built from vitest's structured channel only
   (exception type, message, structured expected/actual, operator, and
   line-shift-stable relative positions). Durations, absolute paths/lines,
@@ -159,6 +168,14 @@ consumers must treat unknown values as hard errors.
   via `GIT_ALTERNATE_OBJECT_DIRECTORIES`), so no loose objects are ever
   added to your `.git` — recording works even when the object database is
   not writable (e.g. sandboxed environments).
+- **Breaking change**: recognizing known value-taking flags changes the
+  canonical command (and therefore the stream key) for invocations that
+  used the space-separated form. Runs recorded by a prior version with
+  such invocations no longer match the same stream as newly recorded
+  runs; the first comparison after upgrading abstains with
+  `baseline-missing` for those streams. This is expected — no record
+  rewrite or migration is performed — and comparisons recover on the next
+  run once two new-format records exist in the stream.
 
 ## Protocol
 
@@ -171,7 +188,7 @@ intended success mode.
 
 ```bash
 npm test                     # unit + full conformance suite
-npm run test:conformance     # the 39-fixture suite only
+npm run test:conformance     # the 41-fixture suite only
 ```
 
 The suite is authored independently of this implementation (the fixture

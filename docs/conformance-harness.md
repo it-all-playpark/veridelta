@@ -220,12 +220,20 @@ non-observation, §6.4) plus a `config-source-changed` event.
 - Stream key (§5.1): repo root + worktree + branch + cwd + canonical command
   (child argv minus injected flags minus selector args) + selector (vitest
   positional filters, sorted) + instrument identity.
-- Command/selector splitting treats every non-dash token after the vitest
-  token as a selector filter. Flags that take their value as a **separate
-  token** (`--config custom.ts`, `-t 'name'`) would leak the value into the
-  selector; use the `--flag=value` form in recorded invocations. A violation
-  degrades safely (streams split, comparisons abstain) but never produces a
-  false green.
+- Command/selector splitting recognizes a curated set of vitest flags that
+  always take their value as a **separate argv token** (`--project`,
+  `--config`/`-c`, `--root`/`-r`, `--dir`, `--reporter`, `--outputFile`,
+  `--pool`, `--maxWorkers`, `--minWorkers`, `--environment`,
+  `--testNamePattern`/`-t`, `--testTimeout`, `--hookTimeout`,
+  `--teardownTimeout`, `--retry`, `--bail`, `--maxConcurrency`, `--shard`,
+  `--exclude`, `--mode`, `--workspace`): for these, the separate-token value
+  is consumed and folded into a single `--flag=value` canonical token, so
+  `--config custom.ts` and `--config=custom.ts` normalize to the same
+  command array and the same stream key. Flags with an optional value are
+  deliberately outside this list — for those (and any other flag not in the
+  list), a separate-token value is still read as a selector filter (the
+  fail-safe default): the streams split and the comparison abstains, but
+  this never produces a false green.
 - `previous-comparable` picks the most recent **complete** run of the same
   stream by store insertion order (no timestamps; §7.8).
 - `git-ref` baseline: a complete run whose `provenance.head` equals the
