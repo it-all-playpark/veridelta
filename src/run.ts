@@ -8,6 +8,7 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { readFileSync, rmSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,7 +29,11 @@ import {
   treeDigest,
 } from './tree-digest.js'
 
-export const VDELTA_VERSION = '0.1.0'
+const pkg = createRequire(import.meta.url)('../package.json') as {
+  version: string
+}
+
+export const VDELTA_VERSION: string = pkg.version
 
 export interface RunResult {
   exitCode: number
