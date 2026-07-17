@@ -21,6 +21,14 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      {
+        test: {
+          name: 'cli',
+          include: ['tests/cli/**/*.test.ts'],
+          globalSetup: ['./tests/conformance/global-setup.ts'],
+          testTimeout: 120_000,
+        },
+      },
     ],
   },
 })

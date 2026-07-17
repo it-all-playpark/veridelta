@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { writeAll } from './cli-io.js'
 /**
  * vdelta CLI (spec §10). Exit-code contract:
  *   run     — transparent child exit; INV-5 degrades to raw passthrough
@@ -22,11 +23,23 @@ import { gitRepoRoot, resolveRef } from './tree-digest.js'
 
 type ReportFormat = 'json' | 'text'
 
-function emit(report: ComparisonReport, format: ReportFormat): void {
+class CliError extends Error {
+  constructor(
+    message: string,
+    readonly code: number,
+  ) {
+    super(message)
+  }
+}
+
+async function emit(
+  report: ComparisonReport,
+  format: ReportFormat,
+): Promise<void> {
   if (format === 'json') {
-    process.stdout.write(`${JSON.stringify(report, null, 1)}\n`)
+    await writeAll(process.stdout, `${JSON.stringify(report, null, 1)}\n`)
   } else {
-    process.stdout.write(renderReport(report))
+    await writeAll(process.stdout, renderReport(report))
   }
 }
 
@@ -56,8 +69,7 @@ function parseReportFlag(args: string[]): {
 }
 
 function die(message: string, code = 1): never {
-  process.stderr.write(`vdelta: ${message}\n`)
-  process.exit(code)
+  throw new CliError(message, code)
 }
 
 async function requireStore(): Promise<{ store: RunStore; worktree: string }> {
@@ -66,7 +78,7 @@ async function requireStore(): Promise<{ store: RunStore; worktree: string }> {
   return { store: new RunStore(worktree), worktree }
 }
 
-async function cmdRun(argv: string[]): Promise<never> {
+async function cmdRun(argv: string[]): Promise<number> {
   const sep = argv.indexOf('--')
   if (sep === -1) die('usage: vdelta run [--report json|text] -- <command...>')
   const { format } = parseReportFlag(argv.slice(0, sep))
@@ -74,18 +86,18 @@ async function cmdRun(argv: string[]): Promise<never> {
   if (child.length === 0) die('no child command given')
 
   const result = await runAndRecord(child, process.cwd())
-  for (const d of result.diagnostics) process.stderr.write(`${d}\n`)
+  for (const d of result.diagnostics) await writeAll(process.stderr, `${d}\n`)
   if (result.degraded || result.report === null) {
     // INV-5 degraded path: verbatim raw passthrough, no report.
-    process.stdout.write(result.rawStdout)
-    process.stderr.write(result.rawStderr)
+    await writeAll(process.stdout, result.rawStdout)
+    await writeAll(process.stderr, result.rawStderr)
   } else {
-    emit(result.report, format)
+    await emit(result.report, format)
   }
-  process.exit(result.exitCode)
+  return result.exitCode
 }
 
-async function cmdCompare(argv: string[]): Promise<never> {
+async function cmdCompare(argv: string[]): Promise<number> {
   const { format, rest } = parseReportFlag(argv)
   let ref: string | undefined
   const positional: string[] = []
@@ -134,8 +146,8 @@ async function cmdCompare(argv: string[]): Promise<never> {
     }
 
     if (currentId === null) die('cannot resolve the current run')
-    emit(buildComparisonReport(store, currentId, spec), format)
-    process.exit(0)
+    await emit(buildComparisonReport(store, currentId, spec), format)
+    return 0
   } catch (err) {
     if (err instanceof CompareOperationError) die(err.message)
     if (err instanceof StoreCorruptError) die(`store corrupt: ${err.message}`)
@@ -143,7 +155,7 @@ async function cmdCompare(argv: string[]): Promise<never> {
   }
 }
 
-async function cmdShow(argv: string[]): Promise<never> {
+async function cmdShow(argv: string[]): Promise<number> {
   let testId: string | undefined
   let raw = false
   const positional: string[] = []
@@ -177,21 +189,21 @@ async function cmdShow(argv: string[]): Promise<never> {
   }
 
   if (raw) {
-    process.stdout.write(record.recording.raw_stdout)
-    process.stderr.write(record.recording.raw_stderr)
-    process.exit(0)
+    await writeAll(process.stdout, record.recording.raw_stdout)
+    await writeAll(process.stderr, record.recording.raw_stderr)
+    return 0
   }
   if (testId !== undefined) {
     const obs = record.observations.find((o) => o.test_id === testId)
     if (obs === undefined) die(`no observation for test id: ${testId}`)
-    process.stdout.write(`${JSON.stringify(obs, null, 1)}\n`)
-    process.exit(0)
+    await writeAll(process.stdout, `${JSON.stringify(obs, null, 1)}\n`)
+    return 0
   }
-  process.stdout.write(`${JSON.stringify(record, null, 1)}\n`)
-  process.exit(0)
+  await writeAll(process.stdout, `${JSON.stringify(record, null, 1)}\n`)
+  return 0
 }
 
-async function cmdGate(argv: string[]): Promise<never> {
+async function cmdGate(argv: string[]): Promise<number> {
   const { format, rest } = parseReportFlag(argv)
   let ref: string | undefined
   let runId: string | undefined
@@ -227,8 +239,8 @@ async function cmdGate(argv: string[]): Promise<never> {
       ref,
       ...(runId !== undefined ? { runId } : {}),
     })
-    emit(report, format)
-    process.exit(0)
+    await emit(report, format)
+    return 0
   } catch (err) {
     if (err instanceof GateOperationError) die(err.message, 2)
     if (err instanceof StoreCorruptError)
@@ -237,7 +249,7 @@ async function cmdGate(argv: string[]): Promise<never> {
   }
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const [, , command, ...argv] = process.argv
   switch (command) {
     case 'run':
@@ -250,8 +262,8 @@ async function main(): Promise<void> {
       return cmdGate(argv)
     case '--version':
     case 'version':
-      process.stdout.write(`vdelta ${VDELTA_VERSION} (veridelta/1)\n`)
-      return process.exit(0)
+      await writeAll(process.stdout, `vdelta ${VDELTA_VERSION} (veridelta/1)\n`)
+      return 0
     default:
       die(
         `usage: vdelta <run|compare|show|gate> ...\n` +
@@ -263,9 +275,18 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(
-    `vdelta: internal error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
-  )
-  process.exit(1)
-})
+main().then(
+  (code) => process.exit(code),
+  async (err: unknown) => {
+    if (err instanceof CliError) {
+      await writeAll(process.stderr, `vdelta: ${err.message}\n`)
+      process.exit(err.code)
+      return
+    }
+    await writeAll(
+      process.stderr,
+      `vdelta: internal error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+    )
+    process.exit(1)
+  },
+)
