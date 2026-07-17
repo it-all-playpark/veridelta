@@ -20,7 +20,7 @@ import {
 import { buildComparisonReport } from './compare.js'
 import { canonicalDigest } from './digest.js'
 import type { ComparisonReport } from './schema.js'
-import { LockHeldError, RunStore } from './store.js'
+import { defaultGcPolicy, LockHeldError, RunStore } from './store.js'
 import {
   dirtyDiffMaterial,
   gitBranch,
@@ -205,6 +205,18 @@ export async function runAndRecord(
     let runId: string
     try {
       runId = store.writeRun(record).runId
+      // Auto-GC (§4.1 SHOULD be bounded): keep the store from growing
+      // unbounded across repeated `vdelta run` invocations. The record just
+      // written is `last` and therefore protected, so it survives (AC-3). A
+      // GC failure must not fail the run itself (INV-5 spirit) — it only
+      // downgrades to a diagnostic.
+      try {
+        store.gc(defaultGcPolicy())
+      } catch (e) {
+        diagnostics.push(
+          `vdelta: gc skipped (${e instanceof Error ? e.message : String(e)})`,
+        )
+      }
     } finally {
       store.releaseLock()
     }

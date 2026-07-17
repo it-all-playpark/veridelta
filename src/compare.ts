@@ -26,7 +26,7 @@ import {
   type Transitions,
   type UpdatedFailEntry,
 } from './schema.js'
-import { type RunStore, StoreCorruptError } from './store.js'
+import { type RunMeta, type RunStore, StoreCorruptError } from './store.js'
 
 export type BaselineSpec =
   | { mode: 'previous-comparable' }
@@ -40,8 +40,19 @@ export class CompareOperationError extends Error {
   }
 }
 
+/**
+ * Structural view of the stream-key-relevant fields, satisfied by both
+ * full {@link RunRecord}s and the lightweight {@link RunMeta} produced by
+ * `RunStore.readRunMeta()`. Lets baseline-scan code work with either
+ * without a strict-parse of every candidate.
+ */
+export type StreamKeyView = Pick<
+  RunRecord,
+  'repo' | 'invocation' | 'instrument'
+>
+
 /** Stream key (§5.1): repo + worktree + branch + cwd + command + selector + instrument. */
-export function streamKey(r: RunRecord): string {
+export function streamKey(r: StreamKeyView): string {
   return JSON.stringify([
     r.repo.identity,
     r.repo.worktree,
@@ -56,7 +67,7 @@ export function streamKey(r: RunRecord): string {
 }
 
 /** Stream-key component value, rendered for near-miss disclosure (array fields joined with a single space). */
-function streamKeyFieldValue(r: RunRecord, field: StreamKeyField): string {
+function streamKeyFieldValue(r: StreamKeyView, field: StreamKeyField): string {
   switch (field) {
     case 'repo.identity':
       return r.repo.identity
@@ -80,8 +91,8 @@ function streamKeyFieldValue(r: RunRecord, field: StreamKeyField): string {
 }
 
 function streamKeyFieldEqual(
-  a: RunRecord,
-  b: RunRecord,
+  a: StreamKeyView,
+  b: StreamKeyView,
   field: StreamKeyField,
 ): boolean {
   if (field === 'invocation.command') {
@@ -107,8 +118,8 @@ function streamKeyFieldEqual(
  * undefined when there are no candidates. Deterministic: no timestamps.
  */
 export function nearMissDisclosure(
-  current: RunRecord,
-  candidates: readonly { runId: string; record: RunRecord }[],
+  current: StreamKeyView,
+  candidates: readonly { runId: string; record: StreamKeyView }[],
 ): NearMiss | undefined {
   let best: { runId: string; mismatches: NearMissMismatch[] } | undefined
   for (const { runId, record } of candidates) {
@@ -191,14 +202,21 @@ export function resolveBaseline(
     case 'previous-comparable': {
       const ids = store.listRunIds()
       const key = streamKey(current)
-      const candidates: { runId: string; record: RunRecord }[] = []
+      const candidates: { runId: string; record: RunMeta }[] = []
       for (let i = ids.length - 1; i >= 0; i--) {
         const id = ids[i]!
         if (id === currentId) continue
+        // Cheap pre-filter: shallow field validation only (RunMeta), no
+        // observations/finding/recording parsing (§9.4 strict validation is
+        // deferred to the single selected candidate below).
+        const meta = store.readRunMeta(id)
+        if (meta.completeness.status !== 'complete') continue
+        candidates.push({ runId: id, record: meta })
+        if (streamKey(meta) !== key) continue
+        // Selected baseline: strict-parse now. Corruption of the chosen
+        // record still surfaces as StoreCorruptError (fail-closed, §6.3);
+        // non-candidate corruption above (readRunMeta) does too.
         const record = store.readRun(id)
-        if (record.completeness.status !== 'complete') continue
-        candidates.push({ runId: id, record })
-        if (streamKey(record) !== key) continue
         return {
           record,
           runId: id,
@@ -224,10 +242,12 @@ export function resolveBaseline(
       const ids = store.listRunIds()
       for (let i = ids.length - 1; i >= 0; i--) {
         const id = ids[i]!
+        // Same pre-filter/strict-parse split as previous-comparable above.
+        const meta = store.readRunMeta(id)
+        if (meta.completeness.status !== 'complete') continue
+        if (meta.provenance.head !== spec.commit) continue
+        if (meta.provenance.tree_digest !== spec.tree) continue
         const record = store.readRun(id)
-        if (record.completeness.status !== 'complete') continue
-        if (record.provenance.head !== spec.commit) continue
-        if (record.provenance.tree_digest !== spec.tree) continue
         return {
           record,
           runId: id,
