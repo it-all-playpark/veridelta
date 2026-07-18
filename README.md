@@ -132,7 +132,7 @@ Every report carries exactly one `schema_version`, `"veridelta/1"`
 |---|---|
 | `vdelta run` | The child process's exit code, passed through unchanged. Internal errors degrade to raw passthrough (INV-5) — vdelta is never worse than its absence. |
 | `vdelta compare` | `0` when the comparison operation itself succeeded — an `inconclusive` result (e.g. no baseline) is a successful comparison and still exits `0`, with a deterministic JSON report on stdout. `1` only on operation failure. |
-| `vdelta gate` | Depends on `policy` (closed enum, spec [§11.1](spec/veridelta-1.md#111-policies-and-the-reporting-floor)): `report-only` is always `0` once a report is produced, regardless of verdict, and `2` only when no report could be produced; `blocking` is `1` on a gate-relevant transition and `2` on inconclusive/error; `advisory` uses the same exit codes as `blocking` but marks `policy: advisory` in the report so harnesses can surface it as a warning instead of failing the check. |
+| `vdelta gate` | `policy` is a closed enum (spec [§11.1](spec/veridelta-1.md#111-policies-and-the-reporting-floor)), but only `report-only` is implemented in this MVP: `0` once a report is produced, regardless of verdict, and `2` only when no report could be produced. `blocking` (`1` on a gate-relevant transition, `2` on inconclusive/error) and `advisory` (same codes as `blocking`, but marking `policy: advisory` in the report) are the spec §11.1 contract for a **future** release — the current CLI rejects both with exit `2` ("not implemented in this MVP"). |
 
 ### Baseline-missing `compare`
 
