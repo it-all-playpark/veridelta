@@ -86,7 +86,7 @@ Fixture classes 1–5 of spec §13.2 / contract §6 are all covered.
 | INV-4 | `inv4-partial-no-false-repaired` (also `adv-partial-bail`) |
 | INV-5 | `inv5-fail-open-held-lock` (also `pit-fail-open-vs-closed`) |
 | INV-6 | `inv6-determinism-byte-identical` (also `adv-parallel-order`) |
-| INV-7 | `inv7-claims-bounded-by-comparability` |
+| INV-7 | `inv7-claims-bounded-by-comparability` (also `inv7-baseline-missing-deterministic`) |
 | INV-8 | `inv8-updated-fail-value-mutation` |
 | INV-9 | `inv9-fail-to-skip-not-repaired` (+ every `recall-*`) |
 | INV-10 | `inv10-gate-record-integrity` (gate path, per §13.2.1) |
@@ -130,6 +130,7 @@ it).
 | inv5-fail-open-held-lock | INV-5, §4.4 | a held advisory lock degrades `run` to passthrough (no report, child exit); recovery is clean |
 | inv6-determinism-byte-identical | INV-6, §7.8 | `compare` is byte-identical across re-execution (`assertDeterministic`) |
 | inv7-claims-bounded-by-comparability | INV-7, §5.3 | no baseline → `none`/`baseline-missing`, transitions omitted, `current.red` still disclosed |
+| inv7-baseline-missing-deterministic | INV-7, INV-6, §10, §13.3 | previous-comparable mode with a single run → deterministic (`assertDeterministic`) inconclusive report, `baseline-missing`, exit 0 |
 | inv8-updated-fail-value-mutation | INV-8, §3.6 | a red→red value change is `updated_fail` (not buried), `failure_mode_changed:false`, digests differ |
 | inv9-fail-to-skip-not-repaired | INV-9, §7.5 | fail→skip is a surface reduction, never `repaired`; status `reduced` |
 | inv10-gate-record-integrity | INV-10, §11.2 | a tampered stored record fails the content-address check → `record-integrity-failed`, gate inconclusive |
