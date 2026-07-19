@@ -1,0 +1,76 @@
+{
+  "name": "inv7-baseline-missing-deterministic",
+  "class": "invariant",
+  "spec_refs": [
+    "INV-7",
+    "INV-6",
+    "§5.3",
+    "§5.7",
+    "§10",
+    "§13.3"
+  ],
+  "notes": "First-run loop: exactly one run is recorded, then `vdelta compare` with no arguments (previous-comparable mode) must abstain with a deterministic inconclusive report and exit 0 — an inconclusive result is a successful comparison (§10). assertDeterministic re-executes the identical compare and byte-compares stdout (§13.3). current.red stays disclosed (INV-1 floor, §5.7). Complements inv7-claims-bounded-by-comparability, which pins the git-ref mode.",
+  "steps": [
+    {
+      "do": "apply",
+      "project": "base"
+    },
+    {
+      "do": "commit",
+      "message": "seed single-run workspace"
+    },
+    {
+      "do": "run",
+      "id": "A",
+      "expectExit": 1
+    },
+    {
+      "do": "compare",
+      "id": "cmp",
+      "expectExit": 0,
+      "assertDeterministic": true
+    }
+  ],
+  "assertions": [
+    {
+      "report": "cmp",
+      "path": "schema_version",
+      "eq": "veridelta/1"
+    },
+    {
+      "report": "cmp",
+      "path": "outcome_verdict",
+      "eq": "inconclusive"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability",
+      "eq": "none"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability_detail.reason",
+      "eq": "baseline-missing"
+    },
+    {
+      "report": "cmp",
+      "path": "comparability_detail.kind",
+      "eq": "determined"
+    },
+    {
+      "report": "cmp",
+      "path": "baseline",
+      "eq": null
+    },
+    {
+      "report": "cmp",
+      "path": "transitions",
+      "defined": false
+    },
+    {
+      "report": "cmp",
+      "path": "current.red",
+      "contains": "tests/first.test.ts::still red"
+    }
+  ]
+}

@@ -43,6 +43,31 @@ const REPO_ROOT = join(import.meta.dirname, '..', '..')
 const CLI = join(REPO_ROOT, 'dist', 'cli.js')
 const VITEST_MJS = join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs')
 
+/**
+ * vitest/vite's config search (lilconfig) climbs parent directories with no
+ * stop boundary until it finds a vite/vitest config file or reaches the
+ * filesystem root. Fixture workspaces live under the OS tmp dir, which is
+ * shared with unrelated tools/processes -- a stray vite/vitest config
+ * anywhere above the workspace would otherwise be picked up by the child
+ * vitest invocation and break it. Fixtures that ship their own config
+ * already stop the search at the workspace root; this is the boundary
+ * marker for fixtures that don't.
+ */
+const CONFIG_FILE_NAMES = [
+  'vite.config.js',
+  'vite.config.mjs',
+  'vite.config.cjs',
+  'vite.config.ts',
+  'vite.config.mts',
+  'vite.config.cts',
+  'vitest.config.js',
+  'vitest.config.mjs',
+  'vitest.config.cjs',
+  'vitest.config.ts',
+  'vitest.config.mts',
+  'vitest.config.cts',
+]
+
 export interface Manifest {
   name: string
   class: string
@@ -256,7 +281,25 @@ class FixtureContext {
     chmodReadonlyRecursive(target)
   }
 
+  /** See the CONFIG_FILE_NAMES doc comment: guarantee the child vitest's
+   * upward config search stops at the workspace root instead of escaping
+   * into whatever happens to sit above the shared OS tmp dir. Only writes
+   * a boundary marker when the fixture (or a prior apply step) hasn't
+   * already supplied its own vite/vitest config. */
+  private ensureConfigBoundary(): void {
+    const hasOwnConfig = CONFIG_FILE_NAMES.some((name) =>
+      existsSync(join(this.workspace, name)),
+    )
+    if (!hasOwnConfig) {
+      writeFileSync(
+        join(this.workspace, 'vitest.config.mjs'),
+        "import { defineConfig } from 'vitest/config'\nexport default defineConfig({})\n",
+      )
+    }
+  }
+
   private async stepRun(step: Step): Promise<void> {
+    this.ensureConfigBoundary()
     const args = Array.isArray(step.args) ? step.args.map(String) : []
     const child = [
       'run',

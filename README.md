@@ -18,7 +18,7 @@ another" — a verification delta can, and when two runs are not comparable it
 - Runner support (MVP): **vitest v4** (native reporter, structured channel only)
 - Zero runtime dependencies; Node ≥ 20
 - Machine-verified against the [conformance suite](conformance/) —
-  41 fixtures covering the spec's invariants, adversarial inputs, and a
+  42 fixtures covering the spec's invariants, adversarial inputs, and a
   10-mutation cheating corpus with 100% detection recall
 
 ## Quickstart (5 minutes)
@@ -107,6 +107,43 @@ runs / 64MiB, overridable via `VDELTA_GC_MAX_COUNT` / `VDELTA_GC_MAX_BYTES`
 (positive integers; unset/invalid falls back to the default, `0` or
 non-numeric disables that limit).
 
+## Report compatibility & exit codes
+
+### `schema_version` backward compatibility
+
+Every report carries exactly one `schema_version`, `"veridelta/1"`
+(spec [§14](spec/veridelta-1.md#14-versioning-and-extensibility)). Within
+`/1` this is a closed contract:
+
+- The enums defined for `/1` (verdicts, comparability reasons, transition
+  kinds, etc.) are **closed** — a new enum value requires a new schema
+  version, never a silent addition to `/1`.
+- Fields are added to `/1` only through a published spec revision; nothing
+  else is a conforming way to extend the contract.
+- Consumers **MUST** treat an unknown enum value as a hard error (throw).
+  Silently skipping it, or falling back to a default, is non-conforming
+  (spec [§9.4](spec/veridelta-1.md#94-consumer-requirements)).
+- Consumers SHOULD reject unknown fields rather than reinterpret them
+  (spec §9.4, §14).
+
+### Exit codes
+
+| Command | Exit code |
+|---|---|
+| `vdelta run` | The child process's exit code, passed through unchanged. Internal errors degrade to raw passthrough (INV-5) — vdelta is never worse than its absence. |
+| `vdelta compare` | `0` when the comparison operation itself succeeded — an `inconclusive` result (e.g. no baseline) is a successful comparison and still exits `0`, with a deterministic JSON report on stdout. `1` only on operation failure. |
+| `vdelta gate` | `policy` is a closed enum (spec [§11.1](spec/veridelta-1.md#111-policies-and-the-reporting-floor)), but only `report-only` is implemented in this MVP: `0` once a report is produced, regardless of verdict, and `2` only when no report could be produced. `blocking` (`1` on a gate-relevant transition, `2` on inconclusive/error) and `advisory` (same codes as `blocking`, but marking `policy: advisory` in the report) are the spec §11.1 contract for a **future** release — the current CLI rejects both with exit `2` ("not implemented in this MVP"). |
+
+### Baseline-missing `compare`
+
+When there is no baseline to compare against, `vdelta compare --report json`
+returns a deterministic `inconclusive` report — `comparability: none`,
+`comparability_detail: { "reason": "baseline-missing", "kind": "determined" }`
+— and exits `0`, because determining "nothing to compare yet" is itself a
+successful comparison. The INV-1 floor still holds: red results in the
+current run are disclosed via `current.red` (spec §5.7) even though there is
+no baseline to diff against.
+
 ## What the report separates (and why)
 
 Three axes, never collapsed into one:
@@ -188,7 +225,7 @@ intended success mode.
 
 ```bash
 npm test                     # unit + full conformance suite
-npm run test:conformance     # the 41-fixture suite only
+npm run test:conformance     # the 42-fixture suite only
 ```
 
 The suite is authored independently of this implementation (the fixture
