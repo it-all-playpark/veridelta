@@ -94,11 +94,14 @@ export class FixtureFailure extends Error {
   }
 }
 
-export async function runFixture(fixtureDir: string): Promise<void> {
+export async function runFixture(
+  fixtureDir: string,
+  options?: { workspaceParent?: string },
+): Promise<void> {
   const manifest = JSON.parse(
     readFileSync(join(fixtureDir, 'manifest.json'), 'utf8'),
   ) as Manifest
-  const ctx = new FixtureContext(fixtureDir, manifest)
+  const ctx = new FixtureContext(fixtureDir, manifest, options)
   try {
     await ctx.init()
     for (const step of manifest.steps) await ctx.runStep(step)
@@ -118,8 +121,11 @@ class FixtureContext {
   constructor(
     private readonly fixtureDir: string,
     private readonly manifest: Manifest,
+    options?: { workspaceParent?: string },
   ) {
-    this.workspace = mkdtempSync(join(tmpdir(), 'vdelta-conf-'))
+    this.workspace = mkdtempSync(
+      join(options?.workspaceParent ?? tmpdir(), 'vdelta-conf-'),
+    )
   }
 
   async init(): Promise<void> {
