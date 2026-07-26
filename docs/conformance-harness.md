@@ -55,6 +55,22 @@ manifest in a **fresh temporary git repository** (the *workspace*):
 Workspace state (files, git history, the `.veridelta` store) persists across
 steps within one fixture and is discarded afterwards.
 
+Config isolation: fixture workspaces are created under the shared OS
+temporary directory, alongside directories used by unrelated tools and
+processes. vitest/vite's config-file resolution climbs ancestor directories
+with no stop boundary until it finds a vite/vitest config file or reaches
+the filesystem root, so a stray `vite.config.*`/`vitest.config.*` anywhere
+above the workspace could otherwise be picked up by the child vitest
+invocation and break fixture hermeticity. The runner guarantees a config
+boundary at the workspace root: before each `run` step it writes a minimal
+sentinel `vitest.config.mjs` into the workspace root if and only if the
+fixture (or a prior `apply`/`write-file` step) has not already supplied its
+own vite/vitest config file (any of `vite.config.{js,mjs,cjs,ts,mts,cts}` /
+`vitest.config.{js,mjs,cjs,ts,mts,cts}`). Fixtures that ship their own
+config stop the upward search themselves and are never overwritten. This is
+a contract fixtures may rely on: fixture behavior MUST NOT depend on any
+configuration outside the workspace root.
+
 Mini vitest projects:
 
 - May contain test files, source files, `vitest.config.ts`, `.gitignore`,
