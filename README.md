@@ -16,14 +16,14 @@ another" — a verification delta can, and when two runs are not comparable it
 **abstains instead of guessing**.
 
 - Runner support (MVP): **vitest v4** (native reporter, structured channel only)
-- Zero runtime dependencies; Node ≥ 20
+- Zero runtime dependencies; Node ≥ 22
 - Machine-verified against the [conformance suite](conformance/) —
   42 fixtures covering the spec's invariants, adversarial inputs, and a
   10-mutation cheating corpus with 100% detection recall
 
 ## Quickstart (5 minutes)
 
-Requires Node 20+ inside a git repository.
+Requires Node 22+ inside a git repository.
 
 ```bash
 npm i -D vitest vdelta
