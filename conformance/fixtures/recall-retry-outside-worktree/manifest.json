@@ -1,0 +1,33 @@
+{
+  "name": "recall-retry-outside-worktree",
+  "class": "recall",
+  "mutation": "retry-added-via-outside-worktree-config",
+  "spec_refs": ["§7.4", "§7.5", "INV-9"],
+  "notes": "Cheat: retry is added not by editing anything inside the git worktree, but by rewriting the ancestor-directory config that lives outside the worktree (vitest.config.mjs written via write-outside into the fixture root). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which cannot climb into the workspace's symlinked node_modules from the fixture root; a plain object is functionally identical to `defineConfig({...})`. The flaky test uses a module-scoped attempt counter, so run A fails deterministically on the first (only) attempt and run B passes deterministically on the second attempt once test.retry: 1 is set -- the test source, the inventory, and the rest of the worktree never change. Because config-source-changed fires for the external config, the repair is classified as repaired_with_test_change (not repaired_same_surface): a green-without-worktree-change cheat is never silently disclosed as an unchanged surface. Worktree-external config cannot be pinned by provenance (no commit, no worktree diff observes it), so it is disclosed via the `external:` config_sources key instead (spec §3.5 Config-source keys / Appendix C residual risk) -- this fixture does not, and must not, claim repaired_same_surface.",
+  "steps": [
+    {
+      "do": "write-outside",
+      "path": "vitest.config.mjs",
+      "content": "export default {}\n"
+    },
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed flaky test"},
+    {"do": "run", "id": "A", "expectExit": 1},
+    {
+      "do": "write-outside",
+      "path": "vitest.config.mjs",
+      "content": "export default { test: { retry: 1 } }\n"
+    },
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "contains": "tests/flaky.test.ts::needs retry"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed"}},
+    {"report": "cmp", "path": "verification_surface.events.0.path", "matches": "^external:"},
+    {"report": "cmp", "path": "verification_surface.events.1", "defined": false},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

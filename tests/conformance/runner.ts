@@ -22,7 +22,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
 import { parseReport, parseRunRecord } from '../../src/index.js'
 
@@ -112,6 +112,16 @@ export async function runFixture(
 }
 
 class FixtureContext {
+  /**
+   * `root` is a fresh mkdtemp directory that is NOT itself the git
+   * workspace: the git worktree lives in the `repo` subdirectory
+   * (`this.workspace`). This nested layout gives fixtures a place to plant
+   * files that are outside the git worktree but still inside the fixture's
+   * own disposable tmp territory (see the `write-outside` step) -- e.g. to
+   * simulate an ancestor-directory config file that takes effect from
+   * outside the repo without ever touching the shared OS tmp dir directly.
+   */
+  readonly root: string
   readonly workspace: string
   readonly reports = new Map<string, unknown>()
   readonly rawOutputs = new Map<string, string>()
@@ -123,9 +133,11 @@ class FixtureContext {
     private readonly manifest: Manifest,
     options?: { workspaceParent?: string },
   ) {
-    this.workspace = mkdtempSync(
+    this.root = mkdtempSync(
       join(options?.workspaceParent ?? tmpdir(), 'vdelta-conf-'),
     )
+    this.workspace = join(this.root, 'repo')
+    mkdirSync(this.workspace, { recursive: true })
   }
 
   async init(): Promise<void> {
@@ -142,7 +154,7 @@ class FixtureContext {
     // macOS/Linux refuse to rmSync a write-protected directory, so restore
     // write permission on every chmod-readonly'd path before deleting.
     for (const p of this.readonlyPaths) restoreWritable(p)
-    rmSync(this.workspace, { recursive: true, force: true })
+    rmSync(this.root, { recursive: true, force: true })
   }
 
   private fail(message: string): never {
@@ -212,6 +224,8 @@ class FixtureContext {
         writeFileSync(target, String(step.content ?? ''))
         return
       }
+      case 'write-outside':
+        return this.stepWriteOutside(step)
       case 'edit-json':
         return this.stepEditJson(step)
       case 'delete':
@@ -287,14 +301,47 @@ class FixtureContext {
     chmodReadonlyRecursive(target)
   }
 
+  /**
+   * Write a file into the fixture's disposable tmp territory (`this.root`)
+   * but outside the git worktree (`this.workspace`) — e.g. to simulate an
+   * ancestor-directory config that takes effect on the workspace from
+   * outside the repo. `step.path` is resolved relative to `this.root`; it
+   * MUST stay inside `this.root` and outside `this.workspace` (no `..`
+   * escape into the shared OS tmp dir, and no clobbering the workspace
+   * itself), or the step fails.
+   */
+  private stepWriteOutside(step: Step): void {
+    const target = resolve(this.root, String(step.path))
+    const rootWithSep = this.root.endsWith(sep) ? this.root : this.root + sep
+    const workspaceWithSep = this.workspace.endsWith(sep)
+      ? this.workspace
+      : this.workspace + sep
+    const insideRoot = target === this.root || target.startsWith(rootWithSep)
+    const insideWorkspace =
+      target === this.workspace || target.startsWith(workspaceWithSep)
+    if (!insideRoot || insideWorkspace) {
+      this.fail(
+        `write-outside: path "${String(step.path)}" must resolve inside the fixture root and outside the workspace`,
+      )
+    }
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, String(step.content ?? ''))
+  }
+
   /** See the CONFIG_FILE_NAMES doc comment: guarantee the child vitest's
    * upward config search stops at the workspace root instead of escaping
    * into whatever happens to sit above the shared OS tmp dir. Only writes
    * a boundary marker when the fixture (or a prior apply step) hasn't
-   * already supplied its own vite/vitest config. */
+   * already supplied its own vite/vitest config -- either directly in the
+   * workspace, or (via `write-outside`) in the fixture root that sits
+   * between the workspace and the shared OS tmp dir. A config placed in
+   * the root by `write-outside` is itself a valid boundary: vite's upward
+   * search stops there just as it would at the workspace root. */
   private ensureConfigBoundary(): void {
-    const hasOwnConfig = CONFIG_FILE_NAMES.some((name) =>
-      existsSync(join(this.workspace, name)),
+    const hasOwnConfig = CONFIG_FILE_NAMES.some(
+      (name) =>
+        existsSync(join(this.workspace, name)) ||
+        existsSync(join(this.root, name)),
     )
     if (!hasOwnConfig) {
       writeFileSync(

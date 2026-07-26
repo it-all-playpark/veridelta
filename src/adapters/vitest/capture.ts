@@ -4,7 +4,7 @@
  * canonicalization/redaction/digesting happen in the recorder.
  */
 
-export const CAPTURE_VERSION = 1
+export const CAPTURE_VERSION = 2
 
 export interface CapturedError {
   name: string
@@ -41,4 +41,14 @@ export interface Capture {
   }
   tests: CapturedTest[]
   module_errors: { rel: string; messages: string[] }[]
+  /**
+   * Absolute paths of the config files vite/vitest actually resolved for this
+   * run: the union of `configFile` and `configFileDependencies` across the
+   * global vite dev server and every workspace `TestProject`'s dev server.
+   * Sorted and deduped by the reporter. The recorder digests each of these
+   * paths directly (no more decide-file-name guessing) and keys the result
+   * with a worktree-relative path, or `external:<abs path>` for anything
+   * outside the worktree.
+   */
+  config_files: string[]
 }

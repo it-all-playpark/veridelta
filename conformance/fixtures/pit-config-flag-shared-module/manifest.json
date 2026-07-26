@@ -1,0 +1,21 @@
+{
+  "name": "pit-config-flag-shared-module",
+  "class": "pitfall",
+  "spec_refs": ["§3.5", "§7.4"],
+  "notes": "Operational pitfall: the run is invoked with an explicit --config configs/vitest.custom.mjs, which itself imports a sibling module (configs/shared.mjs) for a config value. Vite exposes this via configFileDependencies, so the shared module's digest must be captured under surface.config_sources alongside the config file itself (§3.5). When only the shared module changes between baseline and current, a config-source-changed event must fire for it. The runner's ensureConfigBoundary writes a workspace-root vitest.config.mjs to stop vite's upward config search, but since --config points elsewhere that boundary file is never loaded by vite and must not appear in config_sources (verified by the events.1 defined:false assertion below).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed config with shared module + green test"},
+    {"do": "run", "id": "A", "args": ["--config", "configs/vitest.custom.mjs"], "expectExit": 0},
+    {"do": "write-file", "path": "configs/shared.mjs", "content": "export const timeoutMs = 6000\n"},
+    {"do": "commit", "message": "change shared config module value"},
+    {"do": "run", "id": "B", "args": ["--config", "configs/vitest.custom.mjs"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed", "path": "configs/shared.mjs"}},
+    {"report": "cmp", "path": "verification_surface.events.1", "defined": false},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

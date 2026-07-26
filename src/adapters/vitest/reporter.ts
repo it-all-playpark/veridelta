@@ -96,8 +96,50 @@ export default class VdeltaReporter implements Reporter {
       },
       tests,
       module_errors: moduleErrors,
+      config_files: this.collectConfigFiles(),
     }
     writeFileSync(outFile, JSON.stringify(capture))
+  }
+
+  /**
+   * Union of `configFile` + `configFileDependencies` from the global vite dev
+   * server and every workspace `TestProject`'s dev server. `ctx.vite` /
+   * `project.vite` are getters that can throw if the server was never
+   * initialized (e.g. crashed/interrupted runs); each source is collected
+   * independently so a failure on one project doesn't drop the others.
+   */
+  private collectConfigFiles(): string[] {
+    const files = new Set<string>()
+
+    const addFromViteConfig = (viteConfig: {
+      configFile?: unknown
+      configFileDependencies?: unknown
+    }): void => {
+      if (typeof viteConfig.configFile === 'string')
+        files.add(viteConfig.configFile)
+      if (Array.isArray(viteConfig.configFileDependencies)) {
+        for (const dep of viteConfig.configFileDependencies) {
+          if (typeof dep === 'string') files.add(dep)
+        }
+      }
+    }
+
+    try {
+      const viteConfig = this.ctx?.vite.config
+      if (viteConfig !== undefined) addFromViteConfig(viteConfig)
+    } catch {
+      // getter not initialized: no global config to report.
+    }
+
+    for (const project of this.ctx?.projects ?? []) {
+      try {
+        addFromViteConfig(project.vite.config)
+      } catch {
+        // getter not initialized for this project: skip it.
+      }
+    }
+
+    return [...files].sort()
   }
 
   private captureTest(tc: TestCase): CapturedTest {
