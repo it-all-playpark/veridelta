@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2](https://github.com/it-all-playpark/veridelta/compare/v0.2.1...v0.2.2) (2026-07-27)
+
+
+### Bug Fixes
+
+* **ci:** macOS の週次 full conformance 失敗を通知対象にする ([2c9264e](https://github.com/it-all-playpark/veridelta/commit/2c9264e11dbc615d3baf1b758d54b6e99c882771))
+* **conformance:** add missing .gitignore to two base fixtures ([4fc2244](https://github.com/it-all-playpark/veridelta/commit/4fc2244c41117dd54584d9c5acec0430ef6a5da8))
+* **recorder:** worktree外の実効config_sourcesをexternal接頭辞で記録 ([8276e3b](https://github.com/it-all-playpark/veridelta/commit/8276e3b09c953d2449873fba38c97e6295a1c30e))
+* **windows:** normalize backslash paths in recorder key and lock error ([26157cd](https://github.com/it-all-playpark/veridelta/commit/26157cd6045bb3457f90571715f4fb01117ae7a2))
+
 ## [Unreleased]
 
 ### Changed
