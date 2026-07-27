@@ -1,0 +1,30 @@
+{
+  "name": "pit-config-ancestor-outside",
+  "class": "pitfall",
+  "spec_refs": ["§3.5", "§7.4"],
+  "notes": "Operational pitfall: no vite/vitest config exists inside the workspace or a subdirectory. The only config is an ancestor-directory file that lives outside the git worktree (vitest.config.mjs written via write-outside into the fixture root, which sits between the workspace and the shared OS tmp dir). vitest/vite's config search (lilconfig) climbs parent directories with no stop boundary, so this ancestor config becomes the effective config for both runs; because ensureConfigBoundary only writes a boundary marker when no own config is found in the workspace or the root, it does not fire here (§7.4). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which only climbs real ancestor directories of that file for node_modules -- the fixture root has no node_modules of its own (only the workspace does, via a symlink), so `import { defineConfig } from 'vitest/config'` would fail to resolve from there; a plain object is functionally identical to `defineConfig({...})`, which is only a type-inference identity helper. Since the config lives outside the worktree, surface.config_sources keys it as `external:<realpath>` rather than a worktree-relative path (recorder.ts configSourceKey, §3.5). The git worktree itself is never touched between run A and run B -- only the external config's content changes (an inert trailing comment, not touching instrument-affecting settings like includeTaskLocation/truncateThreshold) -- yet the two runs remain content-distinct because run_id is a content address over the whole record excluding the recording group (store.ts:69), and the external config's digest is part of surface.config_sources. This confirms an ancestor-directory config change is captured as config-source-changed even without any worktree-visible commit.",
+  "steps": [
+    {
+      "do": "write-outside",
+      "path": "vitest.config.mjs",
+      "content": "export default {}\n"
+    },
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed green test with ancestor-directory config"},
+    {"do": "run", "id": "A", "expectExit": 0},
+    {
+      "do": "write-outside",
+      "path": "vitest.config.mjs",
+      "content": "export default {}\n// rev 2\n"
+    },
+    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed"}},
+    {"report": "cmp", "path": "verification_surface.events.0.path", "matches": "^external:.*vitest\\.config\\.mjs$"},
+    {"report": "cmp", "path": "verification_surface.events.1", "defined": false},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

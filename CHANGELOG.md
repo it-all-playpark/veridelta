@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+* **recorder:** vitest reporter が解決済みの `configFile`/`configFileDependencies` を Capture v2 経由で渡すようにし、recorder が worktree 相対パスまたは `external:` 接頭辞（worktree 外の実効設定）をキーとして `surface.config_sources` に digest 記録する方式へ変更
+
 ## [0.2.1](https://github.com/it-all-playpark/veridelta/compare/v0.2.0...v0.2.1) (2026-07-26)
 
 

@@ -212,6 +212,25 @@ does NOT capture uncommitted changes inside a submodule working tree, and it
 cannot represent empty directories — both are explicit, documented limitations
 (see §11.3 for gate-side handling).
 
+**Config-source keys.** `surface.config_sources` is a map keyed by
+configuration-file identity. For an effective configuration file that resides
+inside the recorded worktree, the key MUST be the worktree-relative POSIX
+path. For an effective configuration file resolved from outside the
+worktree (e.g., reached by a runner's upward/ancestor-directory configuration
+discovery, or supplied via an out-of-tree `--config` path), the key MUST be
+the literal prefix `external:` followed by the absolute, symlink-resolved
+path. Before classifying a candidate path as in-worktree or external,
+implementations MUST resolve both the worktree root and the candidate path to
+their real (symlink-free) form, so that filesystem aliasing (e.g., a
+temporary-directory symlink) cannot misclassify an in-worktree file as
+external or vice versa. An `external:` entry's digest MUST be disclosed as
+what it is: the content digest of that file as observed at the time of the
+run, and *not* evidence that `provenance.tree_digest` or
+`provenance.dirty_diff_digest` fix or reproduce — because the file lives
+outside the tree those fields identify, its content can change out from under
+a stored run without leaving any trace in provenance. The `external:` key
+prefix is itself the disclosure mechanism (see Appendix C).
+
 ### 3.6. Canonical failure evidence
 
 The input to `evidence_digest` is the **canonical failure evidence**: a
@@ -529,7 +548,9 @@ observable surface changes are reported as `verification_surface.events`:
   baseline selector; carries both selectors and the proving capability.
   Distinct from `selector-changed` (unproven or non-containment change)
 - `test-source-changed`, `config-source-changed` (digest changes of test/config
-  sources)
+  sources). `config-source-changed` fires per configuration-source key,
+  compared independently for each key; this applies identically to
+  `external:`-prefixed keys (§3.5) and to worktree-relative keys.
 
 `verification_surface.status`: `intact | changed | reduced | inconclusive`.
 `changed` covers source/config digest drift alone; `reduced` is REQUIRED
@@ -1114,6 +1135,16 @@ None violates an invariant; each is disclosed rather than papered over.
   makes its own tests report `pass` is common to every architecture that
   executes the author's code; defenses are the surface events (§7.4) and the
   non-goal boundary (§1.3) — intent attribution stays with the consumer.
+- **Outside-worktree effective configuration.** A runner's configuration
+  resolution (e.g., vitest/vite's upward search for a config file) can settle
+  on a file outside the recorded worktree, so the effective configuration a
+  run executed against is not guaranteed to live inside the tree that
+  `provenance.tree_digest` fixes. Its content is still recorded and compared
+  as a digest (surfaced under the `external:`-prefixed `config_sources` key,
+  §3.5) and can produce a `config-source-changed` event, but — unlike
+  in-worktree config — it cannot be reproduced or pinned via provenance;
+  disclosure is via the key prefix and this note, and escalating it to
+  gate-relevant remains a consumer MAY.
 
 ## Revision history
 

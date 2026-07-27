@@ -160,6 +160,9 @@ it).
 | pit-fail-open-vs-closed | §6.3, INV-5 | corrupt store → `compare` abstains `store-corrupt` (fail-closed); held lock → `run` passthrough (fail-open) |
 | pit-flag-value-forms | §5.1, §6.4 | `--flag=value` and `--flag value` normalize to the same canonical command / stream key; baseline resolves across the two invocation forms |
 | pit-selector-changed | §6.4, §5.1, §11.1 | a selector-bearing run compares exact against a same-selector prior run; a selector change abstains `selector-relation-unknown` with a `selector-changed` event |
+| pit-config-ancestor-outside | §3.5, §7.4 | an ancestor-directory config outside the worktree is captured under `external:<realpath>`; an inert change to it surfaces as `config-source-changed` with no worktree commit |
+| pit-config-flag-shared-module | §3.5, §7.4 | a `--config`-specified config's shared module (via `configFileDependencies`) is captured in `config_sources`; a change to the shared module alone fires `config-source-changed` |
+| pit-config-subdir-root | §3.5, §7.4 | with `--root sub`, the effective config `sub/vitest.config.mjs` is keyed by its worktree-relative path; an inert change fires `config-source-changed` |
 
 ### Consumer (`con-*`)
 
@@ -185,6 +188,7 @@ it).
 | recall-expected-rewritten | expected rewritten to actual | `repaired_with_test_change` + `test-source-changed`; not `repaired_same_surface` |
 | recall-selector-exclude | config `exclude` drops the file | `removed` (in-scope non-observation, never `out_of_scope`) + `config-source-changed` |
 | recall-true-fix | implementation-only fix (honest) | `repaired_same_surface`, surface intact, outcome improved (the honest control) |
+| recall-retry-outside-worktree | retry added via an ancestor config outside the worktree | `repaired_with_test_change` + `config-source-changed` (`external:` key); not `repaired_same_surface`, even though the worktree and test source never change |
 
 ## Fixture author findings
 

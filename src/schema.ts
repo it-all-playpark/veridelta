@@ -294,6 +294,7 @@ export interface RunRecord {
   surface: {
     inventory_digest: string
     test_sources: Record<string, string>
+    /** Keys are worktree-relative paths, or `external:<abs path>` for config files outside the worktree. */
     config_sources: Record<string, string>
     suppressed: string[]
   }

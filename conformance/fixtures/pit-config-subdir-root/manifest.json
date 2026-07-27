@@ -1,0 +1,21 @@
+{
+  "name": "pit-config-subdir-root",
+  "class": "pitfall",
+  "spec_refs": ["§3.5", "§7.4"],
+  "notes": "Operational pitfall: the run is invoked with --root sub, so the effective vitest config is sub/vitest.config.mjs rather than a config at the git worktree root. surface.config_sources must key this file by its worktree-relative path (sub/vitest.config.mjs, §3) so an inert change to it (a trailing comment, not touching instrument-affecting settings like includeTaskLocation/truncateThreshold) still surfaces as config-source-changed between baseline and current. Known constraint (out of scope for this issue): with --root sub, relativeModuleId is computed relative to sub rather than the worktree root, so test_sources comparison may not line up with a worktree-relative baseline; this is consistent across both runs (undefined===undefined) and does not affect the config-source-changed assertions below.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed subdirectory config + green test"},
+    {"do": "run", "id": "A", "args": ["--root", "sub"], "expectExit": 0},
+    {"do": "write-file", "path": "sub/vitest.config.mjs", "content": "import { defineConfig } from 'vitest/config'\n\nexport default defineConfig({ test: { include: ['tests/**/*.test.ts'] } })\n// rev 2\n"},
+    {"do": "commit", "message": "inert comment change to subdirectory config"},
+    {"do": "run", "id": "B", "args": ["--root", "sub"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed", "path": "sub/vitest.config.mjs"}},
+    {"report": "cmp", "path": "verification_surface.events.1", "defined": false},
+    {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
+  ]
+}

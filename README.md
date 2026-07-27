@@ -18,7 +18,7 @@ another" — a verification delta can, and when two runs are not comparable it
 - Runner support (MVP): **vitest v4** (native reporter, structured channel only)
 - Zero runtime dependencies; Node ≥ 22
 - Machine-verified against the [conformance suite](conformance/) —
-  42 fixtures covering the spec's invariants, adversarial inputs, and a
+  46 fixtures covering the spec's invariants, adversarial inputs, and a
   10-mutation cheating corpus with 100% detection recall
 
 ## Quickstart (5 minutes)
@@ -225,7 +225,7 @@ intended success mode.
 
 ```bash
 npm test                     # unit + full conformance suite
-npm run test:conformance     # the 42-fixture suite only
+npm run test:conformance     # the 46-fixture suite only
 ```
 
 The suite is authored independently of this implementation (the fixture

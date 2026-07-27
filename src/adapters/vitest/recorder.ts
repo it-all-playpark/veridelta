@@ -9,8 +9,8 @@
  * path in vitest run mode, so this adapter declares that no cache
  * neutralization is required — the §13.2(b) fixture arbitrates that claim.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, realpathSync } from 'node:fs'
+import { isAbsolute, join, relative } from 'node:path'
 import { canonicalDigest } from '../../digest.js'
 import { redactText, redactValue } from '../../redact.js'
 import {
@@ -30,15 +30,6 @@ export const COMPOSITION_ID = 'vitest-native/1'
 export const DEGRADED_CAPABILITIES = ['source-region-text']
 /** Env vars whose values (fingerprinted, never stored) are comparison-relevant. */
 export const DECLARED_ENV_VARS = ['CI', 'NODE_ENV', 'TZ', 'LANG'] as const
-
-const CONFIG_SOURCE_CANDIDATES = [
-  'vitest.config.ts',
-  'vitest.config.mts',
-  'vitest.config.js',
-  'vitest.config.mjs',
-  'vite.config.ts',
-  'vite.config.js',
-]
 
 export class RecorderError extends Error {
   constructor(message: string) {
@@ -68,7 +59,7 @@ export function buildRunRecord(
   capture: Capture,
   ctx: RecordContext,
 ): RunRecord {
-  if (capture.capture_version !== 1) {
+  if (capture.capture_version !== 2) {
     throw new RecorderError(
       `unsupported capture version ${capture.capture_version}`,
     )
@@ -101,9 +92,10 @@ export function buildRunRecord(
     if (digest !== null) testSources[rel] = digest
   }
   const configSources: Record<string, string> = {}
-  for (const rel of CONFIG_SOURCE_CANDIDATES) {
-    const digest = fileDigest(join(ctx.worktree, rel))
-    if (digest !== null) configSources[rel] = digest
+  for (const abs of [...new Set(capture.config_files)].sort()) {
+    const digest = fileDigest(abs)
+    if (digest !== null)
+      configSources[configSourceKey(abs, ctx.worktree)] = digest
   }
 
   const notRun = observations.filter((o) => o.verdict === 'not_run').length
@@ -260,6 +252,30 @@ function relOffsets(
   return frames
     .filter((f) => f.file === t.module_id)
     .map((f) => f.line - t.location_line!)
+}
+
+/**
+ * Normalizes a config file's absolute path into a `surface.config_sources`
+ * key: a worktree-relative POSIX-style path when the file lives inside the
+ * worktree, or `external:<abs path>` when it doesn't (§3, config_sources key
+ * convention). Both paths are realpath'd first so filesystem-level aliasing
+ * (e.g. macOS's /var -> /private/var symlink) doesn't cause a worktree-local
+ * config to be misclassified as external.
+ */
+export function configSourceKey(absPath: string, worktree: string): string {
+  const resolvedPath = realpath(absPath)
+  const resolvedWorktree = realpath(worktree)
+  const rel = relative(resolvedWorktree, resolvedPath)
+  if (rel.startsWith('..') || isAbsolute(rel)) return `external:${resolvedPath}`
+  return rel
+}
+
+function realpath(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
 }
 
 function fileDigest(path: string): string | null {

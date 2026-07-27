@@ -41,35 +41,45 @@ Fixture naming: `inv-*` (invariant, class 1), `adv-*` (adversarial, class 2),
 ## 2. Execution model
 
 The runner (implemented in `tests/`, not part of `conformance/`) executes each
-manifest in a **fresh temporary git repository** (the *workspace*):
+manifest in a **fresh temporary git repository** (the *workspace*), nested one
+level under a disposable *fixture root*:
 
-1. Create an empty directory outside the vdelta repo; `git init` with a fixed
-   `user.name`/`user.email`, default branch `main`.
-2. Symlink `node_modules` → the vdelta repo's `node_modules` so that `vitest`
-   resolves. Because of this, **every fixture project MUST contain a
-   `.gitignore` that ignores at least `node_modules` and `.veridelta`**
-   (the tree digest honors committed gitignore rules).
+1. Create a fresh mkdtemp directory outside the vdelta repo (the *root*), and
+   a `repo/` subdirectory inside it (the *workspace*); `git init` the
+   workspace with a fixed `user.name`/`user.email`, default branch `main`.
+   The root is never itself a git repository — it exists solely to give
+   fixtures a place to plant files that sit outside the git worktree while
+   staying inside the fixture's own disposable tmp territory (see the
+   `write-outside` step in §3).
+2. Symlink `node_modules` → the vdelta repo's `node_modules` (inside the
+   workspace) so that `vitest` resolves. Because of this, **every fixture
+   project MUST contain a `.gitignore` that ignores at least `node_modules`
+   and `.veridelta`** (the tree digest honors committed gitignore rules).
 3. Execute `steps` in order (vocabulary in §3).
 4. Evaluate `assertions` (vocabulary in §4). All assertions must hold.
 
 Workspace state (files, git history, the `.veridelta` store) persists across
-steps within one fixture and is discarded afterwards.
+steps within one fixture and is discarded afterwards, along with anything
+written into the root via `write-outside`.
 
-Config isolation: fixture workspaces are created under the shared OS
-temporary directory, alongside directories used by unrelated tools and
-processes. vitest/vite's config-file resolution climbs ancestor directories
-with no stop boundary until it finds a vite/vitest config file or reaches
-the filesystem root, so a stray `vite.config.*`/`vitest.config.*` anywhere
-above the workspace could otherwise be picked up by the child vitest
-invocation and break fixture hermeticity. The runner guarantees a config
-boundary at the workspace root: before each `run` step it writes a minimal
-sentinel `vitest.config.mjs` into the workspace root if and only if the
-fixture (or a prior `apply`/`write-file` step) has not already supplied its
-own vite/vitest config file (any of `vite.config.{js,mjs,cjs,ts,mts,cts}` /
-`vitest.config.{js,mjs,cjs,ts,mts,cts}`). Fixtures that ship their own
-config stop the upward search themselves and are never overwritten. This is
+Config isolation: fixture roots are created under the shared OS temporary
+directory, alongside directories used by unrelated tools and processes.
+vitest/vite's config-file resolution climbs ancestor directories with no
+stop boundary until it finds a vite/vitest config file or reaches the
+filesystem root, so a stray `vite.config.*`/`vitest.config.*` anywhere above
+the workspace could otherwise be picked up by the child vitest invocation
+and break fixture hermeticity. The runner guarantees a config boundary at
+the workspace root (or, when a fixture has used `write-outside` to plant its
+own config in the fixture root, at the fixture root): before each `run` step
+it writes a minimal sentinel `vitest.config.mjs` into the workspace root if
+and only if the fixture (via a prior `apply`/`write-file` step, or via
+`write-outside` into the root) has not already supplied its own vite/vitest
+config file (any of `vite.config.{js,mjs,cjs,ts,mts,cts}` /
+`vitest.config.{js,mjs,cjs,ts,mts,cts}`) in either location. Fixtures that
+ship their own config — in the workspace or, via `write-outside`, in the
+root — stop the upward search themselves and are never overwritten. This is
 a contract fixtures may rely on: fixture behavior MUST NOT depend on any
-configuration outside the workspace root.
+configuration outside the fixture root.
 
 Mini vitest projects:
 
@@ -111,6 +121,7 @@ the fixture):
 | `{"do": "gate", "id": "g", "ref": "<git-ref>", "run": "A"?, "expectExit": 0?, "assertDeterministic": true?}` | Invoke `vdelta gate --ref <ref> --policy report-only --report json` (plus `--run <id>` if `run` given). Stdout gate report stored under `id`. |
 | `{"do": "show", "id": "s", "run": "A", "test": "<test_id>"?, "raw": true?, "expectExit": 0?}` | Invoke `vdelta show`. Stdout stored under `id` (parsed as JSON unless `raw`). |
 | `{"do": "write-file", "path": "...", "content": "..."}` | Write a file in the workspace (workspace-relative path; may target `.veridelta/...` for tampering fixtures). |
+| `{"do": "write-outside", "path": "...", "content": "..."}` | Write a file outside the workspace's git worktree but inside the fixture's tmp territory (`path` is root-relative). For simulating an ancestor-directory config that takes effect on the workspace from outside the repo. Discarded together with the rest of the fixture's tmp territory on cleanup. |
 | `{"do": "edit-json", "path": "...", "set": {"<dot.path>": <value>}}` | Load a JSON file, set the given dot-paths (array indices allowed, e.g. `observations.0.verdict`), write it back. `{RUN:A}` inside `path` expands to the run id recorded by step `A`. |
 | `{"do": "delete", "path": "..."}` | Delete a file or directory in the workspace. |
 | `{"do": "mkdir", "path": "..."}` | Create a directory (e.g. `.veridelta/lock` to simulate held advisory lock). |
