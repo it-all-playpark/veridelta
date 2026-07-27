@@ -239,6 +239,36 @@ staleness (INV-11), and read-only object-database recording (tree
 digesting never writes loose objects into the observed repository's
 `.git`, even when it is not writable).
 
+## Supported platforms
+
+vdelta requires Node.js ≥ 22 (see `engines.node`) and is developed and
+tested on Linux and macOS. Windows support is experimental.
+
+| OS | Support level |
+|---|---|
+| Linux (ubuntu) | Fully tested in CI: unit + full conformance suite, on every PR, across Node 22 and 24 |
+| macOS | Tested in CI: unit + CLI suites on every PR (Node 24); full conformance suite runs weekly and on manual `workflow_dispatch` |
+| Windows | Experimental: unit + CLI suites run on every PR as a non-blocking check (Node 24); failures do not block merges. Full conformance suite runs weekly and on manual `workflow_dispatch` |
+
+### CI coverage policy
+
+The full conformance suite (46 fixtures, ~230 seconds, spawning real
+`vitest` child processes per fixture) runs on every pull request for
+Linux only. macOS and Windows run a lighter `unit` + `cli` suite on every
+PR instead, and the full conformance suite for those two platforms is
+deferred to a weekly scheduled run and to manual `workflow_dispatch`
+runs. This keeps required PR checks fast and keeps runner cost down —
+macOS and Windows GitHub-hosted runners are billed at several times the
+Linux rate, and the `cli` project already exercises real CLI process
+spawning, temp-file handling, and path handling, which gives
+representative cross-platform coverage without paying the full
+conformance suite's runtime on every PR.
+
+The Windows leg runs as a non-blocking check (`continue-on-error`), so
+its pass/fail status never blocks a merge; results are still visible in
+the CI run logs. If it stays consistently green over time, it can be
+promoted to a required, blocking check in a follow-up change.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

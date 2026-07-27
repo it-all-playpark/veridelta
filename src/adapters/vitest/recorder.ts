@@ -267,7 +267,9 @@ export function configSourceKey(absPath: string, worktree: string): string {
   const resolvedWorktree = realpath(worktree)
   const rel = relative(resolvedWorktree, resolvedPath)
   if (rel.startsWith('..') || isAbsolute(rel)) return `external:${resolvedPath}`
-  return rel
+  // Keys are recorded artifacts (§3 convention) and must be platform-
+  // independent, so normalize Windows backslashes to forward slashes.
+  return rel.replaceAll('\\', '/')
 }
 
 function realpath(path: string): string {

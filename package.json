@@ -45,6 +45,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:conformance": "vitest run --project conformance",
+    "test:platform": "vitest run --project unit --project cli",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
