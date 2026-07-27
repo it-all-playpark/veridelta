@@ -6,6 +6,13 @@
 
 * **recorder:** vitest reporter が解決済みの `configFile`/`configFileDependencies` を Capture v2 経由で渡すようにし、recorder が worktree 相対パスまたは `external:` 接頭辞（worktree 外の実効設定）をキーとして `surface.config_sources` に digest 記録する方式へ変更
 
+## [0.2.1](https://github.com/it-all-playpark/veridelta/compare/v0.2.0...v0.2.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* **conformance:** fixtureワークスペースを祖先のvitest設定汚染から隔離 ([2b18572](https://github.com/it-all-playpark/veridelta/commit/2b18572bbb622e1c1fd8f00b4912267e6d6db3fa))
+
 ## [0.2.0](https://github.com/it-all-playpark/veridelta/compare/v0.1.1...v0.2.0) (2026-07-17)
 
 
