@@ -56,11 +56,18 @@ export class StoreCorruptError extends Error {
 }
 
 export class LockHeldError extends Error {
-  constructor(readonly lockPath: string) {
+  readonly lockPath: string
+
+  constructor(lockPath: string) {
+    // Display-only: normalize to forward slashes so the message/property
+    // are platform-independent (the raw fs path used for mkdir/rm elsewhere
+    // is unaffected — this is purely for human-readable output).
+    const displayPath = lockPath.replaceAll('\\', '/')
     super(
-      `advisory lock is held at ${lockPath} — if no other vdelta run is active, remove it: rm -rf ${lockPath}`,
+      `advisory lock is held at ${displayPath} — if no other vdelta run is active, remove it: rm -rf ${displayPath}`,
     )
     this.name = 'LockHeldError'
+    this.lockPath = displayPath
   }
 }
 
