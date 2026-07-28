@@ -4,12 +4,24 @@
  * and the vitest adapter pieces.
  */
 
-export {
-  ADAPTER_NAME,
-  buildRunRecord,
-  COMPOSITION_ID,
-  DEGRADED_CAPABILITIES,
-} from './adapters/vitest/recorder.js'
+import { degradedCapabilities } from './adapter.js'
+import { resolveAdapter } from './adapters/registry.js'
+import { ADAPTER_NAME, buildRunRecord } from './adapters/vitest/recorder.js'
+
+/**
+ * The vitest composition's standing, read off its adapter descriptor through
+ * the registry rather than re-exported from the recorder (§4.2): what a
+ * consumer sees must be what the adapter declares, so that a second adapter
+ * cannot inherit vitest's disclosure. Names and values are frozen for Step 1 —
+ * `DEGRADED_CAPABILITIES` is still `['source-region-text']`.
+ */
+const vitest = resolveAdapter(ADAPTER_NAME)
+
+export const COMPOSITION_ID: string = vitest.compositionId
+export const DEGRADED_CAPABILITIES: string[] = degradedCapabilities(
+  vitest.declaredCapabilities,
+)
+
 export { canonicalJson } from './canonical.js'
 export {
   type BaselineSpec,
@@ -50,3 +62,4 @@ export {
   StoreCorruptError,
 } from './store.js'
 export { treeDigest } from './tree-digest.js'
+export { ADAPTER_NAME, buildRunRecord }

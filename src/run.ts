@@ -4,19 +4,26 @@
  * errors — held lock, capture failure, store trouble — degrade to
  * transparent raw passthrough (INV-5): veridelta is never worse than its
  * absence. Diagnostics go to stderr and never interleave with the report.
+ *
+ * Which runner is being recorded is decided by the adapter registry (§4.3),
+ * never here: an explicit `--adapter` always wins, otherwise every adapter's
+ * `detect` is evaluated and only an unambiguous single match instruments the
+ * child. No runner vocabulary lives in this module — instrumenting the child,
+ * splitting inclusion intent and reading the capture channel all happen behind
+ * the {@link Adapter} descriptor.
  */
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, rmSync } from 'node:fs'
+import { rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import type { Capture } from './adapters/vitest/capture.js'
+import { join } from 'node:path'
+import type { Adapter, CaptureChannel, RecordContext } from './adapter.js'
 import {
-  buildRunRecord,
-  type RecordContext,
-} from './adapters/vitest/recorder.js'
+  adapterNames,
+  detectAdapter,
+  resolveAdapter,
+} from './adapters/registry.js'
 import { buildComparisonReport } from './compare.js'
 import { canonicalDigest } from './digest.js'
 import type { ComparisonReport } from './schema.js'
@@ -28,6 +35,14 @@ import {
   gitRepoRoot,
   treeDigest,
 } from './tree-digest.js'
+
+/**
+ * Public API freeze (§8.2): the split itself now belongs to the vitest
+ * adapter's CLI surface, but the export stays on this path for Step 1 so
+ * consumers keep their import. The core calls it through the resolved
+ * descriptor, never through this binding.
+ */
+export { splitCommandSelector } from './adapters/vitest/adapter.js'
 
 const pkg = createRequire(import.meta.url)('../package.json') as {
   version: string
@@ -44,130 +59,69 @@ export interface RunResult {
   rawStderr: Buffer
 }
 
+export interface RunOptions {
+  /**
+   * Explicit adapter name (`vdelta run --adapter <name>`). Always wins over
+   * detection (§4.3-4): a contradicting argv is instrumented anyway and falls
+   * through the ordinary capture path when nothing comes back. An unknown
+   * name throws — user input error, never a silent degradation (§4.3-5).
+   */
+  adapter?: string
+}
+
 interface ChildOutcome {
   exitCode: number
   stdout: Buffer
   stderr: Buffer
 }
 
-function reporterModulePath(): string {
-  return join(
-    dirname(fileURLToPath(import.meta.url)),
-    'adapters',
-    'vitest',
-    'reporter.js',
-  )
-}
-
-/** Locate the vitest invocation inside the child argv; null when absent. */
-function findVitestToken(cmd: string[]): number | null {
-  for (let i = 0; i < cmd.length; i++) {
-    const token = cmd[i]!
-    if (/(^|[\\/])vitest(\.mjs|\.js)?$/.test(token) || token === 'vitest')
-      return i
-  }
-  return null
-}
+/**
+ * Why a run degraded when no adapter claimed the child argv (§4.3-2).
+ * Frozen at the pre-seam wording: Step 1 moves structure only and changes no
+ * diagnostic byte, and with a single registered adapter this sentence is
+ * still the accurate guidance. Phase 2 replaces it with the `--adapter` hint
+ * §4.3-2 describes, once naming an adapter is a real choice.
+ */
+const NO_ADAPTER_DIAGNOSTIC =
+  'no capture from the vitest reporter — is the child a vitest invocation?'
 
 /**
- * vitest 4.x CLI flags that always take their value as a *separate* argv
- * token (`--flag value`), never combined into the flag token itself. Used
- * by {@link splitCommandSelector} to recognize `--flag value` pairs and fold
- * them into a single `--flag=value` canonical token so that space-separated
- * and `=`-joined invocations normalize to the same command array (and
- * therefore the same stream key — see `streamKey` in src/compare.ts).
- *
- * Deliberately excludes flags whose value is *optional*
- * (`--changed`, `--silent`, `--coverage`, `--browser`, `--inspect`, etc.):
- * for those, the token following the flag cannot be distinguished from a
- * positional selector without vitest's own arg-parsing rules, so folding
- * them here would risk silently swallowing a selector token. Flags outside
- * this list keep the historical (pre-fix) behavior: a space-separated value
- * is treated as a selector token, which may cause selector-based stream
- * splitting and an abstain (`comparability: 'none'`) rather than a
- * false-positive comparison.
- *
- * Maintenance: this list targets vitest 4.x. Revisit when bumping the
- * vitest minor/major version (see issue #15 Open Question — no automated
- * mechanism keeps this in sync with vitest's own CLI surface).
+ * Resolve the adapter that will instrument this child, or `null` plus the
+ * reason to degrade with. Detection failure is never fatal (INV-5): the child
+ * still runs verbatim, it is only recorded that no evidence could be taken.
  */
-const VITEST_VALUE_FLAGS: ReadonlySet<string> = new Set([
-  '--project',
-  '--config',
-  '-c',
-  '--root',
-  '-r',
-  '--dir',
-  '--reporter',
-  '--outputFile',
-  '--pool',
-  '--maxWorkers',
-  '--minWorkers',
-  '--environment',
-  '--testNamePattern',
-  '-t',
-  '--testTimeout',
-  '--hookTimeout',
-  '--teardownTimeout',
-  '--retry',
-  '--bail',
-  '--maxConcurrency',
-  '--shard',
-  '--exclude',
-  '--mode',
-  '--workspace',
-])
-
-/**
- * The invocation's selector is its inclusion intent (§6.4): the vitest CLI
- * positional filters. The canonical command excludes them (§5.1).
- *
- * `--flag value` pairs for known value-taking flags (see
- * {@link VITEST_VALUE_FLAGS}) are folded into a single `--flag=value`
- * canonical token so that this form and the pre-joined `--flag=value` form
- * produce byte-identical `command` arrays (and thus the same stream key).
- */
-export function splitCommandSelector(cmd: string[]): {
-  command: string[]
-  selector: string[]
-} {
-  const idx = findVitestToken(cmd)
-  if (idx === null) return { command: cmd, selector: [] }
-  const command: string[] = cmd.slice(0, idx + 1)
-  const selector: string[] = []
-  for (let i = idx + 1; i < cmd.length; i++) {
-    const token = cmd[i]!
-    if (token === 'run' && i === idx + 1) {
-      command.push(token)
-      continue
-    }
-    if (!token.startsWith('-')) {
-      selector.push(token)
-      continue
-    }
-    if (token.includes('=')) {
-      command.push(token)
-      continue
-    }
-    const next = cmd[i + 1]
-    if (
-      VITEST_VALUE_FLAGS.has(token) &&
-      next !== undefined &&
-      !next.startsWith('-')
-    ) {
-      command.push(`${token}=${next}`)
-      i++
-      continue
-    }
-    command.push(token)
+function chooseAdapter(
+  cmd: readonly string[],
+  opts: RunOptions,
+): { adapter: Adapter | null; why: string } {
+  if (opts.adapter !== undefined) {
+    return { adapter: resolveAdapter(opts.adapter), why: NO_ADAPTER_DIAGNOSTIC }
   }
-  return { command, selector }
+  const detection = detectAdapter(cmd)
+  switch (detection.kind) {
+    case 'unique':
+      return { adapter: detection.adapter, why: NO_ADAPTER_DIAGNOSTIC }
+    case 'ambiguous': {
+      // Registry order must not silently pick a winner (§4.3-2): the
+      // candidates are disclosed and the user names one.
+      const candidates = detection.candidates.map((a) => a.name).join(', ')
+      return {
+        adapter: null,
+        why: `several adapters claim this command (${candidates}) — pick one with --adapter <${adapterNames().join('|')}>`,
+      }
+    }
+    case 'none':
+      return { adapter: null, why: NO_ADAPTER_DIAGNOSTIC }
+  }
 }
 
-function runChild(cmd: string[], captureFile: string): Promise<ChildOutcome> {
+function runChild(
+  cmd: readonly string[],
+  env: Readonly<Record<string, string>>,
+): Promise<ChildOutcome> {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd[0]!, cmd.slice(1), {
-      env: { ...process.env, VDELTA_CAPTURE_FILE: captureFile },
+      env: { ...process.env, ...env },
       stdio: ['inherit', 'pipe', 'pipe'],
     })
     const out: Buffer[] = []
@@ -206,22 +160,24 @@ function signalNumber(signal: NodeJS.Signals): number {
 export async function runAndRecord(
   cmd: string[],
   cwd: string,
+  opts: RunOptions = {},
 ): Promise<RunResult> {
   const diagnostics: string[] = []
-  const captureFile = join(tmpdir(), `vdelta-capture-${randomUUID()}.json`)
+  // The channel's creation and teardown stay on the core's side of the seam
+  // for now (§4.1): a single capture file is the only kind that exists, so
+  // there is nothing to abstract yet. F-2 moves both into the adapter when
+  // per-process channels arrive.
+  const channel: CaptureChannel = {
+    kind: 'single-file',
+    path: join(tmpdir(), `vdelta-capture-${randomUUID()}.json`),
+  }
 
-  const vitestIdx = findVitestToken(cmd)
-  const childCmd =
-    vitestIdx !== null
-      ? [
-          ...cmd,
-          '--reporter=default',
-          `--reporter=${reporterModulePath()}`,
-          '--includeTaskLocation',
-        ]
-      : cmd
-
-  const child = await runChild(childCmd, captureFile)
+  const { adapter, why: noAdapterReason } = chooseAdapter(cmd, opts)
+  const instrumented = adapter?.instrument(cmd, channel)
+  const child = await runChild(
+    instrumented?.argv ?? cmd,
+    instrumented?.env ?? {},
+  )
 
   const degraded = (why: string): RunResult => {
     diagnostics.push(`vdelta: degraded to raw passthrough (${why})`)
@@ -235,22 +191,13 @@ export async function runAndRecord(
     }
   }
 
-  let capture: Capture
   try {
-    capture = JSON.parse(readFileSync(captureFile, 'utf8')) as Capture
-  } catch {
-    return degraded(
-      'no capture from the vitest reporter — is the child a vitest invocation?',
-    )
-  } finally {
-    rmSync(captureFile, { force: true })
-  }
+    if (adapter === null) return degraded(noAdapterReason)
 
-  try {
     const worktree = await gitRepoRoot(cwd)
     if (worktree === null) return degraded('not inside a git worktree')
 
-    const { command, selector } = splitCommandSelector(cmd)
+    const { command, selector } = adapter.splitCommandSelector(cmd)
     const ctx: RecordContext = {
       worktree,
       repoIdentity: worktree,
@@ -267,7 +214,10 @@ export async function runAndRecord(
       adapterVersion: VDELTA_VERSION,
       recordedAtMs: Date.now(),
     }
-    const record = buildRunRecord(capture, ctx)
+    // Reading, validating and parsing the channel belong to the adapter; an
+    // unusable capture arrives here as an AdapterCaptureError and lands in
+    // the same degraded passthrough as every other unrecordable state below.
+    const record = adapter.record(channel, ctx)
 
     const store = new RunStore(worktree)
     store.ensure()
@@ -327,5 +277,7 @@ export async function runAndRecord(
       return degraded(err.message)
     }
     return degraded(err instanceof Error ? err.message : String(err))
+  } finally {
+    rmSync(channel.path, { force: true })
   }
 }

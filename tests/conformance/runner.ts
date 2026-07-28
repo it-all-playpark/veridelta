@@ -5,6 +5,14 @@
  *
  * All child processes are spawned via execFile with argument arrays (no
  * shell), so fixture-supplied strings can never be interpreted by a shell.
+ *
+ * The runner also serves the A/B replay of the adapter-seam design §8.3: the
+ * three inputs a `run_id` is not allowed to drift on between two passes — the
+ * CLI binary, the workspace's absolute path and the git commit timestamps —
+ * are injectable per pass ({@link FixtureRunOptions}), and what a pass
+ * observed is handed back as a {@link FixtureReplay} for cross-binary
+ * comparison. Defaults reproduce the historical single-pass behavior byte for
+ * byte.
  */
 import { execFile } from 'node:child_process'
 import {
@@ -40,7 +48,12 @@ delete LOCAL_ENV.CONTINUOUS_INTEGRATION
 delete LOCAL_ENV.GITHUB_ACTIONS
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..')
-const CLI = join(REPO_ROOT, 'dist', 'cli.js')
+/**
+ * The CLI a fixture drives unless the pass injects its own (§8.3 mechanism
+ * 1): this worktree's freshly built binary, i.e. the candidate side of an A/B
+ * replay.
+ */
+export const DEFAULT_CLI = join(REPO_ROOT, 'dist', 'cli.js')
 const VITEST_MJS = join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs')
 
 /**
@@ -94,10 +107,76 @@ export class FixtureFailure extends Error {
   }
 }
 
+/**
+ * Per-pass knobs. Every field exists to make one source of `run_id` drift
+ * injectable so two passes can be compared (design §8.3); omitting all of
+ * them reproduces the historical behavior exactly.
+ */
+export interface FixtureRunOptions {
+  /**
+   * Parent directory for the disposable `mkdtemp` workspace root (used by
+   * the ancestor-config-pollution regression test). Mutually exclusive with
+   * `workspaceRoot`.
+   */
+  workspaceParent?: string
+  /**
+   * Fixed absolute workspace root, used instead of `mkdtemp` (§8.3 mechanism
+   * 2). `repo.worktree` / `repo.identity` are recorded as absolute paths and
+   * the `recording` group is the only thing `run_id` excludes (spec §3.5), so
+   * two passes that must agree on `run_id` have to run at the same path.
+   *
+   * The directory is wiped and recreated on entry (§8.3 mechanism 4): steps
+   * mutate the workspace incrementally and the `.veridelta` store lives inside
+   * it, so a pass must never inherit the previous pass's state. A fixed root
+   * therefore cannot be shared by fixtures running concurrently — the
+   * conformance project pins `fileParallelism: false` and vitest runs the
+   * cases of one file in sequence.
+   */
+  workspaceRoot?: string
+  /** Which built CLI the fixture drives (§8.3 mechanism 1). */
+  cliPath?: string
+  /**
+   * Fixed `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE` for every git invocation
+   * (§8.3 mechanism 3). A commit SHA hashes its timestamps and reaches
+   * `run_id` through `provenance.head`, so the `commit` step is a `run_id`
+   * drift source unless the clock is pinned. Any git-parsable date string.
+   */
+  gitDate?: string
+}
+
+/**
+ * What one pass observed, for cross-binary comparison (§8.3 主基準).
+ *
+ * `runIds` freezes the recorder path (`run.ts` → `record()` →
+ * `buildRunRecord`). `reportTexts` closes the gap §8.1 limitation 2 names:
+ * the comparator / gate / public-API edits of Step 1 never show up in a run
+ * record, so the report bytes have to be compared directly. It holds the raw
+ * stdout of the `run` / `compare` / `gate` steps only — `show` prints the run
+ * record including its `recording` group (durations, wall-clock, raw child
+ * output), which `run_id` excludes precisely because it is not reproducible.
+ */
+export interface FixtureReplay {
+  runIds: Map<string, string>
+  reports: Map<string, unknown>
+  reportTexts: Map<string, string>
+}
+
 export async function runFixture(
   fixtureDir: string,
-  options?: { workspaceParent?: string },
+  options?: FixtureRunOptions,
 ): Promise<void> {
+  await replayFixture(fixtureDir, options)
+}
+
+/**
+ * Run a fixture exactly as {@link runFixture} does — every step, every
+ * assertion — and hand back what it observed. Each pass of an A/B replay is
+ * therefore also a full conformance check of the binary it drove.
+ */
+export async function replayFixture(
+  fixtureDir: string,
+  options?: FixtureRunOptions,
+): Promise<FixtureReplay> {
   const manifest = JSON.parse(
     readFileSync(join(fixtureDir, 'manifest.json'), 'utf8'),
   ) as Manifest
@@ -106,14 +185,83 @@ export async function runFixture(
     await ctx.init()
     for (const step of manifest.steps) await ctx.runStep(step)
     for (const assertion of manifest.assertions) ctx.checkAssertion(assertion)
+    return {
+      runIds: new Map(ctx.runIds),
+      reports: new Map(ctx.reports),
+      reportTexts: new Map(ctx.reportTexts),
+    }
   } finally {
     ctx.cleanup()
   }
 }
 
+/**
+ * Fixtures the A/B replay must skip because their own replay is not
+ * reproducible, keyed by fixture name with the measured reason as the value
+ * (§8.3 mechanism 6). Skipping is preferable to reporting a mismatch that is
+ * an artifact of the fixture rather than a behavior change in the binary.
+ *
+ * **Measured empty.** The list is populated only from mismatches observed
+ * under the same-binary A/B (`VDELTA_AB_BASELINE_DIST` pointed at this
+ * worktree's own `dist`), where no behavior change exists by construction, so
+ * any mismatch is non-determinism. All 46 fixtures replayed identically —
+ * every `run_id` and every report byte — with mechanisms 1–4 in place. That
+ * includes the candidate the design named as likely non-deterministic,
+ * `adv-stale-cache-collision`: its `preserveMtime` step freezes mtimes
+ * *relative to earlier files of the same pass*, and mtimes reach neither the
+ * record (`tree_digest` hashes content through git) nor the report, so the
+ * absolute values differing between passes changes nothing.
+ *
+ * Re-measure before adding an entry, and say in the value what drifts.
+ */
+export const AB_REPLAY_EXCLUSIONS: ReadonlyMap<string, string> = new Map([])
+
+/** `<cliPath> --version` → the version it reports. */
+export async function cliVersion(cliPath: string): Promise<string> {
+  const { stdout } = await execFileP(process.execPath, [cliPath, '--version'])
+  const parsed = /^vdelta (\S+) \(veridelta\/1\)$/.exec(stdout.trim())
+  if (parsed === null) {
+    throw new Error(
+      `${cliPath}: unexpected --version output ${JSON.stringify(stdout)}`,
+    )
+  }
+  return parsed[1]!
+}
+
+/**
+ * Assert that both binaries of an A/B replay carry the same VDELTA_VERSION,
+ * and abort with an explicit diagnostic when they do not (§8.3 mechanism 5).
+ *
+ * The version is recorded as `instrument.adapter_version`, which `run_id`
+ * covers, so a release-please bump landing between the baseline build and HEAD
+ * would mismatch every fixture for a reason that has nothing to do with the
+ * refactor under test. Failing loudly here is what keeps the criterion from
+ * collapsing into a false positive.
+ */
+export async function assertSameCliVersion(
+  baselineCli: string,
+  candidateCli: string,
+): Promise<string> {
+  const [baseline, candidate] = await Promise.all([
+    cliVersion(baselineCli),
+    cliVersion(candidateCli),
+  ])
+  if (baseline !== candidate) {
+    throw new Error(
+      `A/B replay aborted: the two binaries disagree on VDELTA_VERSION — ` +
+        `baseline ${baselineCli} is ${baseline}, candidate ${candidateCli} is ${candidate}. ` +
+        `That value is recorded as instrument.adapter_version and is covered by run_id ` +
+        `(spec §3.5), so every fixture would mismatch for a reason unrelated to the ` +
+        `refactor. Rebuild both binaries at the same package.json version (§8.3 mechanism 5).`,
+    )
+  }
+  return baseline
+}
+
 class FixtureContext {
   /**
-   * `root` is a fresh mkdtemp directory that is NOT itself the git
+   * `root` is a fresh directory — an `mkdtemp` one, or the wiped fixed root
+   * of an A/B replay pass — that is NOT itself the git
    * workspace: the git worktree lives in the `repo` subdirectory
    * (`this.workspace`). This nested layout gives fixtures a place to plant
    * files that are outside the git worktree but still inside the fixture's
@@ -124,18 +272,53 @@ class FixtureContext {
   readonly root: string
   readonly workspace: string
   readonly reports = new Map<string, unknown>()
+  /**
+   * Raw stdout of every stored comparison report — the byte-level companion
+   * of `reports` (see {@link FixtureReplay}). Parsing loses whitespace and can
+   * hide a serialization change that consumers would see.
+   */
+  readonly reportTexts = new Map<string, string>()
   readonly rawOutputs = new Map<string, string>()
   readonly runIds = new Map<string, string>()
   private readonly readonlyPaths: string[] = []
+  private readonly cliPath: string
+  /** undefined = inherit this process's environment (historical behavior). */
+  private readonly gitEnv: NodeJS.ProcessEnv | undefined
 
   constructor(
     private readonly fixtureDir: string,
     private readonly manifest: Manifest,
-    options?: { workspaceParent?: string },
+    options?: FixtureRunOptions,
   ) {
-    this.root = mkdtempSync(
-      join(options?.workspaceParent ?? tmpdir(), 'vdelta-conf-'),
-    )
+    if (
+      options?.workspaceRoot !== undefined &&
+      options.workspaceParent !== undefined
+    ) {
+      throw new Error(
+        'workspaceRoot and workspaceParent are mutually exclusive: a fixed root has no parent to be placed under',
+      )
+    }
+    this.cliPath = options?.cliPath ?? DEFAULT_CLI
+    this.gitEnv =
+      options?.gitDate === undefined
+        ? undefined
+        : {
+            ...process.env,
+            GIT_AUTHOR_DATE: options.gitDate,
+            GIT_COMMITTER_DATE: options.gitDate,
+          }
+    if (options?.workspaceRoot !== undefined) {
+      // §8.3 mechanism 4: a fixed root is reused across passes, so it starts
+      // from nothing every time -- including the .veridelta store, whose
+      // leftovers would give the second pass a baseline the first never had.
+      // Also covers a root left behind by a pass that crashed before cleanup.
+      this.root = options.workspaceRoot
+      resetDirectory(this.root)
+    } else {
+      this.root = mkdtempSync(
+        join(options?.workspaceParent ?? tmpdir(), 'vdelta-conf-'),
+      )
+    }
     this.workspace = join(this.root, 'repo')
     mkdirSync(this.workspace, { recursive: true })
   }
@@ -162,7 +345,9 @@ class FixtureContext {
   }
 
   private async git(args: string[]): Promise<void> {
-    await execFileP('git', ['-C', this.workspace, ...args])
+    await execFileP('git', ['-C', this.workspace, ...args], {
+      env: this.gitEnv,
+    })
   }
 
   private vdelta(
@@ -172,7 +357,7 @@ class FixtureContext {
     return new Promise((resolve) => {
       execFile(
         process.execPath,
-        [CLI, ...args],
+        [this.cliPath, ...args],
         {
           cwd: this.workspace,
           env: { ...LOCAL_ENV, ...env },
@@ -398,6 +583,7 @@ class FixtureContext {
     }
     if (typeof step.id === 'string') {
       this.reports.set(step.id, report)
+      this.reportTexts.set(step.id, result.stdout)
       const runId = report.current?.run_id
       if (typeof runId === 'string') this.runIds.set(step.id, runId)
     }
@@ -499,6 +685,7 @@ class FixtureContext {
     if (typeof step.id !== 'string') return
     try {
       this.reports.set(step.id, JSON.parse(result.stdout))
+      this.reportTexts.set(step.id, result.stdout)
     } catch {
       this.fail(
         `${step.do} ${step.id}: stdout is not a JSON report\nstderr: ${result.stderr.slice(0, 2000)}\nstdout: ${result.stdout.slice(0, 2000)}`,
@@ -708,6 +895,17 @@ class FixtureContext {
 
 // ---------------------------------------------------------------------------
 // helpers
+
+/** Delete `dir` and everything under it, then recreate it empty. Restores the
+ * write bit first for the same reason cleanup() does: a fixture may have
+ * chmod-readonly'd a subtree and then died before its own teardown ran. */
+function resetDirectory(dir: string): void {
+  if (existsSync(dir)) {
+    restoreWritable(dir)
+    rmSync(dir, { recursive: true, force: true })
+  }
+  mkdirSync(dir, { recursive: true })
+}
 
 /** Recursively strip the write bit (owner/group/other) from root and its
  * contents (files and directories alike). Symlinks are left untouched. */
