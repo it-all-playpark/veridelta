@@ -9,7 +9,7 @@
  * as `pnpm test`) from "this adapter is not the one". Zero and ambiguous both
  * stay recordable-but-degraded at the call site, never a hard failure (INV-5).
  */
-import type { Adapter, DetectResult } from '../adapter.js'
+import type { Adapter, CaptureChannel, DetectResult } from '../adapter.js'
 import { vitestAdapter } from './vitest/adapter.js'
 
 /** Every known adapter, in a deterministic order. */
@@ -50,6 +50,45 @@ export function resolveAdapter(
     )
   }
   return adapter
+}
+
+/**
+ * The env additions every registered adapter needs to find the channel, in
+ * registry order. Exported to the child unconditionally, detection or no
+ * detection: a reporter configured in the project itself (spec §4.2 ambient
+ * recording) is inert without it, and pre-seam `vdelta run` set it on every
+ * child for exactly that reason.
+ *
+ * Later adapters win on a colliding name. With one single-file channel that
+ * collision is the F-2 hazard, not a decision this function can make.
+ */
+export function ambientChannelEnv(
+  channel: CaptureChannel,
+  adapters: readonly Adapter[] = ADAPTERS,
+): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const adapter of adapters) {
+    Object.assign(env, adapter.channelEnv(channel))
+  }
+  return env
+}
+
+/**
+ * Which adapter owns the capture that landed in the channel, or `null` when
+ * none claims it. The ambient counterpart of {@link detectAdapter}: the argv
+ * said nothing, so the payload decides.
+ *
+ * Registry order breaks a tie. Two adapters claiming one capture would mean
+ * two reporters wrote to the same single-file channel, which is the F-2
+ * last-writer-wins hazard rather than an ambiguity the user could resolve —
+ * there is no argv to name a winner with, so degrading here would discard a
+ * capture that is genuinely present.
+ */
+export function claimCapture(
+  channel: CaptureChannel,
+  adapters: readonly Adapter[] = ADAPTERS,
+): Adapter | null {
+  return adapters.find((a) => a.claimsCapture(channel)) ?? null
 }
 
 /**

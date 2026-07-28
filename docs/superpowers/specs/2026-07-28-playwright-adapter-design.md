@@ -38,7 +38,7 @@ spec §12 は Playwright を2番目の adapter として明示的に指名して
 | **D2** | `flaky` は **`/1` を閉じたまま**扱う。flaky の verdict は `pass` + `FailureFinding`（retry 失敗 attempt の evidence）、`fail → flaky` は `verification_inconclusive`、attempt 別詳細は annex + anchor で開示。**反証可能な default** とし kill criterion を事前登録する（§7）。<br>**本機構の規範化には `veridelta-1.md` §3.2 の 0.x draft 改訂（`finding` を非 red でも MAY として明示）が必要**。spec §14 の draft phase 規定（"closure binds from the first published revision"）により、これは `/2` 発行とは非対称に安価。 |
 | **D3** | Phase 1 は「純粋な構造移動」を先に完了させ、**in-repo の A/B replay ハーネス**で挙動凍結を機械的に証明する。record 形状が変わる変更は `adapter_version` bump + spec draft 改訂を伴う別ステップに切る（§8）。 |
 | **D4** | dogfood のインストールは **ローカル link**（registry pin ではない）。CI gate 組み込みと shift-bud への devDependency コミットは**スコープ外**。 |
-| **D5** | adapter 検出は **明示指定優先**（`--adapter <name>`）、argv 走査は補助。未検出は raw passthrough（INV-5 維持）。wrapper コマンド対応（ambient recording）はスコープ外・follow-up 化。 |
+| **D5** | adapter 検出は **明示指定優先**（`--adapter <name>`）、argv 走査は補助。**検出が決めるのは argv 注入の可否だけで、記録の可否ではない**（rev.3 訂正、§3.4 / §4.3-8）— capture チャネルは常に子へ渡り、未検出でも capture が来れば記録する。capture が無ければ raw passthrough（INV-5 維持）。`vdelta run` を介さない recorder はスコープ外・follow-up 化（§10 F-1）。 |
 
 ---
 
@@ -123,9 +123,11 @@ e2e      test:         playwright test
 
 これは単なる検出の話ではない。**spec §4.2 は recording を "ambient-first" と規定し、`vdelta run --` は「1つの recorder 実装にすぎない」と明記している**（根拠: wrapper-only 設計は agent の規律に依存し、1回の wrap 忘れで stream が切れる）。つまり shift-bud の wrapper 問題は、CLI-wrapper-only の現実装が spec §4.2 に追いついていない証拠であり、shift-bud はそれが実際に痛む repo である。
 
-ただし ambient recording の実装は独立した規模の作業であり、本設計のスコープ外とする（D5、§10 F-1）。
+ただし ambient recording を「vdelta 側の recorder を CLI 以外にも生やす」という意味で実装するのは独立した規模の作業であり、本設計のスコープ外とする（D5、§10 F-1）。
 
-**付随ハザード（現時点では発火しない）:** `VDELTA_CAPTURE_FILE` は単一パス（`src/run.ts:170`。`captureFile` は `runAndRecord` 1回につき1本、`src/run.ts:211`）。子孫プロセスは環境変数を継承するため、`pnpm -r` が6 runner プロセスを fan-out した場合、注入が届いていれば last-writer-wins で静かに1個だけ記録される。現状は argv にトークンが無く注入されないため発火しないが、ambient recording を実装する際は capture チャネルを per-process 化する必要がある（§10 F-2）。
+> **訂正（rev.3）:** 旧版のこの節は「wrapper 経由では記録できない」と読める書き方をしていたが、**それは誤りである**。seam 抽出前の `runChild`（`d35fca5:src/run.ts:167-171`）は `VDELTA_CAPTURE_FILE` を **detect と無関係に常に**子プロセスへ渡していた。条件付きだったのは argv 注入だけである。reporter は同 env が無ければ inert（`src/adapters/vitest/reporter.ts:61-62`）なので、**reporter を project の vitest config に常設した repo では `vdelta run -- npm test` が seam 抽出前から完全な RunRecord を生成していた** — これが spec §4.2 の RECOMMENDED 形態であり、すでに動いていた経路である。したがって「未検出なら記録もしない」は退行であって設計判断ではない。実測: 同一 fixture・同一コマンドで pre-seam binary と現 HEAD が同一 `run_id` を生成する（`tests/cli/ambient-recording.test.ts`）。<br>本当に未実装なのは (a) CLI 以外の recorder 実装（F-1）と (b) capture チャネルの per-process 化（F-2）である。
+
+**付随ハザード（今日すでに発火しうる）:** `VDELTA_CAPTURE_FILE` は単一パス（`captureFile` は `runAndRecord` 1回につき1本）。子孫プロセスは環境変数を継承するため、`pnpm -r` が6 runner プロセスを fan-out し、それぞれに reporter が常設されていれば last-writer-wins で静かに1個だけ記録される。上の訂正の通りこの env は未検出の子にも渡るので、**これは将来の話ではなく現行の挙動である**。恒久解は capture チャネルの per-process 化（§10 F-2）。
 
 **副産物:** backend は `test: vitest run src`（selector = `src`）と `test:all: vitest run`（selector なし）を持ち、**実データの subset 関係**が repo 内に存在する。ただしこれを実際に踏むには **`selector-relation` capability の実装が必要**である — 現実装は `src/compare.ts:309-311` で「No selector-relation capability in the MVP adapter」として containment を常に `selector-relation-unknown` に落とすため、この副産物は今のままでは永久に回収できない。Phase 1 では §4.1 の interface に optional な席を切るだけとし、実装は follow-up F-5 に置く（`BASELINE_MODES` に `previous-superset` が予約済み — `src/schema.ts:93`）。
 
@@ -384,12 +386,13 @@ vdelta run -- npx vitest run src            # argv 走査で vitest と判定（
 決定リスト（実装者が迷わないための確定事項）:
 
 1. **registry は静的配列** `[vitestAdapter, playwrightAdapter]`（決定的順序）。登録 API は adapter が external plugin になるまで作らない（YAGNI）。
-2. **`detect` は常に全 adapter を評価する。** 一致0件 → raw passthrough + `--adapter` を案内する diagnostic。一致2件以上 → raw passthrough + 候補列挙 diagnostic。いずれも INV-5 維持。
+2. **`detect` は常に全 adapter を評価する。** 一致0件 → argv 注入なし。一致2件以上 → argv 注入なし + 候補列挙 diagnostic。いずれも INV-5 維持。**ただし detect の結果は「argv を注入してよいか」だけを決め、記録できるかは決めない**（rev.3、下記 8）。
 3. `DetectResult | null` の `null` は「自分ではない」だけを意味する。「wrapper なので判断できない」は adapter 単体では言えないので、**registry レベルの結論**（全 adapter 不一致かつ `argv[0]` が `pnpm` / `npm` / `yarn` 等）として diagnostic 側で表現する。
-4. **`--adapter` は `detect` より常に優先する。** argv が矛盾していても指定 adapter で `instrument` し、capture が得られなければ既存の degraded 経路（`src/run.ts:242-244` 相当）に落ちる。
+4. **`--adapter` は `detect` より常に優先する** — ただし優先するのは「**誰が capture チャネルを読み、inclusion intent を分けるか**」であって argv 注入ではない。**訂正（rev.3）:** 旧版はここで「argv が矛盾していても指定 adapter で `instrument` する」としていたが、これは INV-5 違反を出荷する。実測 `vdelta run --adapter vitest -- node -e '…'` は `node: bad option: --reporter=default` で **exit 9・子プロセスは1行も実行されない**（vdelta 不在なら exit 0）。`instrument` は当該 adapter が自分の argv だと認めた場合（`detect(argv) !== null`）に限る。認めなかった場合も channel env は渡るので、reporter が ambient に設定された repo では記録は成立する（下記 8）。
 5. **`--adapter` の値が registry に無い場合は子プロセス起動前の即エラー**（exit 1、stderr に既知 adapter 一覧）。ユーザ入力エラーであり degraded passthrough の対象ではない — 黙って passthrough すると typo が silent degradation になり INV-5 の意図と逆に働く。
 6. argv 走査は**利便のための補助**であり契約ではない。
-7. wrapper コマンド（`pnpm test`）は `--adapter` を付けても reporter を argv 注入できない。Phase 0a では「runner を直接呼ぶ」で回避し、恒久解は ambient recording（スコープ外、§10 F-1）。
+7. wrapper コマンド（`pnpm test`）は `--adapter` を付けても reporter を argv 注入できない。runner を直接呼ぶか、reporter を project の vitest config に常設する（下記 8）。
+8. **capture チャネルは detect と無関係に常に子へ渡す**（`Adapter.channelEnv`、registry の `ambientChannelEnv`）。これは新機能ではなく seam 抽出前の挙動であり（§3.4 の訂正を参照）、spec §4.2 の RECOMMENDED 形態を成立させている唯一の経路である。argv が誰のものでもなかった場合、**誰が record を組むかは capture の payload 自身が決める**（`Adapter.claimsCapture` → registry の `claimCapture`）。argv には runner の痕跡が無いのだから、判断材料はチャネルの中身しかない。
 
 ---
 
@@ -639,7 +642,7 @@ veridelta repo 内 `probes/shift-bud-baseline/` に置く（shift-bud 側の `.v
 
 | # | 内容 | 根拠 |
 | --- | --- | --- |
-| F-1 | **ambient recording の実装** — spec §4.2 が RECOMMENDED と規定するデプロイ形態が未実装。CLI-wrapper-only では shift-bud のような wrapper script 中心の repo から signal が取れない | §3.4 |
+| F-1 | **CLI 以外の recorder** — spec §4.2 は `vdelta run --` を「1つの recorder 実装にすぎない」と規定する。**訂正（rev.3）:** reporter を project の config に常設する形（= §4.2 の RECOMMENDED 形態）は `vdelta run -- <wrapper>` 経由で**すでに動く**（§3.4 訂正）。残っているのは `vdelta run` を介さない recorder（harness hook 等）である | §3.4 |
 | F-2 | **capture チャネルの per-process 化** — F-1 の前提。`VDELTA_CAPTURE_FILE` 単一パスは multi-process fan-out で last-writer-wins になる。あわせて channel の生成・破棄を core から adapter へ移す（§4.1 の残存リーク） | §3.4 付随ハザード / §4.1 |
 | F-3 | `env_fingerprint` を `STREAM_KEY_FIELDS` に含めるかの検討 — 現状 `CI` は開示のみで stream 分離しないため、local↔CI の instrument 差が stream 上では見えない。**両 adapter 共通課題** | §4.1.1 |
 | F-4 | vitest 4.x フラグ表（`src/run.ts:72-119`）の同期機構 — 既知 open question（#15）。Phase 1 で `src/adapters/vitest/` に移動するが、同期問題自体は残る | §3.1 |
@@ -672,7 +675,7 @@ veridelta repo 内 `probes/shift-bud-baseline/` に置く（shift-bud 側の `.v
 | **§12-2** | kill criterion 2 の判定線 | `report` 本文 + anchors（spec §9.3 progressive disclosure）込みで充足できない機械可読要求があれば kill | annex を開かず report 本文だけで回答できない triage シナリオが1つでもあれば kill | anchor 経由の drill-down を D2 の正当な充足手段と認めるか。spec §9.3 が anchors を正規機構と定める以上、認めない側に立つと **D2 は設計通り動いても kill される**（自己矛盾）— この整合性をどう扱うか |
 | **§12-3** | comparator の flaky トリガーの適用条件 | 素の `c.finding !== undefined`（Step 1 の間でも動く） | capability ゲート付き（current record が `retry-evidence` を宣言する場合のみ）。将来の adapter が別目的で pass に finding を付けたときの silent 誤発火を防ぐ | capability の record 化は Step 2 なので、B を採ると flaky マッピングは Step 2 以降にしか動かない。**Step 順序との依存関係込みで決める** |
 | **§12-4** | 依存 skip カスケードの comparator 表現 | attribution 付き開示 + blocking set からのみ除外（spec §11.1 floor 適合） | `/1` draft 改訂で floor に attribution 例外を切る | 0b-core-5 で dependency skip が構造化チャネル上で区別可能と確認された後、「報告はするが依存起因と機械可読に言い分ける」で狼少年問題が実用上解消するかの実測判定 |
-| **§12-5** | 未知 adapter 名を持つ record に対する abstention reason | 暫定 `adapter-crashed`（`kind: failed`、最近傍）で運用し、専用 reason は Step 2 の spec 改訂項目に載せる | Step 2 の `/1` draft 改訂で専用 reason（例 `adapter-unknown`）を追加してから実装する | Step 1 期間中にこのケースが実際に到達可能か。registry 登録 adapter しか record を書かないため、外来 store / 改竄経由でのみ発生する — **到達不能なら暫定案で足り、spec 改訂項目としての記録のみでよい** |
+| **§12-5** | 未知 adapter 名を持つ record に対する abstention reason | 暫定 `adapter-crashed`（`kind: failed`、最近傍）で運用し、専用 reason は Step 2 の spec 改訂項目に載せる | Step 2 の `/1` draft 改訂で専用 reason（例 `adapter-unknown`）を追加してから実装する | **解決条件は満たされた（rev.3）。到達可能である** — `instrument.adapter` は `src/schema.ts` 上ただの `string`（closed enum なし）で、`RunStore.writeRun` は公開 API。既存の `tests/cli/stdout-flush.test.ts` が `adapter: 'test-adapter'` の record を実際に書いて `buildComparisonReport` に流している。現実の経路は「playwright 対応 build が書いた store を vitest しか知らない古い build が読む」。したがって暫定案では足りず **立場B（Step 2 の draft 改訂で専用 reason を追加してから実装）** が選択される。<br>**Step 1 の暫定挙動:** abstain せず record 自身の `instrument.composition_id` を開示し `degraded_capabilities: []` を出す。seam 前は他 adapter の record に `vitest-native/1` を刻印しており（spec §9.1 違反 — §5 案B 却下理由が「決定的」と呼んだもの）、それへの復帰は不可。ただし現挙動も「この build が記述できない composition について degradation 無しと断言する」fail-open であり、**spec §12「undeclared capabilities は never a guess」に対する既知の不適合**である。Step 2 で解消する。 |
 | **§12-6** | `adapter-capability-changed` イベントの二重意味 | 既存発火（instrument 同一性差分 — `src/compare.ts:290-301`）と per-capability 差分発火を同一 kind に同居させる | 発火条件を1つの規則に再定義する | Step 2 で per-capability 差分が実際に単独で起きうるか（`adapter_version` bump なしに capabilities だけ変わる経路があるか） |
 | **§12-7** | `integrityFailedReport`（`src/gate.ts:133-176`）の `composition_id` / `degraded_capabilities` のソース | sentinel 文字列（record 不読時の固定値） | `readRunMeta` を試行してから fallback | capability を record 宣言に移すと、record が読めない状態（`StoreCorruptError`）でソースが無くなる。schema は `composition_id: string` を必須とするため**空にはできない** |
 | **§12-8** | kill criterion 1 の実行回数 `N` | 10回連続 | 下限3回 + 事前登録（app スタック起動・auth setup を要する suite では10回は重い） | Phase 0b 開始前に一度だけ確定する。CI 実行データで代替する場合の等価な N も同時に決める |
@@ -723,5 +726,6 @@ veridelta repo 内 `probes/shift-bud-baseline/` に置く（shift-bud 側の `.v
 
 ## 改訂履歴
 
-- **2026-07-28 rev.1（初版, status: proposed）** — 初稿。
+- **2026-07-28 rev.3（status: revised）** — Phase 1 Step 1 実装の敵対的レビューで判明した2つの事実誤認を訂正。(1) §3.4「wrapper 経由では記録できない / `VDELTA_CAPTURE_FILE` は注入されない」は誤り — seam 抽出前の `runChild` は detect と無関係に常に渡していたため、reporter を config に常設した repo では ambient recording がすでに成立していた。この誤認が Step 1 で「未検出なら env も渡さない」という黙った退行を authorize していた。D5 / §4.3-2 / §4.3-7 / §10 F-1 を同じ事実に合わせて訂正し、§4.3-8（チャネルは常に渡す・capture の payload が author を名乗る）を追加。(2) §4.3-4「argv が矛盾していても `instrument` する」は INV-5 違反（非 runner の子が注入フラグで即死する）— `detect` が認めた argv にのみ注入する、に訂正。
 - **2026-07-28 rev.2（status: revised）** — 事実確認と敵対的レビューを統合。誤引用の訂正（`src/run.ts:15-19` の import 内容、`DEGRADED_CAPABILITIES` の実 import 行 `compare.ts:8` / `gate.ts:10` / `index.ts:11`、`VITEST_VALUE_FLAGS` の実範囲 `run.ts:72-119`、shift-bud e2e 規模「53 spec」→「14 spec ファイル / `test()` 171 箇所」、「46 fixture + determinism proof」の二重計上）。§4.1 を実装可能な TypeScript に置換し §4.1.1（config_digest 共通契約、旧 §3.3-3 の誤記訂正を含む）を新設。§4.2 に capability の具体スキーマと Step 1 interim 規則を追加。§4.3 に検出・registry の決定リストを追加。§5 案B の却下理由を「非効率」から「spec §9.1 違反出力の出荷」へ格上げ。§6 を Phase 0a′ / 0b-core / 0b-field に分割。§7 に実装機構・outcome 導出・数値化した kill criterion を追加。§8.3 を in-repo A/B replay 主基準 + capture replay + shift-bud confirmatory の三層に再構成し baseline manifest 仕様を定義。§3.3.1（依存 skip カスケードの決定木）、§12（未決の設計判断 8件）、§13（実装スコープと機械判定可能な完了条件）を新設。§10 に F-5、§11 に release-please / 環境ドリフト / 外部リポジトリ依存のリスク行を追加。
+- **2026-07-28 rev.1（初版, status: proposed）** — 初稿。

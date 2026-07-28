@@ -13,11 +13,20 @@
  * multi-match properties are exercised with more than one adapter today
  * rather than becoming meaningful only once playwright lands.
  */
-import { describe, expect, it } from 'vitest'
-import type { Adapter, DetectResult } from '../../src/adapter.js'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+import type {
+  Adapter,
+  CaptureChannel,
+  DetectResult,
+} from '../../src/adapter.js'
 import {
   ADAPTERS,
   adapterNames,
+  ambientChannelEnv,
+  claimCapture,
   detectAdapter,
   findAdapter,
   resolveAdapter,
@@ -142,5 +151,88 @@ describe('adapter registry (§4.3)', () => {
     const reversed = detectAdapter(['x'], [b, a])
     expect(forward).toEqual({ kind: 'ambiguous', candidates: [a, b] })
     expect(reversed).toEqual({ kind: 'ambiguous', candidates: [b, a] })
+  })
+})
+
+describe('the ambient channel (spec §4.2)', () => {
+  const scratch: string[] = []
+
+  afterEach(() => {
+    while (scratch.length > 0) {
+      rmSync(scratch.pop()!, { recursive: true, force: true })
+    }
+  })
+
+  function makeChannel(payload?: string): CaptureChannel {
+    const dir = mkdtempSync(join(tmpdir(), 'vdelta-channel-'))
+    scratch.push(dir)
+    const path = join(dir, 'capture.json')
+    if (payload !== undefined) writeFileSync(path, payload)
+    return { kind: 'single-file', path }
+  }
+
+  it('collects the channel env of every adapter, not just a detected one', () => {
+    // This env is the only thing a reporter configured in the project's own
+    // config has to find the channel with, and it is what makes recording
+    // survive a wrapper command. Deriving it from detection is the regression
+    // this asserts against.
+    const channel = makeChannel()
+    expect(ambientChannelEnv(channel)).toEqual({
+      VDELTA_CAPTURE_FILE: channel.path,
+    })
+  })
+
+  it('merges every registered adapter’s channel env', () => {
+    const channel = makeChannel()
+    const other: Adapter = {
+      ...vitestAdapter,
+      name: 'other',
+      channelEnv: (c) => ({ OTHER_CAPTURE: c.path }),
+    }
+    expect(ambientChannelEnv(channel, [vitestAdapter, other])).toEqual({
+      VDELTA_CAPTURE_FILE: channel.path,
+      OTHER_CAPTURE: channel.path,
+    })
+  })
+
+  it('claims a capture from its payload when no argv named a runner', () => {
+    const channel = makeChannel(
+      JSON.stringify({ capture_version: 2, runner: 'vitest' }),
+    )
+    expect(claimCapture(channel)).toBe(vitestAdapter)
+  })
+
+  it('claims a capture this build cannot read, so the real reason surfaces', () => {
+    // Authorship, not usability: an unsupported capture version must reach
+    // the adapter's own `record` and degrade with "unsupported capture
+    // version 1", not with the generic "is the child a vitest invocation?".
+    const channel = makeChannel(
+      JSON.stringify({ capture_version: 1, runner: 'vitest' }),
+    )
+    expect(claimCapture(channel)).toBe(vitestAdapter)
+  })
+
+  it('claims nothing for an absent, empty or foreign channel', () => {
+    expect(claimCapture(makeChannel())).toBeNull()
+    expect(claimCapture(makeChannel(''))).toBeNull()
+    expect(claimCapture(makeChannel('not json'))).toBeNull()
+    expect(claimCapture(makeChannel('null'))).toBeNull()
+    expect(
+      claimCapture(makeChannel(JSON.stringify({ runner: 'playwright' }))),
+    ).toBeNull()
+  })
+
+  it('breaks a two-adapter tie by registry order rather than degrading', () => {
+    // Two claims mean two reporters wrote to one single-file channel (F-2),
+    // and there is no argv to name a winner with. Discarding a capture that
+    // is genuinely present would be the worse answer.
+    const channel = makeChannel(JSON.stringify({ runner: 'vitest' }))
+    const greedy: Adapter = {
+      ...vitestAdapter,
+      name: 'greedy',
+      claimsCapture: () => true,
+    }
+    expect(claimCapture(channel, [greedy, vitestAdapter])).toBe(greedy)
+    expect(claimCapture(channel, [vitestAdapter, greedy])).toBe(vitestAdapter)
   })
 })

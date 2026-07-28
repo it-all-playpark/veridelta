@@ -13,6 +13,7 @@ import {
   type Adapter,
   AdapterCaptureError,
   type CapabilityDeclaration,
+  type CaptureChannel,
   type CommandSelector,
 } from '../../adapter.js'
 import type { Capture } from './capture.js'
@@ -30,6 +31,27 @@ import {
  */
 function reporterModulePath(): string {
   return join(dirname(fileURLToPath(import.meta.url)), 'reporter.js')
+}
+
+/**
+ * The one env var the capture reporter reads (`reporter.ts:61`). Held here
+ * rather than inline so `channelEnv` and the reporter's contract stay a single
+ * fact; the reporter is inert without it, by design, so that it can sit
+ * permanently in a project's vitest config (spec §4.2 ambient recording).
+ */
+const CAPTURE_FILE_ENV = 'VDELTA_CAPTURE_FILE'
+
+function channelEnv(channel: CaptureChannel): Record<string, string> {
+  return { [CAPTURE_FILE_ENV]: channel.path }
+}
+
+/** Parse the channel, or `undefined` when there is nothing readable in it. */
+function readCapture(channel: CaptureChannel): Capture | undefined {
+  try {
+    return JSON.parse(readFileSync(channel.path, 'utf8')) as Capture
+  } catch {
+    return undefined
+  }
 }
 
 /** Locate the vitest invocation inside the child argv; null when absent. */
@@ -160,6 +182,8 @@ export const vitestAdapter: Adapter = {
     return i === null ? null : { tokenIndex: i }
   },
 
+  channelEnv,
+
   instrument(argv, channel) {
     return {
       argv: [
@@ -168,17 +192,25 @@ export const vitestAdapter: Adapter = {
         `--reporter=${reporterModulePath()}`,
         '--includeTaskLocation',
       ],
-      env: { VDELTA_CAPTURE_FILE: channel.path },
+      env: channelEnv(channel),
     }
   },
 
   splitCommandSelector,
 
+  claimsCapture(channel) {
+    // Authorship only, and from the payload's own self-identification
+    // (`capture.ts:34`, a literal `'vitest'`). Deliberately not a version or
+    // shape check: a capture this adapter wrote but cannot read must reach
+    // `record` so the run degrades with *that* diagnostic ("unsupported
+    // capture version N") instead of the generic "is the child a vitest
+    // invocation?", which is what the pre-seam code path said.
+    return readCapture(channel)?.runner === 'vitest'
+  },
+
   record(channel, ctx) {
-    let capture: Capture
-    try {
-      capture = JSON.parse(readFileSync(channel.path, 'utf8')) as Capture
-    } catch {
+    const capture = readCapture(channel)
+    if (capture === undefined) {
       throw new AdapterCaptureError(
         'no capture from the vitest reporter — is the child a vitest invocation?',
       )

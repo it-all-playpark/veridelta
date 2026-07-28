@@ -163,14 +163,16 @@ describe('vdelta run --adapter (§4.3)', () => {
     expect(existsSync(marker)).toBe(false)
   })
 
-  it('instruments with the named adapter even when detection would decline', async () => {
+  it('injects the named adapter’s reporter into an argv it recognizes', async () => {
     const { workspace, script, marker, report } = makeWorkspace()
 
-    // The argv carries no runner token, so detection alone yields no adapter
-    // and the child would run bare. An explicit name wins regardless
-    // (§4.3-4), observable in the child's own argv and environment.
+    // A vitest token in the argv, so the named adapter recognizes the command
+    // and instruments it. `--adapter` and detection agree here; the point of
+    // the case is that injection happens at all and lands the real reporter.
+    const vitestish = join(workspace, 'vitest.js')
+    writeFileSync(vitestish, readFileSync(script, 'utf8'))
     const result = await spawnCli(
-      ['run', '--adapter', 'vitest', '--', process.execPath, script],
+      ['run', '--adapter', 'vitest', '--', process.execPath, vitestish],
       workspace,
     )
 
@@ -194,7 +196,34 @@ describe('vdelta run --adapter (§4.3)', () => {
     expect(result.stderr).toContain('vdelta: degraded to raw passthrough')
   })
 
-  it('leaves an undetected child uninstrumented and degrades', async () => {
+  it('never injects runner flags into an argv the named adapter declines', async () => {
+    const { workspace, script, marker, report } = makeWorkspace()
+
+    // §4.3-4 lets `--adapter` overrule detection about *who reads the
+    // channel*, but the argv still belongs to the user. `--reporter=…` handed
+    // to a child that is not that runner aborts it before it does any work
+    // ("node: bad option: --reporter=default", exit 9), which is veridelta
+    // being worse than its absence — the one thing INV-5 forbids. A wrapper
+    // could not forward the flags to the runner anyway (§4.3-7), so this
+    // costs nothing and the ambient channel below still records the run.
+    const result = await spawnCli(
+      ['run', '--adapter', 'vitest', '--', process.execPath, script],
+      workspace,
+    )
+
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('child output')
+    expect(existsSync(marker)).toBe(true)
+
+    const child = report()
+    expect(child.argv).toEqual([])
+    // The channel is still offered: naming an adapter for a wrapper is how a
+    // project with an ambiently configured reporter gets recorded (§4.2).
+    expect(child.captureFile).not.toBe('')
+    expect(result.stderr).toContain('vdelta: degraded to raw passthrough')
+  })
+
+  it('offers the capture channel to a child no adapter detected', async () => {
     const { workspace, script, report } = makeWorkspace()
 
     const result = await spawnCli(
@@ -205,8 +234,14 @@ describe('vdelta run --adapter (§4.3)', () => {
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('child output')
     const child = report()
-    expect(child.captureFile).toBe('')
+    // Argv untouched — nothing recognized this command…
     expect(child.argv).toEqual([])
+    // …but the channel env is exported regardless. A reporter registered in
+    // the project's own config (spec §4.2 ambient recording, the RECOMMENDED
+    // deployment) is inert without it, so gating it on detection silently
+    // stops recording every wrapper invocation — `vdelta run -- npm test` —
+    // which is precisely the severed stream §4.2 exists to prevent.
+    expect(child.captureFile).not.toBe('')
     expect(result.stderr).toContain(
       'vdelta: degraded to raw passthrough (no capture from the vitest reporter',
     )

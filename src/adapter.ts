@@ -125,11 +125,48 @@ export interface Adapter {
    */
   detect(argv: readonly string[]): DetectResult | null
 
-  /** The reporter-injected argv plus the env additions for the child. */
+  /**
+   * The env that points this adapter's reporter at the channel.
+   *
+   * Exported to the child *whether or not* the adapter claimed the argv. A
+   * reporter registered in the project's own configuration (spec §4.2 ambient
+   * recording — the RECOMMENDED deployment) has no other way to find the
+   * channel, and it is deliberately inert without it. Gating this on argv
+   * detection would silently stop recording every wrapper invocation
+   * (`vdelta run -- npm test`), which is exactly the stream-severing §4.2
+   * warns about.
+   *
+   * The channel is one file today, so two adapters pointing their reporters at
+   * it would race (last writer wins). That is the pre-existing single-channel
+   * hazard follow-up F-2 exists for, not something detection was protecting
+   * against — pre-seam this env was exported unconditionally.
+   */
+  channelEnv(channel: CaptureChannel): Readonly<Record<string, string>>
+
+  /**
+   * The reporter-injected argv plus the env additions for the child. Only
+   * applied when this adapter recognizes the argv: injecting runner flags into
+   * a command that is not that runner kills it outright (INV-5 — veridelta is
+   * never worse than its absence), and a wrapper cannot forward them anyway
+   * (§4.3-7). {@link channelEnv} is what covers the uninstrumented case.
+   */
   instrument(
     argv: readonly string[],
     channel: CaptureChannel,
   ): InstrumentedChild
+
+  /**
+   * Whether the capture now sitting in the channel is this adapter's, decided
+   * on the channel's own payload rather than on argv.
+   *
+   * Consulted only when no adapter claimed the argv: the ambient case, where
+   * the reporter came from the project's configuration instead of from
+   * {@link instrument}, so the argv carries no evidence of which runner ran.
+   * MUST NOT throw — an absent, empty, foreign or malformed channel is simply
+   * not a claim. A claim asserts authorship only; a payload this adapter owns
+   * but cannot use still fails in {@link record}, with its own diagnostic.
+   */
+  claimsCapture(channel: CaptureChannel): boolean
 
   /** §6.4 inclusion intent, decided purely on the runner's own CLI surface. */
   splitCommandSelector(argv: readonly string[]): CommandSelector

@@ -7,10 +7,14 @@
  *
  * Which runner is being recorded is decided by the adapter registry (§4.3),
  * never here: an explicit `--adapter` always wins, otherwise every adapter's
- * `detect` is evaluated and only an unambiguous single match instruments the
- * child. No runner vocabulary lives in this module — instrumenting the child,
- * splitting inclusion intent and reading the capture channel all happen behind
- * the {@link Adapter} descriptor.
+ * `detect` is evaluated and only an unambiguous single match may instrument
+ * the child's argv. Recording does not depend on that match — every adapter's
+ * capture-channel env reaches the child regardless, so a reporter configured
+ * in the project itself still records (spec §4.2 ambient recording), and the
+ * capture that lands in the channel names its own author. No runner vocabulary
+ * lives in this module — instrumenting the child, splitting inclusion intent
+ * and reading the capture channel all happen behind the {@link Adapter}
+ * descriptor.
  */
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -21,6 +25,8 @@ import { join } from 'node:path'
 import type { Adapter, CaptureChannel, RecordContext } from './adapter.js'
 import {
   adapterNames,
+  ambientChannelEnv,
+  claimCapture,
   detectAdapter,
   resolveAdapter,
 } from './adapters/registry.js'
@@ -62,9 +68,14 @@ export interface RunResult {
 export interface RunOptions {
   /**
    * Explicit adapter name (`vdelta run --adapter <name>`). Always wins over
-   * detection (§4.3-4): a contradicting argv is instrumented anyway and falls
-   * through the ordinary capture path when nothing comes back. An unknown
-   * name throws — user input error, never a silent degradation (§4.3-5).
+   * detection (§4.3-4) as the adapter that reads the capture channel and
+   * splits inclusion intent. It does *not* force reporter flags onto an argv
+   * the adapter does not recognize: a wrapper cannot forward them (§4.3-7)
+   * and a non-runner child dies on them, which would make veridelta worse
+   * than its absence (INV-5). Naming an adapter for such a child still
+   * records it whenever the reporter is configured ambiently (spec §4.2).
+   * An unknown name throws — user input error, never a silent degradation
+   * (§4.3-5).
    */
   adapter?: string
 }
@@ -86,32 +97,59 @@ const NO_ADAPTER_DIAGNOSTIC =
   'no capture from the vitest reporter — is the child a vitest invocation?'
 
 /**
- * Resolve the adapter that will instrument this child, or `null` plus the
- * reason to degrade with. Detection failure is never fatal (INV-5): the child
- * still runs verbatim, it is only recorded that no evidence could be taken.
+ * The adapter that will read this run's capture channel, whether it also gets
+ * to instrument the child argv, and the reason to degrade with if no capture
+ * ever arrives.
+ *
+ * `adapter: null` is not "do not record": it only means the argv named no
+ * runner, so who reads the channel is decided afterwards from the capture
+ * itself ({@link claimCapture}). Detection failure is never fatal (INV-5) —
+ * the child always runs verbatim.
  */
 function chooseAdapter(
   cmd: readonly string[],
   opts: RunOptions,
-): { adapter: Adapter | null; why: string } {
+): { adapter: Adapter | null; instrumentArgv: boolean; why: string } {
   if (opts.adapter !== undefined) {
-    return { adapter: resolveAdapter(opts.adapter), why: NO_ADAPTER_DIAGNOSTIC }
+    // §4.3-4: the explicit name wins over detection for *reading* the channel.
+    // Argv injection still requires the adapter to recognize its own argv:
+    // `--reporter=…` handed to a child that is not that runner aborts it
+    // before it does any work, and INV-5 forbids veridelta making a run worse
+    // than its absence. The wrapper case loses nothing either way — §4.3-7
+    // already states injected flags cannot reach the runner through a wrapper.
+    const adapter = resolveAdapter(opts.adapter)
+    return {
+      adapter,
+      instrumentArgv: adapter.detect(cmd) !== null,
+      why: NO_ADAPTER_DIAGNOSTIC,
+    }
   }
   const detection = detectAdapter(cmd)
   switch (detection.kind) {
     case 'unique':
-      return { adapter: detection.adapter, why: NO_ADAPTER_DIAGNOSTIC }
+      return {
+        adapter: detection.adapter,
+        instrumentArgv: true,
+        why: NO_ADAPTER_DIAGNOSTIC,
+      }
     case 'ambiguous': {
       // Registry order must not silently pick a winner (§4.3-2): the
-      // candidates are disclosed and the user names one.
+      // candidates are disclosed and the user names one. Nothing is injected
+      // into the argv, so any capture that still shows up came from an
+      // ambiently configured reporter and identifies its own author.
       const candidates = detection.candidates.map((a) => a.name).join(', ')
       return {
         adapter: null,
+        instrumentArgv: false,
         why: `several adapters claim this command (${candidates}) — pick one with --adapter <${adapterNames().join('|')}>`,
       }
     }
     case 'none':
-      return { adapter: null, why: NO_ADAPTER_DIAGNOSTIC }
+      return {
+        adapter: null,
+        instrumentArgv: false,
+        why: NO_ADAPTER_DIAGNOSTIC,
+      }
   }
 }
 
@@ -172,12 +210,25 @@ export async function runAndRecord(
     path: join(tmpdir(), `vdelta-capture-${randomUUID()}.json`),
   }
 
-  const { adapter, why: noAdapterReason } = chooseAdapter(cmd, opts)
-  const instrumented = adapter?.instrument(cmd, channel)
-  const child = await runChild(
-    instrumented?.argv ?? cmd,
-    instrumented?.env ?? {},
-  )
+  const {
+    adapter: namedAdapter,
+    instrumentArgv,
+    why: noAdapterReason,
+  } = chooseAdapter(cmd, opts)
+  const instrumented = instrumentArgv
+    ? namedAdapter?.instrument(cmd, channel)
+    : undefined
+  // Every adapter's channel env goes to the child even when none claimed the
+  // argv. A reporter registered in the project's own config (spec §4.2 ambient
+  // recording, the RECOMMENDED deployment) finds the channel through this and
+  // nothing else, so gating it on detection silently severs recording for
+  // every wrapper invocation — `vdelta run -- npm test` and friends. Pre-seam
+  // this env was set on every child unconditionally; only argv injection was
+  // ever conditional.
+  const child = await runChild(instrumented?.argv ?? cmd, {
+    ...ambientChannelEnv(channel),
+    ...instrumented?.env,
+  })
 
   const degraded = (why: string): RunResult => {
     diagnostics.push(`vdelta: degraded to raw passthrough (${why})`)
@@ -192,6 +243,14 @@ export async function runAndRecord(
   }
 
   try {
+    // Who reads the channel: the adapter the argv (or `--adapter`) named, or
+    // failing that whichever adapter recognizes the capture that actually
+    // landed there. The second case is ambient recording (spec §4.2): the
+    // reporter came from the project's configuration, so the argv never
+    // mentioned a runner but a capture exists all the same. Pre-seam this was
+    // implicit — the capture was read unconditionally, before anything looked
+    // at the argv — and dropping it would throw away evidence already in hand.
+    const adapter = namedAdapter ?? claimCapture(channel)
     if (adapter === null) return degraded(noAdapterReason)
 
     const worktree = await gitRepoRoot(cwd)
