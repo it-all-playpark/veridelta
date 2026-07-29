@@ -98,9 +98,33 @@ spec §3.5 の設計どおりの挙動。
 | — | （正常挙動）`compare.ts` の baseline 選択が `completeness.status !== 'complete'` を除外している。INV-4 に沿う | — |
 | — | （正常挙動）near-miss disclosure（spec §5.4）が6ストリーム間で `repo.cwd` / `invocation.selector` の差分を正しく開示 | — |
 
+## この baseline が検証できること / できないこと
+
+設計 §6 は Phase 0a を「Phase 1 のゲート」と位置づけ、§8.3 副基準2 を
+「Phase 0a で記録した run_id 群と、**Step 1 完了後**に同じ tree T で記録した run_id 群が一致すること」
+と定義している。しかし実際には **Phase 1 Step 1（seam 抽出、PR #36 / `ac3442b`）が Phase 0a より先に
+着地しており、本 baseline は Step 1 適用後のバイナリ（0.3.0）で記録されている**。
+
+したがって:
+
+- ❌ **Step 1 の挙動凍結検証には使えない。** 事前・事後の関係が成立していない。
+  Step 1 の主基準は in-repo A/B replay（`tests/conformance/ab-replay.test.ts`）が担う。
+  実データで Step 1 の A/B を取りたい場合は、seam 抽出前の `b001196` をビルドして
+  本 baseline と同一条件で記録すれば retroactive に得られる。
+- ✅ **前向きの回帰基準として使える。** record 形状を変えないはずの変更が
+  これらの run_id を再現できなければ、それは意図しない挙動変化である。
+- ✅ **§8.3 副基準1（capture replay）の入力**として使える。
+- ✅ **実データの証拠コーパス**として使える（issue #38 / #39 / #40 の根拠）。
+
+なお record 形状を変える変更（`adapter_version` bump を伴うもの、設計 §8.2 Step 2）は
+spec §6.2 により本 baseline との comparability を**意図的に**切る。その場合は
+Step 2 着地後に baseline を録り直すこと。
+
 ## 既知の限界
 
 - **絶対パス依存** — `repo.identity` / `repo.worktree` が絶対パスで run_id に入るため、
   別マシン・別パスでは run_id が一致しない。副基準2 は同一マシン・同一パス前提。
-- **vdelta 0.3.0 は publish 前のローカル build**（release-please PR #37 branch `f754f2e`）。
-  コードは main `ac3442b` と同一で version のみ差分。publish 後の 0.3.0 と `adapter_version` は一致する。
+- **vdelta 0.3.0 の出所** — 記録時は release-please PR #37 branch `f754f2e` のローカル build（publish 前）。
+  その後 PR #37 が main へマージされ `v0.3.0` が公開された。
+  `git diff ac3442b 3eff367 -- src/ tests/` が空であることを確認済みで、
+  **公開 0.3.0 のコードは記録に使った成果物と同一**。本 baseline は公開 0.3.0 に対してそのまま有効。

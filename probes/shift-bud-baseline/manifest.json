@@ -16,7 +16,7 @@
     ],
     "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。",
     "vdelta_version": "0.3.0",
-    "vdelta_source": "release-please PR #37 branch (f754f2e) のローカル build。npm publish 前の成果物で、コードは main (ac3442b) と同一・version のみ差分。",
+    "vdelta_source": "記録時は release-please PR #37 branch (f754f2e) のローカル build（publish 前）。その後 PR #37 が main へマージされ v0.3.0 が公開された。`git diff ac3442b 3eff367 -- src/ tests/` が空であることを確認済みで、公開 0.3.0 のコードは記録に使った成果物と同一。したがって本 baseline は公開 0.3.0 に対してそのまま有効。",
     "node_version": "v24.18.0",
     "runner_version": "4.1.10",
     "declared_env": {
