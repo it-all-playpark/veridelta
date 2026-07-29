@@ -51,18 +51,31 @@ function restoreWritable(root: string) {
   chmodRecursive(root, (m) => m | 0o200)
 }
 
+/**
+ * Count loose objects only: files named as a full hex hash inside a
+ * two-hex-digit subdirectory of `.git/objects` (git's loose-object layout).
+ * This deliberately excludes `objects/pack`, `objects/info`, and transient
+ * control files git itself may drop directly under `objects/` (e.g.
+ * `maintenance.lock`, written and removed by git's own background
+ * maintenance independent of anything under test) — none of those are
+ * "loose objects", so counting them would make this assertion flaky under
+ * concurrent test-suite load rather than actually detecting repo pollution.
+ */
+const HEX_DIR = /^[0-9a-f]{2}$/
+const HEX_OBJECT = /^[0-9a-f]{38,62}$/
+
 function countObjects(gitDir: string): number {
   let count = 0
-  const walk = (p: string) => {
-    const st = statSync(p)
-    if (st.isDirectory()) {
-      for (const entry of readdirSync(p)) walk(join(p, entry))
-    } else {
-      count++
-    }
-  }
+  const objectsDir = join(gitDir, 'objects')
   try {
-    walk(join(gitDir, 'objects'))
+    for (const dirEntry of readdirSync(objectsDir)) {
+      if (!HEX_DIR.test(dirEntry)) continue
+      const sub = join(objectsDir, dirEntry)
+      if (!statSync(sub).isDirectory()) continue
+      for (const fileEntry of readdirSync(sub)) {
+        if (HEX_OBJECT.test(fileEntry)) count++
+      }
+    }
   } catch {
     return 0
   }
