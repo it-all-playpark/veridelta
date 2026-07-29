@@ -30,3 +30,6 @@ dist/
 
 # local claude session artifacts
 .claude/
+
+# dev-flow tooling internal cache (detect-and-install.sh workflow state)
+.devflow-tmp/
