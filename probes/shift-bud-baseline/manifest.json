@@ -1,0 +1,402 @@
+{
+  "probe": "shift-bud Phase 0a baseline",
+  "design_doc": "docs/superpowers/specs/2026-07-28-playwright-adapter-design.md",
+  "design_section": "§8.3 baseline manifest 仕様 / §6 Phase 0a",
+  "generated_by": "vdelta run (manual Phase 0a execution)",
+  "preconditions": {
+    "subject_repo": "playpark-llc/shift-bud",
+    "subject_pin_sha": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+    "subject_pin_reachable_from": "origin/main",
+    "subject_worktree_abs_path": "/Users/naramotoyuuji/ghq/github.com/playpark-llc/shift-bud/.claude/worktrees/vdelta-0a",
+    "subject_tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6",
+    "subject_prep": [
+      "git worktree add --detach <path> 8cf90518",
+      "pnpm install --frozen-lockfile",
+      "pnpm --filter @shift-bud/shared build"
+    ],
+    "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。",
+    "vdelta_version": "0.3.0",
+    "vdelta_source": "release-please PR #37 branch (f754f2e) のローカル build。npm publish 前の成果物で、コードは main (ac3442b) と同一・version のみ差分。",
+    "node_version": "v24.18.0",
+    "runner_version": "4.1.10",
+    "declared_env": {
+      "CI": null,
+      "NODE_ENV": null,
+      "TZ": null,
+      "LANG": "en_US.UTF-8"
+    }
+  },
+  "run_id_preimage_property": "runs/<run_id>.json は record から `recording` グループを除いたもの = spec §3.5 の run_id preimage そのもの。sha256(canonicalJson(当該ファイル)) が run_id と一致することを run_id_verified で検証済み。",
+  "control_proof": {
+    "description": "§8.3 が要求するコントロール証明。同一 vdelta・同一 tree で packages/shared を2回記録し run_id が一致することを確認した。",
+    "package": "packages/shared",
+    "run_id": "run_13d242f9cc27680064ea904ef26d02c42f43ecae70b959ecf0527b7f795471d4",
+    "repetitions": 2,
+    "stable": true,
+    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。"
+  },
+  "streams": [
+    {
+      "package": "packages/backend",
+      "run_id": "run_e12cdb84ea233e20367c29f75dce692bb543ce68a71bdd9376cd50d58d008fe0",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": [
+          "src"
+        ]
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:9df63869d72beff024f0b4d645a1f76558d0366e620187431cea52882f5034a4",
+      "observation_count": 1958,
+      "verdict_counts": {
+        "pass": 1953,
+        "skip": 5
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/frontend",
+      "run_id": "run_b27b0c76ba8d910bf64ea85e3ea6be5dd74ac794d586d264f1b73187e98d3b37",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": []
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:4141d97c0709dd95ca8d7d7f0922817de5201a050f5f474c7a983ebcd8822ca7",
+      "observation_count": 1540,
+      "verdict_counts": {
+        "pass": 1538,
+        "skip": 2
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/shared",
+      "run_id": "run_13d242f9cc27680064ea904ef26d02c42f43ecae70b959ecf0527b7f795471d4",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": []
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:28dbf73e399d29061472bf769e469e13873b7e559e191e04b048a05b989cb74e",
+      "observation_count": 457,
+      "verdict_counts": {
+        "pass": 457
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/landing",
+      "run_id": "run_30101781d4944175172eade5267665fc4a0f2976287081e47136afb4dabbe9f4",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": []
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:2bf0c4f016bb302567a240fda7395b9dd4c28c780a27685b56e32d6aa4ac5e86",
+      "observation_count": 76,
+      "verdict_counts": {
+        "pass": 76
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/video",
+      "run_id": "run_5a3064bbc49b6e756e44fb9291750b8d8997585459a748c68a73b4209491c322",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": []
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:8718e2f465c00791f913bfa76c221e64620ab3090e8159a20603535326c4e1b0",
+      "observation_count": 195,
+      "verdict_counts": {
+        "pass": 195
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/e2e",
+      "run_id": "run_0e840fe82afd9d42c4826b6539437b7dc4a14dca34678a237123c4656b3902af",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": [
+          "screenshots/recording/__tests__"
+        ]
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "complete",
+        "child_exit_code": 0
+      },
+      "surface_inventory_digest": "sha256:e34d7cc6be132f259d4ab59238a41a0dd82a64d791b7d727775658ca72fd14b9",
+      "observation_count": 30,
+      "verdict_counts": {
+        "pass": 30
+      },
+      "red_test_ids": [],
+      "capture_reason": "passed",
+      "unhandled_errors": 0
+    }
+  ],
+  "superseded": [
+    {
+      "package": "packages/backend",
+      "run_id": "run_07df741de43e320ed18e3e2485275e455073bc7f957e9dbd7bfeb36ff471f20a",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": [
+          "src"
+        ]
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "crashed",
+        "child_exit_code": 1
+      },
+      "surface_inventory_digest": "sha256:440fa790c7b3506fde592424f46629edd54d7b547c1b73238165789ca702f2ed",
+      "observation_count": 528,
+      "verdict_counts": {
+        "pass": 528
+      },
+      "red_test_ids": [],
+      "capture_reason": "failed",
+      "unhandled_errors": 0
+    },
+    {
+      "package": "packages/frontend",
+      "run_id": "run_b24e6af42604f1b45aa1ebd3645c78e3f986b9348fc56f01af6fd46694fd3582",
+      "run_id_verified": true,
+      "invocation": {
+        "command": [
+          "npx",
+          "vitest",
+          "run"
+        ],
+        "selector": []
+      },
+      "instrument": {
+        "adapter": "vitest",
+        "adapter_version": "0.3.0",
+        "composition_id": "vitest-native/1",
+        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+      },
+      "environment": {
+        "runner": "vitest",
+        "runner_version": "4.1.10",
+        "runtime": "node v24.18.0",
+        "os": "darwin",
+        "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
+      },
+      "provenance": {
+        "head": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
+        "dirty_diff_digest": "sha256:d7a5e915306d21dc1937ad5616f1dc9682e759e75ef51dd05fd9ddc98a078ea1",
+        "tree_digest": "f0ffc72738b61f93c1537606a9c0331e6e5f96f6"
+      },
+      "completeness": {
+        "status": "crashed",
+        "child_exit_code": 1
+      },
+      "surface_inventory_digest": "sha256:0e00a352021678999f6369c7395cc98977966ede2a1dfae962ac048bbd7fcba5",
+      "observation_count": 536,
+      "verdict_counts": {
+        "pass": 536
+      },
+      "red_test_ids": [],
+      "capture_reason": "failed",
+      "unhandled_errors": 0
+    }
+  ],
+  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する。completeness=crashed だが observations は全 pass で red 0 件、report は coverage=528/528 と 100% を示す。",
+  "totals": {
+    "streams": 6,
+    "observations": 4256,
+    "all_report_non_null": true,
+    "all_run_id_verified": true,
+    "all_complete": true
+  }
+}
