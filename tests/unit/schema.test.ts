@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseReport, SchemaViolationError } from '../../src/index.js'
+import {
+  parseReport,
+  parseRunRecord,
+  type RunRecord,
+  SchemaViolationError,
+} from '../../src/index.js'
 
 const minimalNoneReport = {
   schema_version: 'veridelta/1',
@@ -158,5 +163,96 @@ describe('current.completeness_status (F1)', () => {
 
   it('still parses the original report without completeness_status', () => {
     expect(() => parseReport(minimalNoneReport)).not.toThrow()
+  })
+})
+
+function makeRunRecord(overrides: Partial<RunRecord> = {}): RunRecord {
+  return {
+    schema_version: 'veridelta/1',
+    repo: { identity: 'repo1', worktree: '/wt', branch: 'main', cwd: '/wt' },
+    invocation: { command: ['vitest', 'run'], selector: [] },
+    instrument: {
+      adapter: 'vitest',
+      adapter_version: '1',
+      composition_id: 'vitest-native/2',
+      config_digest: 'cfg1',
+    },
+    environment: {
+      runner: 'vitest',
+      runner_version: '1',
+      runtime: 'node',
+      os: 'darwin',
+      env_fingerprint: 'env1',
+    },
+    provenance: {
+      head: 'deadbeef',
+      dirty_diff_digest: 'dd1',
+      tree_digest: 'td1',
+    },
+    surface: {
+      inventory_digest: 'inv1',
+      test_sources: {},
+      config_sources: {},
+      suppressed: [],
+    },
+    completeness: { status: 'complete', child_exit_code: 0 },
+    observations: [],
+    recording: {
+      recorder: 'vdelta-run',
+      recorded_at_ms: 0,
+      durations_us: {},
+      raw_stdout: '',
+      raw_stderr: '',
+      capture_reason: 'complete',
+      unhandled_errors: 0,
+    },
+    ...overrides,
+  }
+}
+
+describe('record.completeness.module_errors (F1)', () => {
+  it('parses a record with no module_errors (pre-F1 record, read back-compat)', () => {
+    expect(() => parseRunRecord(makeRunRecord())).not.toThrow()
+  })
+
+  it('parses a record with a well-formed module_errors array', () => {
+    const record = makeRunRecord({
+      completeness: {
+        status: 'crashed',
+        child_exit_code: 1,
+        module_errors: [
+          { rel: 'a.test.ts', count: 1 },
+          { rel: 'b.test.ts', count: 2 },
+        ],
+      },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
+  })
+
+  it('throws when a module_errors entry has a non-string rel', () => {
+    const record = makeRunRecord({
+      completeness: {
+        status: 'crashed',
+        child_exit_code: 1,
+        module_errors: [{ rel: 1, count: 1 }] as unknown as {
+          rel: string
+          count: number
+        }[],
+      },
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+  })
+
+  it('throws when a module_errors entry has an unknown extra key', () => {
+    const record = makeRunRecord({
+      completeness: {
+        status: 'crashed',
+        child_exit_code: 1,
+        module_errors: [
+          { rel: 'a.test.ts', count: 1, extra: true },
+        ] as unknown as { rel: string; count: number }[],
+      },
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
   })
 })

@@ -30,6 +30,68 @@ type SerializedErrorLike = {
   stacks?: { file?: unknown; line?: unknown; column?: unknown }[]
 }
 
+type ResolvedConfigLike = {
+  includeTaskLocation?: unknown
+  chaiConfig?: { truncateThreshold?: number }
+  environment?: unknown
+  pool?: unknown
+  isolate?: unknown
+  retry?: unknown
+  testTimeout?: unknown
+  setupFiles?: unknown
+  sequence?: {
+    sequencer?: unknown
+    shuffle?: unknown
+    concurrent?: unknown
+    seed?: unknown
+  }
+}
+
+/**
+ * Defensive-cast the vitest resolved config (`ctx.config`) into
+ * `Capture['config']` (§3.1, config_digest 9-item covering). Pure function so
+ * the cast rules are unit-testable without a running `Vitest` instance. Every
+ * field is best-effort: an unexpected shape falls back to a safe default
+ * rather than throwing, matching the existing include_task_location /
+ * truncate_threshold behavior this function replaces.
+ */
+export function captureRunnerConfig(config: unknown): Capture['config'] {
+  const c = config as ResolvedConfigLike | undefined
+  const chaiConfig = c?.chaiConfig
+
+  const retry = c?.retry
+  const retryCount =
+    typeof retry === 'number'
+      ? retry
+      : retry !== null &&
+          typeof retry === 'object' &&
+          typeof (retry as { count?: unknown }).count === 'number'
+        ? (retry as { count: number }).count
+        : 0
+
+  const sequence = c?.sequence
+  const sequencer = sequence?.sequencer
+
+  return {
+    include_task_location: c?.includeTaskLocation === true,
+    truncate_threshold: chaiConfig?.truncateThreshold ?? null,
+    environment: typeof c?.environment === 'string' ? c.environment : 'node',
+    pool: typeof c?.pool === 'string' ? c.pool : 'forks',
+    isolate: c?.isolate !== false,
+    retry: retryCount,
+    test_timeout: typeof c?.testTimeout === 'number' ? c.testTimeout : null,
+    setup_files: Array.isArray(c?.setupFiles)
+      ? c.setupFiles.filter((f): f is string => typeof f === 'string')
+      : [],
+    sequence: {
+      sequencer: typeof sequencer === 'function' ? sequencer.name : null,
+      shuffle_tests: sequence?.shuffle === true,
+      concurrent: sequence?.concurrent === true,
+      seed: typeof sequence?.seed === 'number' ? sequence.seed : null,
+    },
+  }
+}
+
 export default class VdeltaReporter implements Reporter {
   private ctx: Vitest | undefined
   private consoleByTask = new Map<string, { type: string; content: string }[]>()
@@ -78,22 +140,13 @@ export default class VdeltaReporter implements Reporter {
       }
     }
 
-    const config = this.ctx?.config
-    const chaiConfig = (
-      config as { chaiConfig?: { truncateThreshold?: number } } | undefined
-    )?.chaiConfig
     const capture: Capture = {
       capture_version: CAPTURE_VERSION,
       runner: 'vitest',
       runner_version: this.ctx?.version ?? 'unknown',
       reason,
       unhandled_errors: unhandledErrors.length,
-      config: {
-        include_task_location:
-          (config as { includeTaskLocation?: boolean } | undefined)
-            ?.includeTaskLocation === true,
-        truncate_threshold: chaiConfig?.truncateThreshold ?? null,
-      },
+      config: captureRunnerConfig(this.ctx?.config),
       tests,
       module_errors: moduleErrors,
       config_files: this.collectConfigFiles(),

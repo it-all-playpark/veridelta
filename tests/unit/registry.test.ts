@@ -197,7 +197,7 @@ describe('the ambient channel (spec §4.2)', () => {
 
   it('claims a capture from its payload when no argv named a runner', () => {
     const channel = makeChannel(
-      JSON.stringify({ capture_version: 2, runner: 'vitest' }),
+      JSON.stringify({ capture_version: 3, runner: 'vitest' }),
     )
     expect(claimCapture(channel)).toBe(vitestAdapter)
   })

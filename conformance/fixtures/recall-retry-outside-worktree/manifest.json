@@ -3,7 +3,7 @@
   "class": "recall",
   "mutation": "retry-added-via-outside-worktree-config",
   "spec_refs": ["§7.4", "§7.5", "INV-9"],
-  "notes": "Cheat: retry is added not by editing anything inside the git worktree, but by rewriting the ancestor-directory config that lives outside the worktree (vitest.config.mjs written via write-outside into the fixture root). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which cannot climb into the workspace's symlinked node_modules from the fixture root; a plain object is functionally identical to `defineConfig({...})`. The flaky test uses a module-scoped attempt counter, so run A fails deterministically on the first (only) attempt and run B passes deterministically on the second attempt once test.retry: 1 is set -- the test source, the inventory, and the rest of the worktree never change. Because config-source-changed fires for the external config, the repair is classified as repaired_with_test_change (not repaired_same_surface): a green-without-worktree-change cheat is never silently disclosed as an unchanged surface. Worktree-external config cannot be pinned by provenance (no commit, no worktree diff observes it), so it is disclosed via the `external:` config_sources key instead (spec §3.5 Config-source keys / Appendix C residual risk) -- this fixture does not, and must not, claim repaired_same_surface.",
+  "notes": "Cheat: retry is added not by editing anything inside the git worktree, but by rewriting the ancestor-directory config that lives outside the worktree (vitest.config.mjs written via write-outside into the fixture root). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which cannot climb into the workspace's symlinked node_modules from the fixture root; a plain object is functionally identical to `defineConfig({...})`. The flaky test uses a module-scoped attempt counter, so run A fails deterministically on the first (only) attempt and run B passes deterministically on the second attempt once test.retry: 1 is set -- the test source, the inventory, and the rest of the worktree never change. Since issue #39, `retry` (count) enters `instrument.config_digest` (composition `vitest-native/2`, judgement table item), so this cheat is caught earlier and more strongly than before: `sameInstrument` no longer holds (retry count 0 -> 1), so the comparator reports comparability `none` / reason `instrument-changed` -- it never reaches inventory comparison, so it cannot claim `exact` or any `repaired_*` transition at all (`outcome_verdict: inconclusive`). The external config's own content change (retry field added) still independently fires `config-source-changed` for the external key (worktree-external config cannot be pinned by provenance -- no commit, no worktree diff observes it -- so it is disclosed via the `external:` config_sources key, spec §3.5 / Appendix C residual risk). This fixture asserts the harness never silently claims a green result across an external-config-induced instrument change.",
   "steps": [
     {
       "do": "write-outside",
@@ -22,12 +22,15 @@
     {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
   ],
   "assertions": [
-    {"report": "cmp", "path": "comparability", "eq": "exact"},
-    {"report": "cmp", "path": "transitions.repaired_with_test_change", "contains": "tests/flaky.test.ts::needs retry"},
-    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "comparability", "eq": "none"},
+    {"report": "cmp", "path": "comparability_detail.reason", "eq": "instrument-changed"},
+    {"report": "cmp", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "inconclusive"},
+    {"report": "cmp", "path": "current.red", "empty": true},
     {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "config-source-changed"}},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "runner-config-changed"}},
     {"report": "cmp", "path": "verification_surface.events.0.path", "matches": "^external:"},
-    {"report": "cmp", "path": "verification_surface.events.1", "defined": false},
+    {"report": "cmp", "path": "verification_surface.events.2", "defined": false},
     {"report": "cmp", "path": "verification_surface.status", "eq": "changed"}
   ]
 }

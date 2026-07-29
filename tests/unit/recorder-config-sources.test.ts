@@ -54,12 +54,27 @@ function baseCtx(worktree: string): RecordContext {
 
 function baseCapture(configFiles: string[]): Capture {
   return {
-    capture_version: 2,
+    capture_version: 3,
     runner: 'vitest',
     runner_version: '4.0.0',
     reason: 'passed',
     unhandled_errors: 0,
-    config: { include_task_location: false, truncate_threshold: null },
+    config: {
+      include_task_location: false,
+      truncate_threshold: null,
+      environment: 'node',
+      pool: 'forks',
+      isolate: true,
+      retry: 0,
+      test_timeout: 5000,
+      setup_files: [],
+      sequence: {
+        sequencer: 'BaseSequencer',
+        shuffle_tests: false,
+        concurrent: false,
+        seed: null,
+      },
+    },
     tests: [],
     module_errors: [],
     config_files: configFiles,

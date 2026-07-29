@@ -1,1 +1,1 @@
-export const timeoutMs = 5000
+export const slowTestThresholdMs = 5000

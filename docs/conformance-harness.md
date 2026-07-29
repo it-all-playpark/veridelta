@@ -204,7 +204,7 @@ affected test; `phase` is not observable and is declared unsupported.
 
 ### 5.3. Failure evidence composition
 
-- `composition_id`: `"vitest-native/1"`.
+- `composition_id`: `"vitest-native/2"`.
 - Digest core per red finding (expC): exception type (`error.name`), failure
   message (`error.message`), structured `expected` / `actual` / `operator`,
   and line-shift-stable position `relOffsets` (per-frame
@@ -230,10 +230,26 @@ affected test; `phase` is not observable and is declared unsupported.
 
 `instrument` = adapter name (`vitest`), adapter version (the vdelta package
 version), and `config_digest` over the effective evidence-affecting resolved
-config — at minimum `chaiConfig.truncateThreshold`, `includeTaskLocation`,
-and the resolved reporter-relevant options, however supplied (§3.1). Changing
-`test.chaiConfig.truncateThreshold` in `vitest.config.ts` between two runs
-therefore yields `comparability: "none"` with reason `instrument-changed`
+config, however supplied (§3.1). The judgement table (§4 of
+`docs/compositions/vitest-native-1.md`) covers all 9 items:
+
+- `chaiConfig.truncateThreshold` (`truncate_threshold`)
+- `includeTaskLocation` (`include_task_location`)
+- `environment`
+- `pool`
+- `isolate`
+- `retry` (count only; `condition` — RegExp/function — is not covering-able
+  and is declared a known gap)
+- `testTimeout` (`test_timeout`)
+- `setupFiles`: covered as a resolved, ordered list of paths (worktree-relative,
+  or `external:<abs path>` when outside the worktree) — which setup files run
+  and in what order, not their content (no per-file digest)
+- `sequence`: covered as the post-`resolveConfig` sequencer class name plus
+  the normalized `shuffle_tests` boolean (vitest's `{files, tests}` shuffle
+  object form is normalized by `resolveConfig` before the adapter sees it)
+
+Changing `test.chaiConfig.truncateThreshold` in `vitest.config.ts` between two
+runs therefore yields `comparability: "none"` with reason `instrument-changed`
 plus a `runner-config-changed` surface event.
 
 Only evidence-affecting settings enter the instrument digest. `test.include`

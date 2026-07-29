@@ -299,7 +299,11 @@ export interface RunRecord {
     config_sources: Record<string, string>
     suppressed: string[]
   }
-  completeness: { status: CompletenessStatus; child_exit_code: number }
+  completeness: {
+    status: CompletenessStatus
+    child_exit_code: number
+    module_errors?: { rel: string; count: number }[]
+  }
   observations: TestObservation[]
   recording: {
     recorder: string
@@ -772,13 +776,28 @@ export function parseRunRecord(value: unknown): RunRecord {
   asStringArray(surface.suppressed, 'record.surface.suppressed')
 
   const completeness = asObject(o.completeness, 'record.completeness')
-  checkKeys(completeness, 'record.completeness', ['status', 'child_exit_code'])
+  checkKeys(
+    completeness,
+    'record.completeness',
+    ['status', 'child_exit_code'],
+    ['module_errors'],
+  )
   asEnum(
     completeness.status,
     COMPLETENESS_STATUSES,
     'record.completeness.status',
   )
   asInteger(completeness.child_exit_code, 'record.completeness.child_exit_code')
+  if ('module_errors' in completeness) {
+    if (!Array.isArray(completeness.module_errors))
+      fail('record.completeness.module_errors', 'expected array')
+    completeness.module_errors.forEach((entry, i) => {
+      const eo = asObject(entry, `record.completeness.module_errors[${i}]`)
+      checkKeys(eo, `record.completeness.module_errors[${i}]`, ['rel', 'count'])
+      asString(eo.rel, `record.completeness.module_errors[${i}].rel`)
+      asInteger(eo.count, `record.completeness.module_errors[${i}].count`)
+    })
+  }
 
   if (!Array.isArray(o.observations))
     fail('record.observations', 'expected array')
