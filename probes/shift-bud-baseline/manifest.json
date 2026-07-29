@@ -1,8 +1,13 @@
 {
-  "probe": "shift-bud Phase 0a baseline",
+  "probe": "shift-bud Phase 0a baseline (vdelta 0.4.0 / vitest-native/2)",
   "design_doc": "docs/superpowers/specs/2026-07-28-playwright-adapter-design.md",
   "design_section": "§8.3 baseline manifest 仕様 / §6 Phase 0a",
-  "generated_by": "vdelta run (manual Phase 0a execution)",
+  "generated_by": "vdelta run (Phase 1 Step 2 着地後の録り直し)",
+  "supersedes": {
+    "vdelta_version": "0.3.0",
+    "composition_id": "vitest-native/1",
+    "reason": "issue #39 (PR #46) が record 形状を変更した（composition vitest-native/1 → /2、capture_version 2 → 3、config_digest が2項目 → 9項目 covering、completeness.module_errors 追加）。spec §6.2 の same-instrument rule により 0.3.0 baseline との comparability は意図的に切れている。0.3.0 の manifest と runs/ は git 履歴（v0.4.0 以前）に残る。"
+  },
   "preconditions": {
     "subject_repo": "playpark-llc/shift-bud",
     "subject_pin_sha": "8cf905189a179d8c40fbd1dcead7915981b1c4d3",
@@ -14,31 +19,33 @@
       "pnpm install --frozen-lockfile",
       "pnpm --filter @shift-bud/shared build"
     ],
-    "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。",
-    "vdelta_version": "0.3.0",
-    "vdelta_source": "記録時は release-please PR #37 branch (f754f2e) のローカル build（publish 前）。その後 PR #37 が main へマージされ v0.3.0 が公開された。`git diff ac3442b 3eff367 -- src/ tests/` が空であることを確認済みで、公開 0.3.0 のコードは記録に使った成果物と同一。したがって本 baseline は公開 0.3.0 に対してそのまま有効。",
-    "node_version": "v24.18.0",
+    "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。0.4.0 ではこの欠落が completeness.module_errors として構造化列挙される。",
+    "vdelta_version": "0.4.0",
+    "vdelta_source": "npm 公開版 vdelta@0.4.0（npx -y vdelta@0.4.0）。0.3.0 baseline のような publish 前ローカル build ではない。",
+    "node_version": "v24.18.1",
+    "node_version_note": "0.3.0 baseline は v24.18.0 で記録した。記録機のランタイムが更新されたため、旧 baseline はこのマシンでも厳密再現できない。environment.runtime は run_id に入る。",
     "runner_version": "4.1.10",
     "declared_env": {
       "CI": null,
       "NODE_ENV": null,
       "TZ": null,
       "LANG": "en_US.UTF-8"
-    }
+    },
+    "declared_env_note": "env_fingerprint に入るのは DECLARED_ENV_VARS = [CI, NODE_ENV, TZ, LANG] のみ（src/adapters/vitest/recorder.ts:37）。記録時に npm_config_cache を退避先へ向けているが、これは fingerprint に影響しない。"
   },
-  "run_id_preimage_property": "runs/<run_id>.json は record から `recording` グループを除いたもの = spec §3.5 の run_id preimage そのもの。sha256(canonicalJson(当該ファイル)) が run_id と一致することを run_id_verified で検証済み。",
+  "run_id_preimage_property": "runs/<run_id>.json.gz は展開すると record から `recording` グループを除いたもの = spec §3.5 の run_id preimage そのもの。sha256(canonicalJson(当該ファイル)) が run_id と一致することを run_id_verified で検証済み。",
   "control_proof": {
     "description": "§8.3 が要求するコントロール証明。同一 vdelta・同一 tree で packages/shared を2回記録し run_id が一致することを確認した。",
     "package": "packages/shared",
-    "run_id": "run_13d242f9cc27680064ea904ef26d02c42f43ecae70b959ecf0527b7f795471d4",
+    "run_id": "run_ec8d2c426d3d8b39a0fce1eb0e709d124a4e7dca4a735822995bc7be330eeeaf",
     "repetitions": 2,
     "stable": true,
-    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。"
+    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。0.3.0 baseline と同じ挙動。"
   },
   "streams": [
     {
       "package": "packages/backend",
-      "run_id": "run_e12cdb84ea233e20367c29f75dce692bb543ce68a71bdd9376cd50d58d008fe0",
+      "run_id": "run_9d6a7b84afc3fc8b0835843e69c35c8b187cf5b17b9162c8b2053f23fef1712a",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -52,14 +59,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -84,7 +91,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_b27b0c76ba8d910bf64ea85e3ea6be5dd74ac794d586d264f1b73187e98d3b37",
+      "run_id": "run_7936135c807d8c36d1065029a526085d8846acf7195d405dc19181a6be692bc0",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -96,14 +103,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -128,7 +135,7 @@
     },
     {
       "package": "packages/shared",
-      "run_id": "run_13d242f9cc27680064ea904ef26d02c42f43ecae70b959ecf0527b7f795471d4",
+      "run_id": "run_ec8d2c426d3d8b39a0fce1eb0e709d124a4e7dca4a735822995bc7be330eeeaf",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -140,14 +147,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -171,7 +178,7 @@
     },
     {
       "package": "packages/landing",
-      "run_id": "run_30101781d4944175172eade5267665fc4a0f2976287081e47136afb4dabbe9f4",
+      "run_id": "run_4dc1dfde55e4e999615d37b541ce856d4d57f960b865e60c94a740bb265eec68",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -183,14 +190,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -214,7 +221,7 @@
     },
     {
       "package": "packages/video",
-      "run_id": "run_5a3064bbc49b6e756e44fb9291750b8d8997585459a748c68a73b4209491c322",
+      "run_id": "run_333c56bcb71f3743edee31c70a8ee68b87362c89698cc9811f8774d357624c08",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -226,14 +233,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -257,7 +264,7 @@
     },
     {
       "package": "packages/e2e",
-      "run_id": "run_0e840fe82afd9d42c4826b6539437b7dc4a14dca34678a237123c4656b3902af",
+      "run_id": "run_d3adfa6d35fa97ed94790e79374a8a6818ba7ef7e1e039c67c2111e2247248d9",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -271,14 +278,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -304,7 +311,7 @@
   "superseded": [
     {
       "package": "packages/backend",
-      "run_id": "run_07df741de43e320ed18e3e2485275e455073bc7f957e9dbd7bfeb36ff471f20a",
+      "run_id": "run_6627c83210b1f9b0fdedb9e795a1fdd42cfb1ac572bebd5da5f04e8fd3d5f30b",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -318,14 +325,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -336,7 +343,32 @@
       },
       "completeness": {
         "status": "crashed",
-        "child_exit_code": 1
+        "child_exit_code": 1,
+        "module_errors_files": 84,
+        "module_errors_total": 84,
+        "module_errors_sample": [
+          {
+            "rel": "src/app.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/domain/bookings/booking.entity.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/domain/bookings/validators/business-hours-validator.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/domain/invitations/invitation.entity.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/domain/leave-requests/leave-request.entity.test.ts",
+            "count": 1
+          }
+        ],
+        "module_errors_note": "全量は runs/<run_id>.json.gz を展開した completeness.module_errors を参照。"
       },
       "surface_inventory_digest": "sha256:440fa790c7b3506fde592424f46629edd54d7b547c1b73238165789ca702f2ed",
       "observation_count": 528,
@@ -349,7 +381,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_b24e6af42604f1b45aa1ebd3645c78e3f986b9348fc56f01af6fd46694fd3582",
+      "run_id": "run_422927fe42859ce5251f84c58ce4f3acd3a795c61df5686567a47fbf81bab3b7",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -361,14 +393,14 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.3.0",
-        "composition_id": "vitest-native/1",
-        "config_digest": "sha256:c25192133cc3051d857d13b0b74cdde42e1b9534a0cb1468c1bad72aa0471b9c"
+        "adapter_version": "0.4.0",
+        "composition_id": "vitest-native/2",
+        "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7"
       },
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.0",
+        "runtime": "node v24.18.1",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -379,7 +411,32 @@
       },
       "completeness": {
         "status": "crashed",
-        "child_exit_code": 1
+        "child_exit_code": 1,
+        "module_errors_files": 43,
+        "module_errors_total": 43,
+        "module_errors_sample": [
+          {
+            "rel": "src/app/(auth)/accept-invitation/page.test.tsx",
+            "count": 1
+          },
+          {
+            "rel": "src/app/(auth)/signup/page.test.tsx",
+            "count": 1
+          },
+          {
+            "rel": "src/app/(protected)/bookings/components/hooks/use-booking-form.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/app/(protected)/bookings/constants/booking-form.test.ts",
+            "count": 1
+          },
+          {
+            "rel": "src/app/(protected)/profile/page.test.tsx",
+            "count": 1
+          }
+        ],
+        "module_errors_note": "全量は runs/<run_id>.json.gz を展開した completeness.module_errors を参照。"
       },
       "surface_inventory_digest": "sha256:0e00a352021678999f6369c7395cc98977966ede2a1dfae962ac048bbd7fcba5",
       "observation_count": 536,
@@ -391,12 +448,13 @@
       "unhandled_errors": 0
     }
   ],
-  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する。completeness=crashed だが observations は全 pass で red 0 件、report は coverage=528/528 と 100% を示す。",
+  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する。0.3.0 では欠落の詳細が recording.raw_stdout の非構造テキストにしか残らなかった（F-2）が、0.4.0 では completeness.module_errors が失敗ファイルを rel + count で列挙する。観測数は 0.3.0 の superseded と同一（backend 528 / frontend 536）。",
   "totals": {
     "streams": 6,
     "observations": 4256,
     "all_report_non_null": true,
     "all_run_id_verified": true,
-    "all_complete": true
+    "all_complete": true,
+    "distinct_config_digests": 3
   }
 }
