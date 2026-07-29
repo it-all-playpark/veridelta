@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.1](https://github.com/it-all-playpark/veridelta/compare/v0.3.0...v0.3.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **devflow:** dev-flow tooling の内部キャッシュを PR から除去 ([96b8f56](https://github.com/it-all-playpark/veridelta/commit/96b8f56f3d0fbf0079c49393245db49b24277026))
+* **pr-43:** commit leftover review fixes (iteration 1) ([4ca0933](https://github.com/it-all-playpark/veridelta/commit/4ca093313619d9bbb2c063b5f87f7fea30ba101a))
+* **render:** text report に completeness.status を表示する ([9e76bd3](https://github.com/it-all-playpark/veridelta/commit/9e76bd322604f9fe3231646f77bcd356c442803c))
+* **test:** format completeness tests and cover partial baseline case ([e39ae1c](https://github.com/it-all-playpark/veridelta/commit/e39ae1c09b1f7601b67f660399b5e25d3ffe442f))
+
 ## [0.3.0](https://github.com/it-all-playpark/veridelta/compare/v0.2.2...v0.3.0) (2026-07-29)
 
 
