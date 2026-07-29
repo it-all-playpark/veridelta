@@ -11,7 +11,8 @@
       "**",
       "!conformance/fixtures",
       "!tests/**/fixtures",
-      "!claudedocs"
+      "!claudedocs",
+      "!probes"
     ]
   },
   "formatter": {
