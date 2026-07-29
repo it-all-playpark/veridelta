@@ -51,36 +51,33 @@ function restoreWritable(root: string) {
   chmodRecursive(root, (m) => m | 0o200)
 }
 
-const HEX2 = /^[0-9a-f]{2}$/
-const HEX38 = /^[0-9a-f]{38}$/
-
 /**
- * Count genuine loose objects only: files matching git's on-disk loose
- * object layout (`objects/<2-hex>/<38-hex>`). A naive recursive file count
- * under `objects/` also picks up incidental non-object entries — notably
- * `objects/maintenance.lock`, which `git gc --auto`'s detached background
- * maintenance process (gc.autoDetach, default on) can leave transiently
- * present right after `git commit` returns. Counting that lock file as an
- * "object" makes this check racy under load (it flakily appears in a
- * `before` snapshot and is gone by `after` once the background process
- * exits) without reflecting any actual object-store pollution.
+ * Count loose objects only: files named as a full hex hash inside a
+ * two-hex-digit subdirectory of `.git/objects` (git's loose-object layout).
+ * This deliberately excludes `objects/pack`, `objects/info`, and transient
+ * control files git itself may drop directly under `objects/` (e.g.
+ * `maintenance.lock`, written and removed by git's own background
+ * maintenance independent of anything under test) — none of those are
+ * "loose objects", so counting them would make this assertion flaky under
+ * concurrent test-suite load rather than actually detecting repo pollution.
  */
+const HEX_DIR = /^[0-9a-f]{2}$/
+const HEX_OBJECT = /^[0-9a-f]{38,62}$/
+
 function countObjects(gitDir: string): number {
   let count = 0
   const objectsDir = join(gitDir, 'objects')
-  let subdirs: string[]
   try {
-    subdirs = readdirSync(objectsDir)
+    for (const dirEntry of readdirSync(objectsDir)) {
+      if (!HEX_DIR.test(dirEntry)) continue
+      const sub = join(objectsDir, dirEntry)
+      if (!statSync(sub).isDirectory()) continue
+      for (const fileEntry of readdirSync(sub)) {
+        if (HEX_OBJECT.test(fileEntry)) count++
+      }
+    }
   } catch {
     return 0
-  }
-  for (const subdir of subdirs) {
-    if (!HEX2.test(subdir)) continue
-    const subdirPath = join(objectsDir, subdir)
-    if (!statSync(subdirPath).isDirectory()) continue
-    for (const entry of readdirSync(subdirPath)) {
-      if (HEX38.test(entry)) count++
-    }
   }
   return count
 }
@@ -136,6 +133,11 @@ describe('treeDigest (read-only object DB)', () => {
     expect(after).toBe(before)
   })
 
+  // This test spawns ~10 real `git` subprocesses plus a recursive chmod over
+  // two on-disk repos; on windows-latest CI runners that routinely exceeds
+  // vitest's 5000ms default (observed ~5041ms — a genuine runner slowness,
+  // not a hang), so give it the same generous headroom the other
+  // subprocess-heavy suites (tests/cli/*) already use.
   it('(c) succeeds and returns the same oid as an equivalent writable repo when .git/objects is read-only', async () => {
     // Two independently-created repos with identical (new, uncommitted)
     // content: neither run can piggyback on objects the other already
@@ -152,7 +154,7 @@ describe('treeDigest (read-only object DB)', () => {
 
     expect(actual).toBe(expected)
     expect(actual).toMatch(/^[0-9a-f]{40}$/)
-  })
+  }, 20_000)
 
   it('(d) succeeds against a read-only object DB when HEAD does not exist yet', async () => {
     const dir = makeScratchDir('vd-td-')
@@ -163,6 +165,10 @@ describe('treeDigest (read-only object DB)', () => {
     expect(oid).toMatch(/^[0-9a-f]{40}$/)
   })
 
+  // Same subprocess-heavy profile as (c) (git worktree add + treeDigest
+  // twice); it already ran at 3140ms on windows-latest CI, close enough to
+  // the 5000ms default to flake the same way — give it matching headroom
+  // pre-emptively.
   it('(e) resolves the common objects dir for a linked worktree with a read-only object DB', async () => {
     async function buildWorktreeScenario(): Promise<{
       repoDir: string
@@ -191,5 +197,5 @@ describe('treeDigest (read-only object DB)', () => {
     const actual = await treeDigest(readonly.wtDir)
 
     expect(actual).toBe(expected)
-  })
+  }, 20_000)
 })
