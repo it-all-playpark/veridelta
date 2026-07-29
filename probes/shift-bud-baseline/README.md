@@ -92,9 +92,9 @@ spec §3.5 の設計どおりの挙動。
 
 | # | 所見 | 起票 |
 | --- | --- | --- |
-| F-1 | `instrument.config_digest` が `include_task_location` / `truncate_threshold` の2値のみで、`environment` / `pool` / `retry` 等の evidence-affecting な解決済み設定を covering していない（設計 §4.1.1） | issue |
-| F-2 | module load 失敗時、当該ファイルのテストが `observations` から丸ごと消えるが `coverage=N/N` は 100% を示す。`module_errors` の詳細は record に載らず `recording.raw_stdout` の非構造テキストにしか残らない | issue |
-| F-3 | text renderer が `completeness.status` を出力しない。JSON report（primary interface）は `complete: false` を持つので spec §9.1 は満たしている | issue |
+| F-1 | `instrument.config_digest` が `include_task_location` / `truncate_threshold` の2値のみで、`environment` / `pool` / `retry` 等の evidence-affecting な解決済み設定を covering していない（設計 §4.1.1） | #38（audit 完了 → `docs/compositions/vitest-native-1.md`。実装は #39 の Step 2） |
+| F-2 | module load 失敗時、当該ファイルのテストが `observations` から丸ごと消えるが `coverage=N/N` は 100% を示す。`module_errors` の詳細は record に載らず `recording.raw_stdout` の非構造テキストにしか残らない | #39（Step 2、未着手） |
+| F-3 | text renderer が `completeness.status` を出力しない。JSON report（primary interface）は `complete: false` を持つので spec §9.1 は満たしている | #40（修正済み） |
 | — | （正常挙動）`compare.ts` の baseline 選択が `completeness.status !== 'complete'` を除外している。INV-4 に沿う | — |
 | — | （正常挙動）near-miss disclosure（spec §5.4）が6ストリーム間で `repo.cwd` / `invocation.selector` の差分を正しく開示 | — |
 
@@ -119,6 +119,35 @@ spec §3.5 の設計どおりの挙動。
 なお record 形状を変える変更（`adapter_version` bump を伴うもの、設計 §8.2 Step 2）は
 spec §6.2 により本 baseline との comparability を**意図的に**切る。その場合は
 Step 2 着地後に baseline を録り直すこと。
+
+## 検証ログ
+
+本 baseline を実際に照合した記録。**不一致が出たとき「壊れた」のか「正当な instrument 変更」なのかを
+切り分けるための履歴**なので、照合するたびにここへ追記すること。
+
+### 2026-07-29 — #38 / #40 マージ後の main で 6/6 一致
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 main | `749aa0c`（PR #42 = issue #40、PR #43 = issue #38 のマージ後） |
+| `adapter_version` | **0.3.0**（release 0.3.1 は当時 PR #44 として未マージ） |
+| 結果 | **6/6 の run_id が baseline と完全一致** |
+
+確認したこと:
+
+- #40（`fix(render)`）は `src/schema.ts` を変更しているが、差分は `ComparisonReport` への
+  optional field `completeness_status` の追加のみ。**`src/adapters/` / `src/run.ts` /
+  `src/digest.ts` / `src/canonical.ts` は差分ゼロ**で、record 構築経路は無傷。
+- #38 は `src/` を一切変更していない（issue のスコープ制約どおり）。
+
+→ 両者が record 形状を動かしていないことの実証であり、
+**本 baseline が「前向きの回帰基準」として機能することの初めての実データ確認**でもある。
+
+> **重要:** `instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの
+> （`src/run.ts:57`, `:273`）。したがって **release が入るたびに**、コード変更の有無に関わらず
+> spec §6.2 の same-instrument rule により本 baseline との comparability は切れる。
+> 0.3.1 以降で照合して全 run_id が変わるのは**正常**であり、欠陥ではない。
+> 上表の「6/6 一致」は `adapter_version 0.3.0` という条件下でのみ再現する。
 
 ## 既知の限界
 
