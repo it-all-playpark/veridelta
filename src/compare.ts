@@ -3,10 +3,8 @@
  * the three delta axes, and comparison-report construction. Deterministic:
  * no timestamps, stable sort orders, recency = store insertion order.
  */
-import {
-  COMPOSITION_ID,
-  DEGRADED_CAPABILITIES,
-} from './adapters/vitest/recorder.js'
+import { degradedCapabilities } from './adapter.js'
+import { findAdapter } from './adapters/registry.js'
 import {
   type BaselineMode,
   type Comparability,
@@ -394,6 +392,43 @@ function shortId(runId: string): string {
   return runId.slice(0, 12)
 }
 
+/**
+ * The evidence-quality disclosure a report carries (§9.1): the composition the
+ * *recorded* run's adapter declares, and the evidence capabilities that
+ * composition declares `unsupported`. Resolved through the registry from the
+ * record's own `instrument.adapter` (§4.2 Step 1 interim rule), never from a
+ * statically imported vitest constant — the latter stamps `vitest-native/1`
+ * onto every report the moment a second adapter exists, which §9.1 forbids.
+ *
+ * A record whose adapter this build does not know still gets a report, taken
+ * from the record's own declaration: `instrument.composition_id` *is* "the
+ * adapter's declared composition" (§9.1), and a build that cannot describe the
+ * composition has nothing it may declare unsupported on its behalf ("empty
+ * list otherwise", §9.1) — inventing capabilities for a stranger would be the
+ * same §9.1 violation in the other direction. Records like this are writable
+ * through the public store API, so the path is reachable, not hypothetical.
+ * Whether such a record should abstain outright instead — and under which §6.3
+ * reason, since none of the closed enum means "no adapter can interpret this
+ * record" — is undecided (§12-5); Step 2 removes the question by carrying the
+ * declaration in the record itself.
+ */
+function evidenceDisclosure(record: RunRecord): {
+  composition_id: string
+  degraded_capabilities: string[]
+} {
+  const adapter = findAdapter(record.instrument.adapter)
+  if (adapter === undefined) {
+    return {
+      composition_id: record.instrument.composition_id,
+      degraded_capabilities: [],
+    }
+  }
+  return {
+    composition_id: adapter.compositionId,
+    degraded_capabilities: degradedCapabilities(adapter.declaredCapabilities),
+  }
+}
+
 function showAnchor(runId: string, testId: string): string {
   return `vdelta show ${shortId(runId)} --test '${testId}'`
 }
@@ -488,10 +523,9 @@ function abstentionReport(
       red,
     },
     observation_coverage: { current: coverage(current) },
-    failure_evidence: {
-      composition_id: COMPOSITION_ID,
-      degraded_capabilities: [...DEGRADED_CAPABILITIES],
-    },
+    // Abstention discloses the *current* run's evidence quality: it is the
+    // only run this report makes any claim about.
+    failure_evidence: evidenceDisclosure(current),
     trust: { record_integrity: 'advisory' },
     anchors,
   }
@@ -520,6 +554,10 @@ function claimsReport(
   comparability: Comparability,
 ): ComparisonReport {
   const partial = comparability === 'partial'
+  // Reaching a claims report means `sameInstrument` held (§6.2), so baseline
+  // and current name the same adapter: one disclosure describes both, and
+  // every claim below carries it.
+  const evidence = evidenceDisclosure(current)
   const bByid = new Map(baseline.observations.map((o) => [o.test_id, o]))
   const cById = new Map(current.observations.map((o) => [o.test_id, o]))
   const allIds = [...new Set([...bByid.keys(), ...cById.keys()])].sort()
@@ -560,7 +598,7 @@ function claimsReport(
         if (!partial) {
           const entry: StillFailEntry = {
             test_id: id,
-            degraded_capabilities: [...DEGRADED_CAPABILITIES],
+            degraded_capabilities: [...evidence.degraded_capabilities],
           }
           if (
             b.finding !== undefined &&
@@ -582,7 +620,7 @@ function claimsReport(
           failure_mode_changed:
             b.finding?.structural_fingerprint !==
             c.finding?.structural_fingerprint,
-          degraded_capabilities: [...DEGRADED_CAPABILITIES],
+          degraded_capabilities: [...evidence.degraded_capabilities],
         }
         transitions.updated_fail.push(entry)
       }
@@ -683,10 +721,7 @@ function claimsReport(
     },
     verification_surface: { status, events: sortEvents(events) },
     transitions,
-    failure_evidence: {
-      composition_id: COMPOSITION_ID,
-      degraded_capabilities: [...DEGRADED_CAPABILITIES],
-    },
+    failure_evidence: evidence,
     trust: { record_integrity: 'advisory' },
     anchors,
   }

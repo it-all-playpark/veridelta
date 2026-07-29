@@ -5,10 +5,6 @@
  * proximity rescue. Local-store verdicts are always advisory (§11.2).
  */
 
-import {
-  COMPOSITION_ID,
-  DEGRADED_CAPABILITIES,
-} from './adapters/vitest/recorder.js'
 import { type BaselineSpec, buildComparisonReport } from './compare.js'
 import {
   type ComparisonReport,
@@ -18,6 +14,20 @@ import {
 } from './schema.js'
 import { type RunStore, StoreCorruptError } from './store.js'
 import { gitHead, resolveRef, treeDigest } from './tree-digest.js'
+
+/**
+ * Evidence-quality disclosure for the one path where no record can be read
+ * (see {@link integrityFailedReport}). Everywhere else the disclosure comes
+ * from the record's own `instrument.adapter` via the registry (§4.2), but here
+ * there is no readable record to name an adapter — and §9.1 still requires a
+ * non-empty `composition_id`. Where that value should come from is §12-7,
+ * undecided (sentinel vs. best-effort `readRunMeta`), so these stay frozen at
+ * the pre-seam output rather than being resolved from the registry: resolving
+ * `vitest` would assert that an unreadable record was a vitest record, which
+ * is precisely the claim this path cannot make.
+ */
+const UNREADABLE_RECORD_COMPOSITION_ID = 'vitest-native/1'
+const UNREADABLE_RECORD_DEGRADED_CAPABILITIES = ['source-region-text']
 
 export class GateOperationError extends Error {
   constructor(message: string) {
@@ -154,8 +164,8 @@ function integrityFailedReport(
     },
     observation_coverage: { current: '0/0' },
     failure_evidence: {
-      composition_id: COMPOSITION_ID,
-      degraded_capabilities: [...DEGRADED_CAPABILITIES],
+      composition_id: UNREADABLE_RECORD_COMPOSITION_ID,
+      degraded_capabilities: [...UNREADABLE_RECORD_DEGRADED_CAPABILITIES],
     },
     trust: { record_integrity: 'advisory' },
     anchors: { raw: `vdelta show ${currentId.slice(0, 12)} --raw` },

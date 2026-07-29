@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { writeAll } from './cli-io.js'
 /**
  * vdelta CLI (spec §10). Exit-code contract:
  *   run     — transparent child exit; INV-5 degrades to raw passthrough
@@ -11,6 +10,8 @@ import { writeAll } from './cli-io.js'
  *   gate    — report-only: 0 whenever a report is produced, 2 otherwise
  * The report goes to stdout; vdelta diagnostics go to stderr only.
  */
+import { adapterNames, findAdapter } from './adapters/registry.js'
+import { writeAll } from './cli-io.js'
 import {
   type BaselineSpec,
   buildComparisonReport,
@@ -86,14 +87,39 @@ async function requireStore(): Promise<{ store: RunStore; worktree: string }> {
   return { store: new RunStore(worktree), worktree }
 }
 
+const RUN_USAGE =
+  'usage: vdelta run [--report json|text] [--adapter <name>] -- <command...>'
+
 async function cmdRun(argv: string[]): Promise<number> {
   const sep = argv.indexOf('--')
-  if (sep === -1) die('usage: vdelta run [--report json|text] -- <command...>')
-  const { format } = parseReportFlag(argv.slice(0, sep))
+  if (sep === -1) die(RUN_USAGE)
+  const { format, rest } = parseReportFlag(argv.slice(0, sep))
+  let adapter: string | undefined
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]!
+    if (a === '--adapter') {
+      adapter = rest[++i]
+      if (adapter === undefined) die('--adapter expects an adapter name')
+    } else if (a.startsWith('--adapter=')) {
+      adapter = a.slice('--adapter='.length)
+    }
+  }
+  // §4.3-5: an unregistered name is user input error, rejected before the
+  // child starts. Degrading instead would turn a typo into silent loss of
+  // recording — the opposite of what INV-5 exists for.
+  if (adapter !== undefined && findAdapter(adapter) === undefined) {
+    die(
+      `unknown adapter '${adapter}' — known adapters: ${adapterNames().join(', ')}`,
+    )
+  }
   const child = argv.slice(sep + 1)
   if (child.length === 0) die('no child command given')
 
-  const result = await runAndRecord(child, process.cwd())
+  const result = await runAndRecord(
+    child,
+    process.cwd(),
+    adapter !== undefined ? { adapter } : {},
+  )
   for (const d of result.diagnostics) await writeAll(process.stderr, `${d}\n`)
   if (result.degraded || result.report === null) {
     // INV-5 degraded path: verbatim raw passthrough, no report.
@@ -349,7 +375,7 @@ async function main(): Promise<number> {
     default:
       die(
         `usage: vdelta <run|compare|show|gate|gc> ...\n` +
-          `  run [--report json|text] -- <command...>\n` +
+          `  run [--report json|text] [--adapter <name>] -- <command...>\n` +
           `  compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]\n` +
           `  show <run-id> [--test <test-id> | --raw]\n` +
           `  gate --ref <git-ref> [--run <run-id>] [--policy report-only] [--report json|text]\n` +

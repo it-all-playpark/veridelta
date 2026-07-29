@@ -11,6 +11,7 @@
  */
 import { readFileSync, realpathSync } from 'node:fs'
 import { isAbsolute, join, relative } from 'node:path'
+import { AdapterCaptureError, type RecordContext } from '../../adapter.js'
 import { canonicalDigest } from '../../digest.js'
 import { redactText, redactValue } from '../../redact.js'
 import {
@@ -26,34 +27,24 @@ import type { Capture, CapturedTest } from './capture.js'
 
 export const ADAPTER_NAME = 'vitest'
 export const COMPOSITION_ID = 'vitest-native/1'
-/** CE-1: vitest's structured channel has no failing-source-region text (expC Q1). */
-export const DEGRADED_CAPABILITIES = ['source-region-text']
 /** Env vars whose values (fingerprinted, never stored) are comparison-relevant. */
 export const DECLARED_ENV_VARS = ['CI', 'NODE_ENV', 'TZ', 'LANG'] as const
 
-export class RecorderError extends Error {
+/**
+ * A capture the recorder cannot turn into a record: unsupported capture
+ * version, or an ambiguity it refuses to guess through (§12 fail-closed).
+ * A subtype of `AdapterCaptureError` so the core degrades to raw passthrough
+ * (INV-5) without knowing which adapter raised it.
+ */
+export class RecorderError extends AdapterCaptureError {
   constructor(message: string) {
     super(message)
     this.name = 'RecorderError'
   }
 }
 
-export interface RecordContext {
-  worktree: string
-  repoIdentity: string
-  branch: string
-  cwdRel: string
-  command: string[]
-  selector: string[]
-  head: string | null
-  treeDigest: string
-  dirtyDiffDigest: string
-  childExitCode: number
-  rawStdout: string
-  rawStderr: string
-  adapterVersion: string
-  recordedAtMs: number
-}
+/** Re-exported from the seam: the context shape is runner-neutral (§4.1). */
+export type { RecordContext }
 
 export function buildRunRecord(
   capture: Capture,
