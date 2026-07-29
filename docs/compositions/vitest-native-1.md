@@ -180,6 +180,34 @@ issue #39 の実装により、`instrumentConfigDigest`（`src/adapters/vitest/r
 プログラムから列挙可能になった（既存の `completeness.status` はこの会計情報の帰結として
 そのまま残る）。
 
+### 実装後の実測（vdelta 0.4.0 / `vitest-native/2`）
+
+`probes/shift-bud-baseline/` を 0.4.0 で録り直した結果、§5 で 6/6 同一値
+（`sha256:c2519213…`）だった `config_digest` が **3 種類**に分岐した:
+
+| `config_digest` | package |
+| --- | --- |
+| `sha256:7c7de262…` | backend |
+| `sha256:0dcfea0b…` | frontend |
+| `sha256:46ee147e…` | shared / landing / video / e2e |
+
+§5 の表で `environment`（`node` ↔ `happy-dom`）と `pool`（`threads` ↔ `forks`）が実際に
+割れていた backend / frontend が、それぞれ固有の digest に分離した。§4 判定表の
+`environment` / `pool` を yes とした判定と、その covering 実装が実データで機能している
+ことの確認である。
+
+shared / landing / video / e2e が同一 digest のままなのは covering の漏れではない。
+§5 の表のとおりこの 4 パッケージは `environment=node` / `pool=forks` / `isolate=true` /
+`setupFiles` なしで一致し、残る 5 項目もすべて vitest デフォルトであるため、
+**9 項目の解決済み値が実際に等価**である。4 者を分けているのは `globals`（shared のみ）/
+`include` / `resolve.alias`（landing のみ）だが、いずれも §3 の evidence-affecting 判定を
+満たさない（`include` の変化は `surface.inventory_digest` に現れる）。
+
+`completeness.module_errors` の実データ確認も同時に取った。`packages/shared` を未 build に
+して backend / frontend を記録すると、観測数は `/1` 当時の superseded と同じ 528 / 536 に
+縮むが、失敗したモジュールロードが **84 件 / 43 件**、`rel` + `count` で列挙される。
+`/1` ではこの情報が `recording.raw_stdout` の非構造テキストにしか存在しなかった。
+
 残るギャップ（YAGNI によりスコープ外、投機的網羅はしない）:
 
 - (a) **multi-project workspace の per-project config 分岐は未 covering**。root の
@@ -189,8 +217,8 @@ issue #39 の実装により、`instrumentConfigDigest`（`src/adapters/vitest/r
   スコープ外とした。
 - (b) **`retry.condition`（RegExp/function）は未 covering**。`count` のみ number 正規化して
   収録し、`condition` は決定的 serialize が保証できないため除外している。
-- (c) **`probes/shift-bud-baseline/` の録り直しは本 PR スコープ外で未実施**。§5 の実測記録は
-  `/1`・2/9 covering 時点のものであり、`config_digest` が変わるため（`run_id` 全変化）
-  再録が必要だが、baseline の録り直しは別スコープとする。
+- (c) ~~**`probes/shift-bud-baseline/` の録り直しは本 PR スコープ外で未実施**~~ →
+  **完了**（2026-07-30、vdelta 0.4.0）。上記「実装後の実測」を参照。全 `run_id` が変化したのは
+  spec §6.2 の same-instrument rule どおりで、観測数は 6/6 とも `/1` 時点と一致した。
 - (d) **coverage 表示への completeness 併記は #40** で扱う。本 issue では
   `completeness.module_errors` の record 化までをスコープとする。

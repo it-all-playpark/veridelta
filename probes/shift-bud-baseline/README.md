@@ -4,8 +4,14 @@
 §8.3 副基準2（shift-bud live 再記録）と副基準1（capture replay）の基準値として保存する。
 
 shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（`src/run.ts` の
-retention policy）ため、根拠 record が Phase 0a から Step 1 の間に蒸発しうる。
-それを避けるためここに置く（§8.3 baseline manifest 仕様）。
+retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
+（§8.3 baseline manifest 仕様）。
+
+> **現行 baseline は vdelta 0.4.0 / `vitest-native/2`。**
+> 初版は 0.3.0 / `vitest-native/1` で記録したが、issue #39（PR #46）が record 形状を
+> 変更したため spec §6.2 の same-instrument rule により comparability が切れ、
+> 2026-07-30 に録り直した。0.3.0 版の manifest と `runs/` は git 履歴に残る。
+> 経緯は末尾の「検証ログ」を参照。
 
 ## 内容
 
@@ -37,18 +43,38 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_e12cdb84` | 1958 | complete |
-| frontend | `run_b27b0c76` | 1540 | complete |
-| shared | `run_13d242f9` | 457 | complete |
-| landing | `run_30101781` | 76 | complete |
-| video | `run_5a3064bb` | 195 | complete |
-| e2e | `run_0e840fe8` | 30 | complete |
+| backend | `run_9d6a7b84` | 1958 | complete |
+| frontend | `run_7936135c` | 1540 | complete |
+| shared | `run_ec8d2c42` | 457 | complete |
+| landing | `run_4dc1dfde` | 76 | complete |
+| video | `run_333c56bc` | 195 | complete |
+| e2e | `run_d3adfa6d` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
+**観測数は 6/6 とも 0.3.0 baseline と同一** — Step 2 は record 形状を変えたが検証面は
+1件も動いていない。
 
-`superseded` の2件（`run_07df741d` / `run_b24e6af4`）は baseline ではない。
+`superseded` の2件（`run_6627c832` / `run_422927fe`）は baseline ではない。
 下記 F-2 の証拠として保存している。
+
+### `config_digest` の分岐（F-1 の実データ確認）
+
+9項目 covering により、6ストリームが **3種類**の digest に分岐した:
+
+| digest | package |
+| --- | --- |
+| `sha256:7c7de262…` | backend |
+| `sha256:0dcfea0b…` | frontend |
+| `sha256:46ee147e…` | shared / landing / video / e2e |
+
+0.3.0（2項目 covering）では **6/6 が同一値** `sha256:c2519213…` だった。
+4パッケージが今も同一 digest なのは covering の漏れではなく、
+`docs/compositions/vitest-native-1.md` §5 の判定表どおり
+**9項目の解決済み値が実際に等価**だからである（`environment=node` / `pool=forks` /
+`isolate=true` / `setupFiles` なし、残り5項目もデフォルト）。この4つを分けている
+`globals` / `include` / `resolve.alias` は §3 の evidence-affecting 判定を満たさず
+covering 対象外 — `include` の変化は `surface.inventory_digest` 側で観測される。
 
 ## 再検証手順（§8.3 副基準2）
 
@@ -62,11 +88,16 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && vdelta run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.4.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
 e2e は `screenshots/recording/__tests__`、他は空）。
+
+> `~/.npm/_cacache` に root 所有ファイルが混じっていると `npx` が EPERM で落ちる。
+> `export npm_config_cache=<書き込み可能なパス>` で回避できる。この変数は
+> `DECLARED_ENV_VARS = [CI, NODE_ENV, TZ, LANG]`（`src/adapters/vitest/recorder.ts:37`）に
+> 含まれないため `env_fingerprint` には影響しない。
 
 ### 比較前に検証する前提条件
 
@@ -75,12 +106,12 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 - subject の commit SHA（`8cf90518`）と `provenance.tree_digest`（`f0ffc727…`）
 - 記録に使う worktree の**絶対パス**（`repo.identity` / `repo.worktree` に入り run_id に効く）
 - vdelta の version（`instrument.adapter_version`。spec §6.2 により instrument 変更は comparability を切る）
-- node version / vitest version
+- node version（現 baseline は **v24.18.1**）/ vitest version（`4.1.10`）
 - `CI` / `NODE_ENV` / `TZ` / `LANG`（`environment.env_fingerprint` に入る）
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_13d242f9` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_ec8d2c42` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -90,11 +121,11 @@ spec §3.5 の設計どおりの挙動。
 
 ## Phase 0a で得られた所見
 
-| # | 所見 | 起票 |
+| # | 所見 | 状態 |
 | --- | --- | --- |
-| F-1 | `instrument.config_digest` が `include_task_location` / `truncate_threshold` の2値のみで、`environment` / `pool` / `retry` 等の evidence-affecting な解決済み設定を covering していない（設計 §4.1.1） | #38（audit 完了 → `docs/compositions/vitest-native-1.md`。実装は #39 の Step 2） |
-| F-2 | module load 失敗時、当該ファイルのテストが `observations` から丸ごと消えるが `coverage=N/N` は 100% を示す。`module_errors` の詳細は record に載らず `recording.raw_stdout` の非構造テキストにしか残らない | #39（Step 2、未着手） |
-| F-3 | text renderer が `completeness.status` を出力しない。JSON report（primary interface）は `complete: false` を持つので spec §9.1 は満たしている | #40（修正済み） |
+| F-1 | `instrument.config_digest` が `include_task_location` / `truncate_threshold` の2値のみで、`environment` / `pool` / `retry` 等の evidence-affecting な解決済み設定を covering していない（設計 §4.1.1） | **解決**。#38（audit）→ #39 / PR #46 で9項目 covering を実装。上記「`config_digest` の分岐」で実データ確認済み |
+| F-2 | module load 失敗時、当該ファイルのテストが `observations` から丸ごと消えるが `coverage=N/N` は 100% を示す。`module_errors` の詳細は record に載らず `recording.raw_stdout` の非構造テキストにしか残らない | **解決**。#39 / PR #46 で `completeness.module_errors` を record 化。superseded 2件で実データ確認済み（backend 84件 / frontend 43件を列挙） |
+| F-3 | text renderer が `completeness.status` を出力しない。JSON report（primary interface）は `complete: false` を持つので spec §9.1 は満たしている | **解決**（#40 / PR #42） |
 | — | （正常挙動）`compare.ts` の baseline 選択が `completeness.status !== 'complete'` を除外している。INV-4 に沿う | — |
 | — | （正常挙動）near-miss disclosure（spec §5.4）が6ストリーム間で `repo.cwd` / `invocation.selector` の差分を正しく開示 | — |
 
@@ -103,29 +134,27 @@ spec §3.5 の設計どおりの挙動。
 設計 §6 は Phase 0a を「Phase 1 のゲート」と位置づけ、§8.3 副基準2 を
 「Phase 0a で記録した run_id 群と、**Step 1 完了後**に同じ tree T で記録した run_id 群が一致すること」
 と定義している。しかし実際には **Phase 1 Step 1（seam 抽出、PR #36 / `ac3442b`）が Phase 0a より先に
-着地しており、本 baseline は Step 1 適用後のバイナリ（0.3.0）で記録されている**。
+着地しており**、初版 baseline は Step 1 適用後のバイナリ（0.3.0）で記録された。
+現行 baseline は Step 2 適用後（0.4.0）である。
 
 したがって:
 
-- ❌ **Step 1 の挙動凍結検証には使えない。** 事前・事後の関係が成立していない。
-  Step 1 の主基準は in-repo A/B replay（`tests/conformance/ab-replay.test.ts`）が担う。
-  実データで Step 1 の A/B を取りたい場合は、seam 抽出前の `b001196` をビルドして
-  本 baseline と同一条件で記録すれば retroactive に得られる。
+- ❌ **Step 1 / Step 2 の挙動凍結検証には使えない。** 事前・事後の関係が成立していない。
+  各 Step の主基準は in-repo A/B replay（`tests/conformance/ab-replay.test.ts`）が担う。
 - ✅ **前向きの回帰基準として使える。** record 形状を変えないはずの変更が
   これらの run_id を再現できなければ、それは意図しない挙動変化である。
 - ✅ **§8.3 副基準1（capture replay）の入力**として使える。
-- ✅ **実データの証拠コーパス**として使える（issue #38 / #39 / #40 の根拠）。
+- ✅ **実データの証拠コーパス**として使える。
 
-なお record 形状を変える変更（`adapter_version` bump を伴うもの、設計 §8.2 Step 2）は
-spec §6.2 により本 baseline との comparability を**意図的に**切る。その場合は
-Step 2 着地後に baseline を録り直すこと。
+なお record 形状を変える変更（`adapter_version` bump を伴うもの）は spec §6.2 により
+本 baseline との comparability を**意図的に**切る。その場合は着地後に baseline を録り直すこと。
 
 ## 検証ログ
 
 本 baseline を実際に照合した記録。**不一致が出たとき「壊れた」のか「正当な instrument 変更」なのかを
 切り分けるための履歴**なので、照合するたびにここへ追記すること。
 
-### 2026-07-29 — #38 / #40 マージ後の main で 6/6 一致
+### 2026-07-29 — #38 / #40 マージ後の main で 6/6 一致（0.3.0 baseline）
 
 | 項目 | 値 |
 | --- | --- |
@@ -141,19 +170,36 @@ Step 2 着地後に baseline を録り直すこと。
 - #38 は `src/` を一切変更していない（issue のスコープ制約どおり）。
 
 → 両者が record 形状を動かしていないことの実証であり、
-**本 baseline が「前向きの回帰基準」として機能することの初めての実データ確認**でもある。
+**0.3.0 baseline が「前向きの回帰基準」として機能することの初めての実データ確認**でもある。
 
 > **重要:** `instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの
 > （`src/run.ts:57`, `:273`）。したがって **release が入るたびに**、コード変更の有無に関わらず
-> spec §6.2 の same-instrument rule により本 baseline との comparability は切れる。
-> 0.3.1 以降で照合して全 run_id が変わるのは**正常**であり、欠陥ではない。
-> 上表の「6/6 一致」は `adapter_version 0.3.0` という条件下でのみ再現する。
+> spec §6.2 の same-instrument rule により baseline との comparability は切れる。
 
-## 既知の限界
+### 2026-07-30 — Step 2 着地に伴う baseline 録り直し（0.3.0 → 0.4.0）
 
-- **絶対パス依存** — `repo.identity` / `repo.worktree` が絶対パスで run_id に入るため、
-  別マシン・別パスでは run_id が一致しない。副基準2 は同一マシン・同一パス前提。
-- **vdelta 0.3.0 の出所** — 記録時は release-please PR #37 branch `f754f2e` のローカル build（publish 前）。
-  その後 PR #37 が main へマージされ `v0.3.0` が公開された。
-  `git diff ac3442b 3eff367 -- src/ tests/` が空であることを確認済みで、
-  **公開 0.3.0 のコードは記録に使った成果物と同一**。本 baseline は公開 0.3.0 に対してそのまま有効。
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.4.0`（npm 公開版。PR #46 = issue #39 マージ後の PR #47 release） |
+| `composition_id` | `vitest-native/1` → **`vitest-native/2`**（`capture_version` 2 → 3） |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`（初版と同一） |
+| node | v24.18.0 → **v24.18.1**（記録機のランタイム更新） |
+| 結果 | 全 run_id が変化（**正常**）。観測数は 6/6 とも初版と一致 |
+
+全 run_id が変わったのは spec §6.2 の same-instrument rule による**設計どおりの結果**であり、
+欠陥ではない。`adapter_version`（0.3.0 → 0.4.0）と `config_digest`（2項目 → 9項目 covering）の
+両方が動いているため。node の版も上がっており、**初版 baseline はこのマシンでも厳密再現できない**。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_ec8d2c42` が一致。決定性は維持。
+- **観測数の完全一致** — backend 1958 / frontend 1540 / shared 457 / landing 76 / video 195 /
+  e2e 30、計 4256。record 形状は変わったが**検証面は1件も動いていない**。
+- **F-1 の実データ確認** — `config_digest` が 6/6 同一から3種へ分岐。
+  実際に設定が異なる backend / frontend が分離され、9項目の値が等価な
+  shared / landing / video / e2e は正しく畳まれた（上記「`config_digest` の分岐」）。
+- **F-2 の実データ確認** — `shared/dist` を退避して未 build 状態を再現し backend / frontend を記録。
+  観測数は 0.3.0 の superseded と同じ 528 / 536 に縮むが、
+  今回は `completeness.module_errors` が失敗ファイルを **84件 / 43件** 列挙する。
+  text renderer も `coverage=536/536 [INCOMPLETE: crashed]` / `surface: reduced (1004 events)` を
+  併記するため、「100% なのに検証面の 65〜73% が消えている」という誤読が塞がれている。
