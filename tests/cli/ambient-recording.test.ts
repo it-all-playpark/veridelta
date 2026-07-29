@@ -154,7 +154,7 @@ describe('ambient recording through a wrapper (spec §4.2)', () => {
     }
     expect(report.current.run_id).toMatch(/^run_[0-9a-f]{64}$/)
     // The capture named its own author, so the record is a vitest record.
-    expect(report.failure_evidence.composition_id).toBe('vitest-native/1')
+    expect(report.failure_evidence.composition_id).toBe('vitest-native/2')
   })
 
   it('records the same run whether or not --adapter names the reader', async () => {

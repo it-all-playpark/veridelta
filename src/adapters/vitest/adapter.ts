@@ -157,10 +157,12 @@ export function splitCommandSelector(cmd: readonly string[]): CommandSelector {
 }
 
 /**
- * Initial capability declaration for `vitest-native/1` (§3.4). Reproduces the
- * composition's documented standing byte for byte: only `source-region-text`
+ * Capability declaration for the `vitest-native` composition series (§3.4).
+ * Unchanged since `/1`, and still true under `/2`: only `source-region-text`
  * is degraded (CE-1 — vitest's structured channel carries no failing-source
- * region text), everything else this composition claims is met.
+ * region text), everything else this composition claims is met. The `/2`
+ * version bump (record shape: 9-item config_digest covering +
+ * `completeness.module_errors`) does not touch this declaration.
  */
 export const VITEST_CAPABILITIES: CapabilityDeclaration = {
   verdicts: 'pass',

@@ -1,6 +1,6 @@
 /**
  * vitest adapter, recorder side: turns a Capture dump plus execution context
- * into a canonical RunRecord (§3). Composition `vitest-native/1` (expC):
+ * into a canonical RunRecord (§3). Composition `vitest-native/2` (expC):
  * digest core = exception type + message + structured expected/actual +
  * operator + line-shift-stable relOffsets; source-region-text is declared
  * unsupported (degraded capability); absolute positions, raw stacks, console
@@ -8,6 +8,12 @@
  * Execution-cache coherence (§4.5): empirical probing found no stale-source
  * path in vitest run mode, so this adapter declares that no cache
  * neutralization is required — the §13.2(b) fixture arbitrates that claim.
+ * `/2` bumped the record shape, not the capability declaration (§3.4
+ * unchanged since `/1`): `instrument.config_digest` now covers all 9
+ * judgement-table items (environment/pool/isolate/retry/test_timeout/
+ * setup_files/sequence in addition to the original two), and
+ * `completeness.module_errors` makes crash accounting a structured,
+ * programmatically enumerable field instead of only a status string.
  */
 import { readFileSync, realpathSync } from 'node:fs'
 import { isAbsolute, join, relative } from 'node:path'
@@ -26,7 +32,7 @@ import {
 import type { Capture, CapturedTest } from './capture.js'
 
 export const ADAPTER_NAME = 'vitest'
-export const COMPOSITION_ID = 'vitest-native/1'
+export const COMPOSITION_ID = 'vitest-native/2'
 /** Env vars whose values (fingerprinted, never stored) are comparison-relevant. */
 export const DECLARED_ENV_VARS = ['CI', 'NODE_ENV', 'TZ', 'LANG'] as const
 
@@ -50,7 +56,7 @@ export function buildRunRecord(
   capture: Capture,
   ctx: RecordContext,
 ): RunRecord {
-  if (capture.capture_version !== 2) {
+  if (capture.capture_version !== 3) {
     throw new RecorderError(
       `unsupported capture version ${capture.capture_version}`,
     )
@@ -108,7 +114,7 @@ export function buildRunRecord(
       adapter: ADAPTER_NAME,
       adapter_version: ctx.adapterVersion,
       composition_id: COMPOSITION_ID,
-      config_digest: instrumentConfigDigest(capture),
+      config_digest: instrumentConfigDigest(capture, ctx.worktree),
     },
     environment: {
       runner: capture.runner,
@@ -132,7 +138,13 @@ export function buildRunRecord(
       config_sources: configSources,
       suppressed,
     },
-    completeness: { status, child_exit_code: ctx.childExitCode },
+    completeness: {
+      status,
+      child_exit_code: ctx.childExitCode,
+      module_errors: [...capture.module_errors]
+        .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0))
+        .map((m) => ({ rel: m.rel, count: m.messages.length })),
+    },
     observations,
     recording: {
       recorder: 'vdelta-run',
@@ -146,11 +158,29 @@ export function buildRunRecord(
   }
 }
 
-/** The effective evidence-affecting configuration (§3.1, contract §5.4). */
-export function instrumentConfigDigest(capture: Capture): string {
+/**
+ * The effective evidence-affecting configuration (§3.1, contract §5.4):
+ * the judgement table's 9 covered items. `setup_files` is kept in resolved
+ * order (not sorted — setup execution order is evidence-affecting) and
+ * normalized to `config_sources`-style keys so the digest stays
+ * machine-portable (worktree-relative, or `external:<abs path>`).
+ */
+export function instrumentConfigDigest(
+  capture: Capture,
+  worktree: string,
+): string {
   return canonicalDigest({
     include_task_location: capture.config.include_task_location,
     truncate_threshold: capture.config.truncate_threshold,
+    environment: capture.config.environment,
+    pool: capture.config.pool,
+    isolate: capture.config.isolate,
+    retry: capture.config.retry,
+    test_timeout: capture.config.test_timeout,
+    setup_files: capture.config.setup_files.map((p) =>
+      configSourceKey(p, worktree),
+    ),
+    sequence: capture.config.sequence,
   })
 }
 

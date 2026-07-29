@@ -2,8 +2,15 @@
 
 ## 1. ヘッダ/前提
 
-- `composition_id`: `vitest-native/1`（定義: `src/adapters/vitest/recorder.ts:29` の `COMPOSITION_ID`）
-- `adapter`: `vitest`（`ADAPTER_NAME`, `src/adapters/vitest/recorder.ts:28`）
+> **改版注記（issue #39）**: 本文書はもともと `vitest-native/1` に対する audit（issue #38）の
+> 記録として書かれた。issue #39 で本文書 §4 が列挙する 9 項目すべてが `instrumentConfigDigest`
+> に実装され、`completeness.module_errors` も構造化フィールドとして record 化されたことに伴い、
+> composition は `vitest-native/2`（定義: `src/adapters/vitest/recorder.ts:35` の
+> `COMPOSITION_ID`）へ改版された。§2・§5 は audit 実施当時（`/1`, 2/9 covering）の記録として
+> そのまま残す（歴史の書き換えをしない）。実装後の事実は §4・§7 に反映している。
+
+- `composition_id`: `vitest-native/2`（定義: `src/adapters/vitest/recorder.ts:35` の `COMPOSITION_ID`）
+- `adapter`: `vitest`（`ADAPTER_NAME`, `src/adapters/vitest/recorder.ts:34`）
 
 本文書の位置づけ: `docs/superpowers/specs/2026-07-28-playwright-adapter-design.md` §4.1.1
 が定める adapter 共通契約
@@ -81,22 +88,22 @@ config **ファイル**の digest（`surface.config_sources`, `recorder.ts:85-90
 
 ## 4. 判定表（本体）
 
-| 設定名 | 判定 | 根拠 |
-| --- | --- | --- |
-| `include_task_location`（既収録） | yes | `location_line` の有無が `observation.source_ref`（`toObservation`, `recorder.ts:165-166`）と `relOffsets`（`recorder.ts:238-246`、`t.location_line` が `null` なら `[]`）を左右する。`relOffsets` は `rel_offsets` として finding に入るため (a) に該当。 |
-| `truncate_threshold`（既収録） | yes | chai の diff 切り詰め長。assertion message（`error.message` → `EvidenceError.message`）のバイト列そのものを変える。spec §3.1 が「diff/message truncation settings」を明示的に MUST covering 対象として挙げている。(a) に該当。 |
-| `environment` | yes | node ↔ happy-dom/jsdom で globals・DOM API の有無が変わる。同一 tree でも `document is not defined` のような `ReferenceError`（`exception_type` 変化、(a)）が出るか、あるいはそもそも assertion に到達できず verdict が変わる（(b)）。§4.1.1 が「vitest の … `environment`（jsdom↔node で例外型やメッセージが変わりうる）」として明示する穴。 |
-| `pool` | yes | `threads` ↔ `forks` で runtime 意味論が変わる。例: `forks` では `process.chdir()` 等プロセス限定 API が worker 内でも有効だが `threads`（`worker_threads`）では制約が異なり、エラーの worker 境界 serialization で `message`/`stack` 形状が変わりうる（(a)）。実測は §5 参照。 |
-| `isolate` | yes | モジュール状態の隔離有無。`isolate: false` ではテスト間でモジュールのトップレベル状態（カウンタ、キャッシュ等）が漏れ、同一 tree でも実行順依存で verdict が変わりうる（(b)）。 |
-| `retry` | yes | 最終 attempt の結果のみが verdict として報告されるため、flaky な fail が verdict ごと消える（(b)）。報告される `error`（message/exception_type）も attempt により変わりうる（(a)）。§4.1.1 が挙げる Playwright `retries: CI ? 2 : 0` と同型の穴で、vitest 側も `test.retry` / `retry` config で同じ構造を持つ。 |
-| `testTimeout` | yes | timeout 発生時のメッセージに設定値そのものが埋め込まれる（例: `'Test timed out in Xms'`）。設定値を変えると同一 tree でも message バイト列が変わり（(a)）、timeout の発生有無自体で verdict（pass↔fail）も変わりうる（(b)）。 |
-| `setupFiles` | yes | どの setup ファイルが解決され走るかのリストが、globals/mock の初期状態を変え、evidence 内容に波及する（(a)/(b)）。**covering すべきは解決済みパスのリスト（どの setup が走るか）であり、ファイル内容の digest ではない** — 内容側は `provenance.tree_digest` / `surface.config_sources`（設定ファイル自体を config_files 経由で拾う場合）の担当であり、役割はここで切り分ける。 |
-| `sequence`（shuffle/seed/concurrent 等） | yes | 実行順序が変わると、`isolate: false` や外部リソース共有時の state leak を経由して同一 tree でも verdict・evidence が変わりうる（(b)、条件付きで (a)）。 |
+| 設定名 | 判定 | 根拠 | 実装注記（issue #39） |
+| --- | --- | --- | --- |
+| `include_task_location` | yes・収録済み（vitest-native/2） | `location_line` の有無が `observation.source_ref`（`toObservation`, `recorder.ts:165-166`）と `relOffsets`（`recorder.ts:238-246`、`t.location_line` が `null` なら `[]`）を左右する。`relOffsets` は `rel_offsets` として finding に入るため (a) に該当。 | `/1` から既収録。変更なし。 |
+| `truncate_threshold` | yes・収録済み（vitest-native/2） | chai の diff 切り詰め長。assertion message（`error.message` → `EvidenceError.message`）のバイト列そのものを変える。spec §3.1 が「diff/message truncation settings」を明示的に MUST covering 対象として挙げている。(a) に該当。 | `/1` から既収録。変更なし。 |
+| `environment` | yes・収録済み（vitest-native/2） | node ↔ happy-dom/jsdom で globals・DOM API の有無が変わる。同一 tree でも `document is not defined` のような `ReferenceError`（`exception_type` 変化、(a)）が出るか、あるいはそもそも assertion に到達できず verdict が変わる（(b)）。§4.1.1 が「vitest の … `environment`（jsdom↔node で例外型やメッセージが変わりうる）」として明示する穴。 | `capture.config.environment` をそのまま digest 入力に追加（`instrumentConfigDigest`, `recorder.ts`）。 |
+| `pool` | yes・収録済み（vitest-native/2） | `threads` ↔ `forks` で runtime 意味論が変わる。例: `forks` では `process.chdir()` 等プロセス限定 API が worker 内でも有効だが `threads`（`worker_threads`）では制約が異なり、エラーの worker 境界 serialization で `message`/`stack` 形状が変わりうる（(a)）。実測は §5 参照。 | `capture.config.pool` を digest 入力に追加。 |
+| `isolate` | yes・収録済み（vitest-native/2） | モジュール状態の隔離有無。`isolate: false` ではテスト間でモジュールのトップレベル状態（カウンタ、キャッシュ等）が漏れ、同一 tree でも実行順依存で verdict が変わりうる（(b)）。 | `capture.config.isolate` を digest 入力に追加。 |
+| `retry` | yes・収録済み（vitest-native/2、count のみ） | 最終 attempt の結果のみが verdict として報告されるため、flaky な fail が verdict ごと消える（(b)）。報告される `error`（message/exception_type）も attempt により変わりうる（(a)）。§4.1.1 が挙げる Playwright `retries: CI ? 2 : 0` と同型の穴で、vitest 側も `test.retry` / `retry` config で同じ構造を持つ。 | `capture.config.retry` は `count`（number 正規化）のみ収録。`retry` の object 形（`{count, delay, condition}`）のうち `condition`（RegExp/function）は決定的 serialize が保証できないため未収録 — §7 の既知ギャップ (b) 参照。 |
+| `testTimeout` | yes・収録済み（vitest-native/2） | timeout 発生時のメッセージに設定値そのものが埋め込まれる（例: `'Test timed out in Xms'`）。設定値を変えると同一 tree でも message バイト列が変わり（(a)）、timeout の発生有無自体で verdict（pass↔fail）も変わりうる（(b)）。 | `capture.config.test_timeout` を digest 入力に追加。 |
+| `setupFiles` | yes・収録済み（vitest-native/2、解決済みパスリスト） | どの setup ファイルが解決され走るかのリストが、globals/mock の初期状態を変え、evidence 内容に波及する（(a)/(b)）。**covering すべきは解決済みパスのリスト（どの setup が走るか）であり、ファイル内容の digest ではない** — 内容側は `provenance.tree_digest` / `surface.config_sources`（設定ファイル自体を config_files 経由で拾う場合）の担当であり、役割はここで切り分ける。 | covering は `configSourceKey(path, worktree)` による worktree 相対パス（外部は `external:<abs>`）の解決済みリストで、resolved 順を保持（sort しない — setup 実行順は evidence-affecting）。ファイル内容 digest は入れない。 |
+| `sequence`（shuffle/seed/concurrent 等） | yes・収録済み（vitest-native/2、sequencer+shuffle_tests） | 実行順序が変わると、`isolate: false` や外部リソース共有時の state leak を経由して同一 tree でも verdict・evidence が変わりうる（(b)、条件付きで (a)）。 | vitest 4 の `resolveConfig` は `shuffle` の `{files, tests}` object 形を正規化する（`node_modules/vitest/dist/chunks/coverage.DM_a_rWm.js:470-481`）: `tests` 側は `shuffle.tests` boolean になり、`files` 有効は `sequencer` クラス（`RandomSequencer`）としてのみ残る。そのため sequencer class 名 + `shuffle_tests` boolean の両軸で covering する。shuffle 有効かつ seed 未指定の run は vitest が `seed = Date.now()` を補う（同ファイル 481 行の条件付き `??=`）ため、run 毎に `config_digest` が変わり `instrument-changed` で abstain になる — これは実行順が毎回変わるという事実の正直な反映であり、比較したい場合は seed を pin する。 |
 
-以上 9 項目。既収録 2 項目 + 未収録 7 項目（issue の最低要求）をすべて yes と判定した。
-9 項目以外の追加候補として `chaiConfig` の他フィールド（例: `showDiff` 相当）も理論上
-evidence-affecting になりうるが、実装調査で明白な根拠を確認できていないため本 audit では
-追記しない（YAGNI — 投機的な網羅はしない）。
+以上 9 項目すべてが `instrumentConfigDigest`（`src/adapters/vitest/recorder.ts`）で
+covering 済みである（issue #39 実装）。9 項目以外の追加候補として `chaiConfig` の他フィールド
+（例: `showDiff` 相当）も理論上 evidence-affecting になりうるが、実装調査で明白な根拠を
+確認できていないため追記しない（YAGNI — 投機的な網羅はしない）。
 
 ## 5. 実測根拠（dogfood）
 
@@ -158,13 +165,32 @@ design doc §4.1.1 は同種の穴の例として `jsdom↔node` を挙げてい
 要求する。これは §6.2 same-instrument rule により、instrument が変われば2 run 間の
 comparability が `exact` と主張できなくなる（`instrument-changed`）ことの直接の帰結である。
 
-## 7. 既知の乖離と後続
+## 7. 既知の乖離と後続（issue #39 実装後の事実）
 
-現行の `instrumentConfigDigest`（`src/adapters/vitest/recorder.ts:150-155`）は本列挙
-9 項目のうち **`include_task_location` / `truncate_threshold` の 2/9 しか covering していない**。
-残り 7 項目（`environment` / `pool` / `isolate` / `retry` / `testTimeout` / `setupFiles` /
-`sequence`）は未準拠であり、§5 の実測（`environment`・`pool` の乖離）がこれを裏付けている。
+issue #39 の実装により、`instrumentConfigDigest`（`src/adapters/vitest/recorder.ts`）は
+本文書 §4 が列挙する **9/9 項目すべてを covering** している
+（`include_task_location` / `truncate_threshold` / `environment` / `pool` / `isolate` /
+`retry`（count のみ） / `test_timeout` / `setup_files`（解決済みパスリスト） / `sequence`
+（sequencer 名 + `shuffle_tests`)）。§5 の実測（audit 当時 `/1` の 2/9 covering で
+`environment`・`pool` の乖離が実データに現れていた）が裏付けていた欠陥は、この実装で
+解消された。
 
-本 issue（#38）はこの audit と文書化のみをスコープとし、実装修正（`instrumentConfigDigest`
-の計算ロジック変更、`Capture.config` へのフィールド追加、`composition_id` の変更）は
-issue #39 と合わせて別 Step で行う。本文書の作成にあたり `src/` は一切変更していない。
+`completeness.module_errors: { rel: string, count: number }[]`（rel 昇順ソート、record 常時
+存在・無エラー時は `[]`）が構造化フィールドとして record 化され、モジュールロード失敗が
+プログラムから列挙可能になった（既存の `completeness.status` はこの会計情報の帰結として
+そのまま残る）。
+
+残るギャップ（YAGNI によりスコープ外、投機的網羅はしない）:
+
+- (a) **multi-project workspace の per-project config 分岐は未 covering**。root の
+  resolved config（`ctx.config`）のみを capture し、project 毎の `environment`/`pool` 等の
+  差分は covering しない。#38 audit の実測モデル（shift-bud）は package 毎に別 invocation
+  （別ストリーム）であり root config で足りるため、per-project capture への拡張は本 issue の
+  スコープ外とした。
+- (b) **`retry.condition`（RegExp/function）は未 covering**。`count` のみ number 正規化して
+  収録し、`condition` は決定的 serialize が保証できないため除外している。
+- (c) **`probes/shift-bud-baseline/` の録り直しは本 PR スコープ外で未実施**。§5 の実測記録は
+  `/1`・2/9 covering 時点のものであり、`config_digest` が変わるため（`run_id` 全変化）
+  再録が必要だが、baseline の録り直しは別スコープとする。
+- (d) **coverage 表示への completeness 併記は #40** で扱う。本 issue では
+  `completeness.module_errors` の record 化までをスコープとする。

@@ -21,7 +21,7 @@ function makeRecord(overrides: Partial<RunRecord> = {}): RunRecord {
     instrument: {
       adapter: 'vitest',
       adapter_version: '1',
-      composition_id: 'vitest-native/1',
+      composition_id: 'vitest-native/2',
       config_digest: 'cfg1',
     },
     environment: {
@@ -85,7 +85,7 @@ describe('failure_evidence disclosure (§9.1, §4.2)', () => {
   it('discloses the declaration of the registered adapter itself', () => {
     const report = reportFor(makeRecord())
     expect(report.failure_evidence).toEqual({
-      composition_id: 'vitest-native/1',
+      composition_id: 'vitest-native/2',
       degraded_capabilities: ['source-region-text'],
     })
   })
@@ -120,7 +120,7 @@ describe('failure_evidence disclosure (§9.1, §4.2)', () => {
     })
     expect(report.comparability).toBe('none')
     expect(report.failure_evidence).toEqual({
-      composition_id: 'vitest-native/1',
+      composition_id: 'vitest-native/2',
       degraded_capabilities: ['source-region-text'],
     })
   })

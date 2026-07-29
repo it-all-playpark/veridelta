@@ -397,7 +397,7 @@ function shortId(runId: string): string {
  * *recorded* run's adapter declares, and the evidence capabilities that
  * composition declares `unsupported`. Resolved through the registry from the
  * record's own `instrument.adapter` (§4.2 Step 1 interim rule), never from a
- * statically imported vitest constant — the latter stamps `vitest-native/1`
+ * statically imported vitest constant — the latter stamps `vitest-native/2`
  * onto every report the moment a second adapter exists, which §9.1 forbids.
  *
  * A record whose adapter this build does not know still gets a report, taken

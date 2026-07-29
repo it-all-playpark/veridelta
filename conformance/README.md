@@ -147,7 +147,7 @@ it).
 | adv-branch-cross | §5.1, §5.2 | branch is in the stream key: within-branch compare is exact; cross-branch abstains baseline-missing |
 | adv-rerun-stability | §13.2(a), §3.6 | two runs at an identical tree produce the same `run_id` (⇒ identical `evidence_digest`) |
 | adv-stale-cache-collision | §13.2(b), §4.5 | same-size 500→404→500 revert under frozen mtime reports current source; C matches A, not B |
-| adv-degraded-capability | §13.2(c), §9.1 | red-in-both claims carry `degraded_capabilities:["source-region-text"]`; composition `vitest-native/1` |
+| adv-degraded-capability | §13.2(c), §9.1 | red-in-both claims carry `degraded_capabilities:["source-region-text"]`; composition `vitest-native/2` |
 | adv-readonly-object-db | §13.2, §3.5 | a run against a chmod-readonly `.git/objects` yields the same `run_id` as a writable run at the identical tree; no INV-5 passthrough degrade |
 
 ### Operational pitfall (`pit-*`)

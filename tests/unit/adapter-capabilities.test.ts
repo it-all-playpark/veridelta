@@ -30,7 +30,7 @@ describe('vitest capability declaration (§4.1)', () => {
     ])
   })
 
-  it('declares CE-1 as the only shortfall of vitest-native/1', () => {
+  it('declares CE-1 as the only shortfall of vitest-native/2', () => {
     // The whole declaration is frozen, not just its reduction: a capability
     // added as `pass` would leave the derived list unchanged and slip through
     // the assertion above, yet it is a claim the composition now makes.

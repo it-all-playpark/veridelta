@@ -1,4 +1,6 @@
 import { defineConfig } from 'vitest/config'
-import { timeoutMs } from './shared.mjs'
+import { slowTestThresholdMs } from './shared.mjs'
 
-export default defineConfig({ test: { testTimeout: timeoutMs } })
+export default defineConfig({
+  test: { slowTestThreshold: slowTestThresholdMs },
+})
