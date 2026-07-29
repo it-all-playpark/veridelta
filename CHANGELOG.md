@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/it-all-playpark/veridelta/compare/v0.3.1...v0.4.0) (2026-07-29)
+
+
+### Features
+
+* **vitest-adapter:** config_digest を9項目カバーに拡張し module_errors を構造化 ([d76aaf0](https://github.com/it-all-playpark/veridelta/commit/d76aaf0bd3f669c0765d31cf77e7efaa8eeb2146))
+
 ## [0.3.1](https://github.com/it-all-playpark/veridelta/compare/v0.3.0...v0.3.1) (2026-07-29)
 
 
