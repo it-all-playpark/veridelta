@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/it-all-playpark/veridelta/compare/v0.2.2...v0.3.0) (2026-07-29)
+
+
+### Features
+
+* **adapter:** adapter seam を抽出し core から vitest 依存を切る ([e038e0b](https://github.com/it-all-playpark/veridelta/commit/e038e0b96c20e5f12f873b29583b8d398f6fb51e))
+* **adapter:** adapter seam を抽出し core から vitest 依存を切る (Phase 1 Step 1) ([ac3442b](https://github.com/it-all-playpark/veridelta/commit/ac3442b5cef7f5af79b9cf802046c836e6e082d8))
+
+
+### Bug Fixes
+
+* **adapter:** 未検出の子にも capture チャネルを渡す / argv 注入を detect に限定 ([e478a0d](https://github.com/it-all-playpark/veridelta/commit/e478a0da8aeff04c55fea435916bcfeb596b7d91))
+
 ## [0.2.2](https://github.com/it-all-playpark/veridelta/compare/v0.2.1...v0.2.2) (2026-07-27)
 
 
