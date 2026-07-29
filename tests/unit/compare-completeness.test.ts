@@ -2,17 +2,19 @@
  * F2: `completeness.status` propagation from RunRecord into
  * `ComparisonReport.current.completeness_status` (§9.1 — text rendering must
  * be a secondary view of the report, so the signal has to reach the report
- * first). Non-complete runs abstain (comparability `none`), so this exercises
- * the abstention report-construction path in src/compare.ts; complete runs
- * must keep the report byte-identical to before this change.
+ * first). A non-complete current run with no comparable baseline abstains
+ * (comparability `none`), exercising the abstention report-construction path
+ * in src/compare.ts; when a complete baseline exists, comparability instead
+ * degrades to `partial` via the claims report path. Complete runs must keep
+ * the report byte-identical to before this change.
  */
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { buildComparisonReport } from '../../src/compare.js'
-import { parseReport } from '../../src/schema.js'
 import type { RunRecord } from '../../src/schema.js'
+import { parseReport } from '../../src/schema.js'
 import { RunStore } from '../../src/store.js'
 
 function makeRecord(overrides: Partial<RunRecord> = {}): RunRecord {
@@ -68,12 +70,32 @@ afterEach(() => {
 })
 
 /** A lone run has no baseline: comparability `none` (abstention path). */
-function reportFor(record: RunRecord): ReturnType<typeof buildComparisonReport> {
+function reportFor(
+  record: RunRecord,
+): ReturnType<typeof buildComparisonReport> {
   const dir = mkdtempSync(join(tmpdir(), 'vdelta-completeness-'))
   scratchDirs.push(dir)
   const store = new RunStore(dir)
   store.ensure()
   const { runId } = store.writeRun(record)
+  return buildComparisonReport(store, runId, { mode: 'previous-comparable' })
+}
+
+/**
+ * A complete baseline plus a current run in the same stream: comparability
+ * degrades to `partial` (claims report path) when the current run is not
+ * complete, rather than aborting to `none`.
+ */
+function reportForPair(
+  baselineOverrides: Partial<RunRecord>,
+  currentOverrides: Partial<RunRecord>,
+): ReturnType<typeof buildComparisonReport> {
+  const dir = mkdtempSync(join(tmpdir(), 'vdelta-completeness-'))
+  scratchDirs.push(dir)
+  const store = new RunStore(dir)
+  store.ensure()
+  store.writeRun(makeRecord(baselineOverrides))
+  const { runId } = store.writeRun(makeRecord(currentOverrides))
   return buildComparisonReport(store, runId, { mode: 'previous-comparable' })
 }
 
@@ -107,5 +129,15 @@ describe('completeness.status propagation into report.current (§9.1)', () => {
     )
     const roundTripped = parseReport(JSON.parse(JSON.stringify(report)))
     expect(roundTripped.current.completeness_status).toBe('crashed')
+  })
+
+  it('degrades to comparability partial (not none) when a complete baseline exists but current crashed', () => {
+    const report = reportForPair(
+      {},
+      { completeness: { status: 'crashed', child_exit_code: 1 } },
+    )
+    expect(report.comparability).toBe('partial')
+    expect(report.current.complete).toBe(false)
+    expect(report.current.completeness_status).toBe('crashed')
   })
 })

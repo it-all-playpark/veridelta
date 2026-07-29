@@ -148,7 +148,10 @@ describe('current.completeness_status (F1)', () => {
   it('throws on an unknown completeness_status value', () => {
     const bad = {
       ...minimalNoneReport,
-      current: { ...minimalNoneReport.current, completeness_status: 'exploded' },
+      current: {
+        ...minimalNoneReport.current,
+        completeness_status: 'exploded',
+      },
     }
     expect(() => parseReport(bad)).toThrow(SchemaViolationError)
   })
