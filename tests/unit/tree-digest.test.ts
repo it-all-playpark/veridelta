@@ -51,20 +51,36 @@ function restoreWritable(root: string) {
   chmodRecursive(root, (m) => m | 0o200)
 }
 
+const HEX2 = /^[0-9a-f]{2}$/
+const HEX38 = /^[0-9a-f]{38}$/
+
+/**
+ * Count genuine loose objects only: files matching git's on-disk loose
+ * object layout (`objects/<2-hex>/<38-hex>`). A naive recursive file count
+ * under `objects/` also picks up incidental non-object entries — notably
+ * `objects/maintenance.lock`, which `git gc --auto`'s detached background
+ * maintenance process (gc.autoDetach, default on) can leave transiently
+ * present right after `git commit` returns. Counting that lock file as an
+ * "object" makes this check racy under load (it flakily appears in a
+ * `before` snapshot and is gone by `after` once the background process
+ * exits) without reflecting any actual object-store pollution.
+ */
 function countObjects(gitDir: string): number {
   let count = 0
-  const walk = (p: string) => {
-    const st = statSync(p)
-    if (st.isDirectory()) {
-      for (const entry of readdirSync(p)) walk(join(p, entry))
-    } else {
-      count++
-    }
-  }
+  const objectsDir = join(gitDir, 'objects')
+  let subdirs: string[]
   try {
-    walk(join(gitDir, 'objects'))
+    subdirs = readdirSync(objectsDir)
   } catch {
     return 0
+  }
+  for (const subdir of subdirs) {
+    if (!HEX2.test(subdir)) continue
+    const subdirPath = join(objectsDir, subdir)
+    if (!statSync(subdirPath).isDirectory()) continue
+    for (const entry of readdirSync(subdirPath)) {
+      if (HEX38.test(entry)) count++
+    }
   }
   return count
 }

@@ -30,8 +30,13 @@ export function renderReport(report: ComparisonReport): string {
   } else {
     lines.push('  baseline: none')
   }
+  const incomplete = report.current.complete
+    ? ''
+    : report.current.completeness_status
+      ? ` [INCOMPLETE: ${report.current.completeness_status}]`
+      : ' [INCOMPLETE]'
   lines.push(
-    `  current:  ${report.current.run_id.slice(0, 12)} exit=${report.current.child_exit_code} coverage=${report.observation_coverage.current}`,
+    `  current:  ${report.current.run_id.slice(0, 12)} exit=${report.current.child_exit_code} coverage=${report.observation_coverage.current}${incomplete}`,
   )
   if (report.current.red && report.current.red.length > 0) {
     lines.push(`  red now (${report.current.red.length}):`)

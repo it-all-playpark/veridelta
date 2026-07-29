@@ -127,3 +127,33 @@ describe('comparability_detail.near_miss (§5.4/§9.1)', () => {
     expect(() => parseReport(bad)).toThrow(SchemaViolationError)
   })
 })
+
+describe('current.completeness_status (F1)', () => {
+  it('parses a report with current.completeness_status "crashed"', () => {
+    const withCrashed = {
+      ...minimalNoneReport,
+      current: { ...minimalNoneReport.current, completeness_status: 'crashed' },
+    }
+    expect(() => parseReport(withCrashed)).not.toThrow()
+  })
+
+  it('parses a report with current.completeness_status "partial"', () => {
+    const withPartial = {
+      ...minimalNoneReport,
+      current: { ...minimalNoneReport.current, completeness_status: 'partial' },
+    }
+    expect(() => parseReport(withPartial)).not.toThrow()
+  })
+
+  it('throws on an unknown completeness_status value', () => {
+    const bad = {
+      ...minimalNoneReport,
+      current: { ...minimalNoneReport.current, completeness_status: 'exploded' },
+    }
+    expect(() => parseReport(bad)).toThrow(SchemaViolationError)
+  })
+
+  it('still parses the original report without completeness_status', () => {
+    expect(() => parseReport(minimalNoneReport)).not.toThrow()
+  })
+})
