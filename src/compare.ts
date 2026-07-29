@@ -521,6 +521,9 @@ function abstentionReport(
       complete: current.completeness.status === 'complete',
       child_exit_code: current.completeness.child_exit_code,
       red,
+      ...(current.completeness.status !== 'complete'
+        ? { completeness_status: current.completeness.status }
+        : {}),
     },
     observation_coverage: { current: coverage(current) },
     // Abstention discloses the *current* run's evidence quality: it is the
@@ -714,6 +717,9 @@ function claimsReport(
       complete: current.completeness.status === 'complete',
       child_exit_code: current.completeness.child_exit_code,
       ...(currentRed ? { red: currentRed } : {}),
+      ...(current.completeness.status !== 'complete'
+        ? { completeness_status: current.completeness.status }
+        : {}),
     },
     observation_coverage: {
       baseline: coverage(baseline),

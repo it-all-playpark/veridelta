@@ -198,6 +198,7 @@ export interface ComparisonReport {
     complete: boolean
     child_exit_code: number
     red?: string[]
+    completeness_status?: CompletenessStatus
   }
   observation_coverage: {
     baseline?: string
@@ -582,12 +583,18 @@ export function parseReport(value: unknown): ComparisonReport {
     cur,
     'report.current',
     ['run_id', 'complete', 'child_exit_code'],
-    ['red'],
+    ['red', 'completeness_status'],
   )
   asString(cur.run_id, 'report.current.run_id')
   asBoolean(cur.complete, 'report.current.complete')
   asInteger(cur.child_exit_code, 'report.current.child_exit_code')
   if ('red' in cur) asStringArray(cur.red, 'report.current.red')
+  if ('completeness_status' in cur)
+    asEnum(
+      cur.completeness_status,
+      COMPLETENESS_STATUSES,
+      'report.current.completeness_status',
+    )
 
   const cov = asObject(o.observation_coverage, 'report.observation_coverage')
   checkKeys(cov, 'report.observation_coverage', ['current'], ['baseline'])

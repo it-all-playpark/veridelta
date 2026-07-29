@@ -95,3 +95,77 @@ describe('renderReport near-miss (§9.1)', () => {
     expect(out).not.toContain('near-miss')
   })
 })
+
+describe('renderReport completeness (§9.1)', () => {
+  const currentLine = (out: string): string | undefined =>
+    out.split('\n').find((l) => l.startsWith('  current:'))
+
+  it('appends " [INCOMPLETE: crashed]" when current.complete is false and completeness_status is crashed', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      current: {
+        ...minimalNoneReport.current,
+        complete: false,
+        completeness_status: 'crashed',
+      },
+    }
+    const out = renderReport(report)
+    expect(currentLine(out)).toBe(
+      '  current:  run_00000000 exit=1 coverage=1/1 [INCOMPLETE: crashed]',
+    )
+  })
+
+  it('appends " [INCOMPLETE: partial]" when current.complete is false and completeness_status is partial', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      current: {
+        ...minimalNoneReport.current,
+        complete: false,
+        completeness_status: 'partial',
+      },
+    }
+    const out = renderReport(report)
+    expect(currentLine(out)).toBe(
+      '  current:  run_00000000 exit=1 coverage=1/1 [INCOMPLETE: partial]',
+    )
+  })
+
+  it('leaves the current line unchanged when current.complete is true', () => {
+    const out = renderReport(minimalNoneReport)
+    expect(currentLine(out)).toBe(
+      '  current:  run_00000000 exit=1 coverage=1/1',
+    )
+    expect(out).not.toContain('INCOMPLETE')
+  })
+
+  it('appends " [INCOMPLETE]" (no status) when current.complete is false and completeness_status is absent', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      current: {
+        ...minimalNoneReport.current,
+        complete: false,
+      },
+    }
+    const out = renderReport(report)
+    expect(currentLine(out)).toBe(
+      '  current:  run_00000000 exit=1 coverage=1/1 [INCOMPLETE]',
+    )
+  })
+
+  it('still shows INCOMPLETE when red is empty (crashed run that otherwise looks green)', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      current: {
+        ...minimalNoneReport.current,
+        red: [],
+        complete: false,
+        completeness_status: 'crashed',
+      },
+    }
+    const out = renderReport(report)
+    expect(currentLine(out)).toBe(
+      '  current:  run_00000000 exit=1 coverage=1/1 [INCOMPLETE: crashed]',
+    )
+    expect(out).not.toContain('red now')
+  })
+})
