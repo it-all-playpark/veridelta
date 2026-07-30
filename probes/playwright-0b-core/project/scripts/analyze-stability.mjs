@@ -49,8 +49,12 @@ function extractExceptionType(strippedMessage) {
 }
 
 // error.stack の最初の named frame（"at <name> (<file>:<line>:<col>)"）を
-// enclosing symbol として採用する。これが error.location と同じ file:line:col を
-// 指すことを spec §3.6 option (b) の実測対象にする。
+// enclosing symbol として採用する。**この関数は最初の named frame を返すだけで、
+// それが error.location と同じ file:line:col を指すかは検査しない**（PR #54
+// レビュー指摘）。両者の一致は保証ではなく観測事実であり、呼び出し階層が深い
+// ケースでは乖離しうる（最初の named frame が error を投げた地点より外側の
+// フレームになる）。対象テストでの実際の一致有無は
+// `enclosingFrameAgreement()` で実測し report に記録する。
 function findEnclosingFrame(stack) {
   if (!stack) return null
   const lines = stripAnsi(stack).split('\n')
@@ -171,6 +175,21 @@ function digestOf(entry) {
   return buildCandidateDigest(errorEntry)
 }
 
+// `findEnclosingFrame()` が返す最初の named frame と channel-provided な
+// `error.location` が同じ file:line:col を指すかを**実測**する（assert はしない —
+// 乖離しうること自体が記録すべき観測結果であり、乖離を failure 扱いにすると
+// 「対象テストでは一致した」という事実が report から失われるため）。
+function enclosingFrameAgreement(errorEntry) {
+  const frame = findEnclosingFrame(errorEntry.stack)
+  const loc = errorEntry.location ?? null
+  if (!frame || !loc) return { frame, error_location: loc, matches: null }
+  return {
+    frame,
+    error_location: loc,
+    matches: frame.file === loc.file && frame.line === loc.line && frame.column === loc.column,
+  }
+}
+
 const report = { playwright_version: '1.49.1', steps: {} }
 const failures = []
 
@@ -286,10 +305,14 @@ try {
 report.steps.unrelated_edit = unrelatedEditResult
 
 // --- まとめ -------------------------------------------------------------
+// 「最初の named frame == error.location」は findEnclosingFrame() が保証する性質では
+// ないため、対象テストでの一致有無を実測値として残す（PR #54 レビュー指摘）。
+report.enclosing_frame_vs_error_location = enclosingFrameAgreement(runA.result.errors[0])
+
 report.candidate_digest_fields = [
   'exceptionType (best-effort message-prefix parse; TestError has no structured type field)',
   'message (ANSI-stripped; whole-field, excluded when volatile per CE-5 — see locator-blocked.md)',
-  'location.enclosingSymbol (first named stack frame matching error.location file:line:col)',
+  'location.enclosingSymbol (first named stack frame in error.stack; agreement with error.location file:line:col is NOT asserted by findEnclosingFrame — measured separately, see report.enclosing_frame_vs_error_location)',
   'location.symbolRelativeOffsetLine (error.location.line - symbol declaration line, both tree-reconstructed at run time)',
   'location.sourceLineText (source file line text at error.location.line, tree-reconstructed at run time)',
   'location.column (stable under line-shift; not excluded)',

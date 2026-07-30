@@ -195,18 +195,41 @@ F3（0b-core-1/2/3/5/7）・F4（0b-core-6 参照）・F5（意思決定3件）�
 `waitTooLong`）の4種の失敗形態と `TestError` 型定義
 （`node_modules/playwright/types/testReporter.d.ts:556-588`）の突合で行った。
 
-`TestError` インターフェースが持つ構造化フィールドは `cause? / location? / message? / snippet? /
-stack? / value?` の6個のみで、exception type を表す `name`/`type` フィールドも、
-expected/actual を表す構造化フィールド（`matcherResult` 等）も**存在しない**
-（reporter.d.ts に無い＝型として提供されていない。実測は`TestResult.errors[]`の生 dump で該当
-フィールドが常に `undefined`＝ `safeSerialize` で drop されることでも裏付く）。
+`TestError` インターフェースが**型として宣言する**構造化フィールドは `cause? / location? /
+message? / snippet? / stack? / value?` の6個のみで、exception type を表す `name`/`type`
+フィールドは型としては存在しない（reporter.d.ts に無い＝型として提供されていない）。
+
+> **訂正（PR #54 レビュー指摘）**: 本節は当初「expected/actual を表す構造化フィールド
+> （`matcherResult` 等）も存在しない」「実測は `TestResult.errors[]` の生 dump で該当フィールドが
+> 常に `undefined` であることでも裏付く」と記していたが誤りだった。実際に dump していたのは
+> `probe-reporter.ts` の `serializeResult()` が持つ `message/stack/location/snippet/value` の
+> **5フィールド whitelist** を通した値であり、whitelist に無いフィールドは実際の値に関わらず
+> 常に dump から欠落する（＝「dump で常に undefined」は「whitelist に無いフィールドは書き出され
+> ない」という probe 実装の性質の言い換えに過ぎず、実行時オブジェクトの不在を裏付ける実測には
+> ならない）。`probe-reporter.ts` を拡張し `error.matcherResult` を明示的にキャプチャして
+> 同一バージョン（`@playwright/test` 1.49.1）で再実測したところ、`toEqual`/`toBe` 由来の失敗
+> 2種で `matcherResult = { actual, expected, message, name, pass }`（`node_modules/playwright/
+> lib/worker/util.js:25-29` の `testInfoError()` が `ExpectError` の場合にのみ付与する非公開
+> プロパティ）が**実在**することを確認した（再実測装置:
+> `project/scripts/capture-matcher-result.mjs`、観測: `observations/matcher-result.json`。
+> 再現手順は `cd probes/playwright-0b-core/project && node scripts/capture-matcher-result.mjs`）。
+> ただし `matcherResult` は `TestError` 型定義（reporter.d.ts:556-588）に**無い＝ドキュメント化・型
+> 保証されていない未公開フィールド**であり、この事実と判定への反映は下表 CE-1 asserted values
+> 行および `docs/compositions/playwright-native-1.md` §9 に記す。
+>
+> なお既存の `observations/{baseline,failures,flaky,locator,setup-cascade}.json` は**拡張前の
+> reporter（5フィールド whitelist）で採取したもの**であり `matcherResult` キーを含まない。
+> `run-scenarios.mjs` によるフルスイートの録り直しは `fullyParallel` 由来のテスト順序非決定性で
+> 本件と無関係な diff を大量に生むため行わず、本件の実測は `tests/app.spec.ts` 単体・`workers=1`
+> で決定的に採る専用観測 `observations/matcher-result.json` に分離した。既存観測の
+> `errors[]` に `matcherResult` が無いことは「実行時に存在しなかった」ことを意味しない。
 
 | CE | 判定 | provenance | 根拠 |
 | --- | --- | --- | --- |
 | **CE-1** exception type | **満たさない**（構造化フィールドとしては）。ただし `message` の先頭行 `"<Name>: ..."` パターンを正規表現で抜き出せば決定的に復元できる（`throwCustomError` → `"TypeError: custom error"` で `TypeError` を抽出、`assertObjectShape` → `"Error: expect(...)..."` で汎用 `Error` を抽出。`analyze-stability.mjs` の `extractExceptionType()` で実装・実測済み） | **tree/text-reconstructed**（`message` という channel-provided フィールドの中身をテキスト解析。専用フィールドではない） | `node_modules/playwright/types/testReporter.d.ts:556-588`、`observations/failures.json` |
-| CE-1 asserted values（expected/actual） | **満たさない**。`toEqual`/`toBe` の diff は `message` に ANSI 色コード付きの人間可読テキストとして埋め込まれる（例 `"Expected: [32m\"expected string\"[39m\nReceived: [31m\"actual string\"[39m"`）だけで、expected/actual を個別に取り出せる構造化フィールドは無い（`matcherResult` 相当は `errors[]` に載らない） | **channel-provided だが rendered**（フィールド自体は構造化だが値そのものが ANSI 付き rendered diff） | `observations/failures.json`（`string mismatch is observed` / `object shape mismatch is observed` エントリ） |
+| CE-1 asserted values（expected/actual） | **満たさない**（`TestError` が型として宣言する公開フィールドの範囲では）。`toEqual`/`toBe` の diff は `message` に ANSI 色コード付きの人間可読テキストとして埋め込まれる（例 `"Expected: [32m\"expected string\"[39m\nReceived: [31m\"actual string\"[39m"`）だけで、型が宣言するフィールドに expected/actual を個別に取り出せるものは無い。**ただし再実測により、型定義に無い未公開フィールド `matcherResult = { name, expected, actual, pass, message }` が `TestResult.errors[]` の実行時オブジェクトに実在し、その `expected`/`actual` は ANSI を含まない生の構造化値（`toEqual` の例で `{"a":2,"b":"y"}` / `{"a":1,"b":"x"}`）であることを確認した**（`observations/matcher-result.json`。付与されるのは `toEqual`/`toBe` 等 matcher 由来の失敗のみで、`throwCustomError`・timeout 由来では `null`）。**採否判定: 不採用（determined）** — `matcherResult` は `reporter.d.ts:556-588` の `TestError` に無く、`node_modules/playwright/lib/worker/util.js:25-29` の `testInfoError()` が `ExpectError` の場合にのみ付与する実装詳細であり semver 保証の外にある。採用すれば CE-1 asserted values を構造化のまま満たせるが、pin 版 (1.49.1) でしか成立が保証されない証拠に record の適合判定を依存させることになるため、版脆弱性を理由に composition では使用しない（`docs/compositions/playwright-native-1.md` §9） | 採用する `message`: **channel-provided だが rendered**（フィールド自体は構造化だが値そのものが ANSI 付き rendered diff）／不採用の `matcherResult`: **undocumented・型外**（channel には載るが型契約の外） | `observations/failures.json`（`string mismatch is observed` / `object shape mismatch is observed` エントリ）、`observations/matcher-result.json`（`matcherResult` 実在の実測） |
 | CE-1 failing source region text | **満たす**（tree-reconstruction 経由）。`error.location`（file/line/column）は channel-provided。そこから合成プロジェクトのソースファイルを読み `sourceLineText` を決定的に再構成できることを `analyze-stability.mjs`（`sourceLineTextAt()`）で実証した（spec §3.6 option (b) 相当の経路） | **channel-provided location + tree-reconstructed text** | `probes/playwright-0b-core/project/scripts/analyze-stability.mjs`、`observations/stability-report.json` |
-| CE-1 traceback entry structure | **満たさない**（構造化配列としては）。`error.stack` は Node 形式の単一フラット文字列で、フレームごとの `{file,line,function}` オブジェクト配列ではない。`error.location` は「投げた地点」1フレーム分の構造化情報のみを提供する。フレーム単位の情報が要るなら `stack` を `at <fn> (<file>:<line>:<col>)` 正規表現でテキスト解析する必要がある（`analyze-stability.mjs` の `findEnclosingFrame()` で実装） | **channel-provided（location: 1フレームのみ）+ text-reconstructed（stack 全体）** | 同上 |
+| CE-1 traceback entry structure | **満たさない**（構造化配列としては）。`error.stack` は Node 形式の単一フラット文字列で、フレームごとの `{file,line,function}` オブジェクト配列ではない。`error.location` は「投げた地点」1フレーム分の構造化情報のみを提供する。フレーム単位の情報が要るなら `stack` を `at <fn> (<file>:<line>:<col>)` 正規表現でテキスト解析する必要がある（`analyze-stability.mjs` の `findEnclosingFrame()` で実装）。なお `findEnclosingFrame()` は「`stack` の最初の named frame」を返すだけで、それが `error.location` と同じ file:line:col を指すことは**照合していない**（呼び出し階層が深ければ乖離しうる）。対象テストでは一致することを実測し `stability-report.json.enclosing_frame_vs_error_location.matches === true` として記録した | **channel-provided（location: 1フレームのみ）+ text-reconstructed（stack 全体）** | 同上 |
 | **CE-2** rerun stability | **満たす**（whole-field 除外を前提に）。決定的失敗テスト1本を同一 tree で2回実行し候補 core digest が完全一致することを実測（`stability-report.json.steps.rerun.stable === true`）。ただし locator/timeout 系の `message` は揮発しうるため（`observations/locator-blocked.md`）、CE-5 に従い揮発しうるフィールドは値レベルでなく whole-field で digest から除外し annex に格納する方針を採る（0b-core-2 節で詳述） | 実測 + 規範 | `observations/stability-report.json` |
 | **CE-3** position stability | **満たさない**（raw `error.location.line` は絶対行番号でありそのままでは line-shift-stable でない。実測: 空行3行挿入で `location.line` が 35→38 に変化）。**満たす**（tree-reconstruction 経由）: enclosing symbol（`error.stack` の最初の named frame）からの symbol-relative offset、および `error.location` から再構成した `sourceLineText` は同一挿入後も不変（`symbolRelativeOffsetLine` 1→1、`sourceLineText` 完全一致）。さらに raw `error.snippet` も line-shift 後に**不変ではない**ことを発見した（後述） | **raw location: channel-provided だが不安定 / offset・sourceLineText: tree-reconstructed で安定** | `observations/stability-report.json.steps.line_shift` |
 | **CE-4** structured fields only | **満たさない（厳密には）**。Reporter API が公開する唯一の "structured" evidence フィールド（`message`/`stack`/`snippet`）自体が ANSI エスケープコード付きの rendered テキスト（ターミナル整形用の色コード、`error.snippet` の行番号 gutter）を含んでいる。「rendered display string を使わない」を字義通り満たすには、これらのフィールドから ANSI コードを剥がした上でテキスト解析する前処理が composition に必須であり、この前処理自体を composition に明記する必要がある（黙示のままだと非適合 = silent omission） | channel-provided fields, but値そのものが semi-rendered | `observations/failures.json` の `message`/`snippet` 生値 |
@@ -217,10 +240,17 @@ expected/actual を表す構造化フィールド（`matcherResult` 等）も**�
 使えば CE-1（source region text・exception type の一部）・CE-3（symbol-relative position）を
 満たせることを実測で確認した。CE-4 は ANSI ストリップという前処理の明記が必須という条件付きで
 満たせる。asserted/expected/actual 値（CE-1 の一部）と traceback 全体の構造化配列（CE-1 の一部）
-は tree-reconstruction でも構造化された形では取得できず、rendered diff テキストの埋め込みという
-形でしか手に入らない — これは composition の provenance 列に `text-embedded-in-message`
-（channel-provided でも tree-reconstructed でもない第三区分）として明記すべき silent-omission
-回避ポイントである。
+は、**型が宣言する公開フィールドと tree-reconstruction の範囲では**構造化された形で取得できず、
+rendered diff テキストの埋め込みという形でしか手に入らない — これは composition の provenance 列に
+`text-embedded-in-message`（channel-provided でも tree-reconstructed でもない第三区分）として
+明記すべき silent-omission 回避ポイントである。
+
+ただし asserted/expected/actual 値については、**型定義に無い未公開フィールド `matcherResult` に
+生の構造化値が実在する**ことを再実測で確認しており（上表 CE-1 asserted values 行、
+`observations/matcher-result.json`）、「構造化された値がそもそも channel に流れていない」わけでは
+ない。本 probe は版脆弱性を理由にこれを**不採用**と判定した（`docs/compositions/playwright-native-1.md`
+§9）ため上記の結論を維持するが、この判断は「取得不能だから」ではなく「型契約の外にある証拠に
+record の適合判定を依存させないため」である点を composition が明示する必要がある。
 
 ### 0b-core-2
 
@@ -346,7 +376,21 @@ reporter からは実行結果が一切出力されないため、composition �
 
 ### 0b-core-6 参照
 
-*(F4 で `docs/compositions/playwright-native-1.md` を新規作成し、本節にはそこへの参照のみ記入)*
+resolved `FullConfig` の evidence-affecting configuration 列挙（0b-core-6）は、vitest と同じ
+形式の composition doc として `docs/compositions/playwright-native-1.md`
+（`composition_id: playwright-native/1`、予約）に書き下した。**判定基準は §3**（`vitest-native-1.md`
+§3 と同一の操作的定義を転記 — 「同一 tree・同一 selector・同一 adapter version で当該設定の値だけを
+変えたとき、(a) `evidence_digest` / `structural_fingerprint` に入るバイト列、または (b)
+`observation` の `verdict` を変えうるか」）、**列挙本体は §4 の判定表**であり、各行の実測根拠は §5 が
+本 probe の観測 JSON（`observations/*.json` の `config` フィールド）に紐付けている。
+
+一行要旨: `retries` / `workers` / `timeout` / `projects` / `shard` / `fullyParallel` /
+`grep`・`grepInvert` / `maxFailures` / `forbidOnly` / `globalTimeout` / `use.*` を **yes**
+（`config_digest` に含める）、`projects[].testDir` / `reporter` リスト / `rootDir` / `configFile`
+を **no** と判定し、`expect.timeout` のみ **yes（evidence-affecting）だが channel-unavailable** —
+resolved `FullConfig`/`FullProject` のどちらにも現れず、covering には spec §3.6 option (b) と
+同型の tree-reconstruction（`playwright.config.ts` ソース自体の解析）を composition が宣言する
+必要がある、という 0b-core-1 と同じ語彙で記述できる縁を発見した。
 
 ### 0b-core-7
 
@@ -400,8 +444,8 @@ reporter からは実行結果が一切出力されないため、composition �
   現象が存在しないため「unsupported」と宣言する対象の実体が無い。
   決定(1)で確定した立場Bの comparator は「宣言がある場合のみ発火」であり、宣言が無い vitest
   ではそもそも発火しない — これは vitest に対して望む挙動そのもの（vitest の pass に flaky
-  finding が付くことは構造上あり得ない。`src/adapters/vitest/recorder.ts:176` は pass に
-  finding を付けない）であり、`unsupported` 宣言を追加してもこの挙動に変化は無い。
+  finding が付くことは構造上あり得ない。`src/adapters/vitest/recorder.ts:219` は
+  `verdict === 'fail' || verdict === 'error'` のときだけ `finding` を付す）であり、`unsupported` 宣言を追加してもこの挙動に変化は無い。
   capability 名は open（spec §3.4「etc.」、`CAPABILITY_VALUES` は値の enum であって名前の enum
   ではない）ため、vitest が `retry-evidence` を宣言しないこと自体は spec 上問題にならない。
 - **却下した代替案**: 追加する（`unsupported` として宣言）。意味的には「vitest は

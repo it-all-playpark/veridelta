@@ -37,10 +37,24 @@
       "location_line_after": 35
     }
   },
+  "enclosing_frame_vs_error_location": {
+    "frame": {
+      "symbol": "assertObjectShape",
+      "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+      "line": 35,
+      "column": 28
+    },
+    "error_location": {
+      "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+      "column": 28,
+      "line": 35
+    },
+    "matches": true
+  },
   "candidate_digest_fields": [
     "exceptionType (best-effort message-prefix parse; TestError has no structured type field)",
     "message (ANSI-stripped; whole-field, excluded when volatile per CE-5 — see locator-blocked.md)",
-    "location.enclosingSymbol (first named stack frame matching error.location file:line:col)",
+    "location.enclosingSymbol (first named stack frame in error.stack; agreement with error.location file:line:col is NOT asserted by findEnclosingFrame — measured separately, see report.enclosing_frame_vs_error_location)",
     "location.symbolRelativeOffsetLine (error.location.line - symbol declaration line, both tree-reconstructed at run time)",
     "location.sourceLineText (source file line text at error.location.line, tree-reconstructed at run time)",
     "location.column (stable under line-shift; not excluded)"

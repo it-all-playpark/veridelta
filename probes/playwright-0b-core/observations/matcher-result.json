@@ -1,0 +1,798 @@
+{
+  "playwright_version": "1.49.1",
+  "scenario": "matcher-result",
+  "config": {
+    "rootDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+    "configFile": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/playwright.config.ts",
+    "fullyParallel": true,
+    "workers": 1,
+    "shard": null,
+    "forbidOnly": false,
+    "maxFailures": 0,
+    "grep": {
+      "__regexp": "/.*/"
+    },
+    "grepInvert": null,
+    "globalTimeout": 0,
+    "reporter": [
+      [
+        "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/probe-reporter.ts",
+        null
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "projects": [
+      {
+        "name": "setup",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": {
+          "__regexp": "/.*\\.setup\\.ts/"
+        },
+        "testIgnore": [],
+        "dependencies": [],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      },
+      {
+        "name": "auth-tests",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": {
+          "__regexp": "/(auth|session)\\.spec\\.ts/"
+        },
+        "testIgnore": [],
+        "dependencies": [
+          "setup"
+        ],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      },
+      {
+        "name": "chromium",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "testIgnore": {
+          "__regexp": "/(auth|session)\\.spec\\.ts/"
+        },
+        "dependencies": [
+          "setup"
+        ],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      }
+    ]
+  },
+  "tests": [
+    {
+      "test": {
+        "id": "5cfdf7d9fac68b9178d2-87d4a96bb83ad83b361c",
+        "titlePath": [
+          "",
+          "setup",
+          "tests/auth.setup.ts",
+          "authenticate"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/auth.setup.ts",
+          "line": 6,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 2,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "object shape mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 0,
+        "duration": 4,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 28,
+              "line": 35
+            },
+            "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+            "matcherResult": {
+              "actual": {
+                "a": 1,
+                "b": "x"
+              },
+              "expected": {
+                "a": 2,
+                "b": "y"
+              },
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+              "name": "toEqual",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 28,
+            "line": 35
+          },
+          "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+          "matcherResult": {
+            "actual": {
+              "a": 1,
+              "b": "x"
+            },
+            "expected": {
+              "a": 2,
+              "b": "y"
+            },
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "name": "toEqual",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "object shape mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 1,
+        "duration": 5,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 28,
+              "line": 35
+            },
+            "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+            "matcherResult": {
+              "actual": {
+                "a": 1,
+                "b": "x"
+              },
+              "expected": {
+                "a": 2,
+                "b": "y"
+              },
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+              "name": "toEqual",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 28,
+            "line": 35
+          },
+          "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+          "matcherResult": {
+            "actual": {
+              "a": 1,
+              "b": "x"
+            },
+            "expected": {
+              "a": 2,
+              "b": "y"
+            },
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "name": "toEqual",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "object shape mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 2,
+        "duration": 4,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 28,
+              "line": 35
+            },
+            "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+            "matcherResult": {
+              "actual": {
+                "a": 1,
+                "b": "x"
+              },
+              "expected": {
+                "a": 2,
+                "b": "y"
+              },
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+              "name": "toEqual",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m\n    at assertObjectShape (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:35:28)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:10:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 28,
+            "line": 35
+          },
+          "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+          "matcherResult": {
+            "actual": {
+              "a": 1,
+              "b": "x"
+            },
+            "expected": {
+              "a": 2,
+              "b": "y"
+            },
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"a\": 2,\u001b[39m\n\u001b[32m-   \"b\": \"y\",\u001b[39m\n\u001b[31m+   \"a\": 1,\u001b[39m\n\u001b[31m+   \"b\": \"x\",\u001b[39m\n\u001b[2m  }\u001b[22m",
+            "name": "toEqual",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "string mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 13,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 0,
+        "duration": 4,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 27,
+              "line": 39
+            },
+            "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+            "matcherResult": {
+              "actual": "actual string",
+              "expected": "expected string",
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+              "name": "toBe",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 27,
+            "line": 39
+          },
+          "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+          "matcherResult": {
+            "actual": "actual string",
+            "expected": "expected string",
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "name": "toBe",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "string mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 13,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 1,
+        "duration": 4,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 27,
+              "line": 39
+            },
+            "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+            "matcherResult": {
+              "actual": "actual string",
+              "expected": "expected string",
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+              "name": "toBe",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 27,
+            "line": 39
+          },
+          "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+          "matcherResult": {
+            "actual": "actual string",
+            "expected": "expected string",
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "name": "toBe",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "string mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 13,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 2,
+        "duration": 4,
+        "errors": [
+          {
+            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 27,
+              "line": 39
+            },
+            "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+            "matcherResult": {
+              "actual": "actual string",
+              "expected": "expected string",
+              "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+              "name": "toBe",
+              "pass": false
+            }
+          }
+        ],
+        "error": {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m\n    at assertStringEquality (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:39:27)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:15:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 27,
+            "line": 39
+          },
+          "snippet": "\u001b[0m \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 39 |\u001b[39m   expect(\u001b[32m'actual string'\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[32m'expected string'\u001b[39m)\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 40 |\u001b[39m }\n \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\u001b[0m",
+          "matcherResult": {
+            "actual": "actual string",
+            "expected": "expected string",
+            "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mexpected\u001b[27m string\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mactual\u001b[27m string\"\u001b[39m",
+            "name": "toBe",
+            "pass": false
+          }
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "custom exception type is preserved"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 18,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 0,
+        "duration": 2,
+        "errors": [
+          {
+            "message": "TypeError: custom error",
+            "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 9,
+              "line": 43
+            },
+            "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+          }
+        ],
+        "error": {
+          "message": "TypeError: custom error",
+          "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 9,
+            "line": 43
+          },
+          "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "custom exception type is preserved"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 18,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 1,
+        "duration": 2,
+        "errors": [
+          {
+            "message": "TypeError: custom error",
+            "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 9,
+              "line": 43
+            },
+            "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+          }
+        ],
+        "error": {
+          "message": "TypeError: custom error",
+          "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 9,
+            "line": 43
+          },
+          "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "custom exception type is preserved"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 18,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 2,
+        "duration": 2,
+        "errors": [
+          {
+            "message": "TypeError: custom error",
+            "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+              "column": 9,
+              "line": 43
+            },
+            "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+          }
+        ],
+        "error": {
+          "message": "TypeError: custom error",
+          "stack": "TypeError: custom error\n    at throwCustomError (/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:43:9)\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts:20:5",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+            "column": 9,
+            "line": 43
+          },
+          "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m\n \u001b[90m 42 |\u001b[39m \u001b[36mfunction\u001b[39m throwCustomError()\u001b[33m:\u001b[39m never {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m   \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mTypeError\u001b[39m(\u001b[32m'custom error'\u001b[39m)\n \u001b[90m    |\u001b[39m         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m }\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m waitTooLong() {\u001b[0m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-f2153994fa6fa7801f1a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "timeout message is observed"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 23,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "timedOut",
+        "retry": 0,
+        "duration": 1005,
+        "errors": [
+          {
+            "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+            "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+          }
+        ],
+        "error": {
+          "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-f2153994fa6fa7801f1a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "timeout message is observed"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 23,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "timedOut",
+        "retry": 1,
+        "duration": 1002,
+        "errors": [
+          {
+            "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+            "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+          }
+        ],
+        "error": {
+          "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-f2153994fa6fa7801f1a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "timeout message is observed"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 23,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "timedOut",
+        "retry": 2,
+        "duration": 1002,
+        "errors": [
+          {
+            "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+            "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+          }
+        ],
+        "error": {
+          "message": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m",
+          "stack": "\u001b[31mTest timeout of 1000ms exceeded.\u001b[39m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    }
+  ],
+  "all_test_ids": [
+    "5cfdf7d9fac68b9178d2-87d4a96bb83ad83b361c",
+    "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+    "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+    "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+    "1aae486e083f733d33b6-f2153994fa6fa7801f1a"
+  ],
+  "unreported_tests": []
+}

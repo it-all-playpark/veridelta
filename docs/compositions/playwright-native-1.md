@@ -13,7 +13,7 @@
 
 - `composition_id`: `playwright-native/1`（予約。実装後の定義位置は Phase 2 で
   `src/adapters/playwright/recorder.ts` 相当のファイルに置かれる想定 — `vitest-native/2` の
-  `COMPOSITION_ID`（`src/adapters/vitest/recorder.ts:35`）と同型）
+  `COMPOSITION_ID`（`src/adapters/vitest/recorder.ts:39`）と同型）
 - `adapter`: `playwright`（未実装）
 
 本文書の位置づけ: `docs/superpowers/specs/2026-07-28-playwright-adapter-design.md` §4.1.1
@@ -224,3 +224,49 @@ vitest が唯一 `unsupported` にしている capability を Playwright が `pa
 comparator がそれに応じて振る舞いを変える設計）が実際に機能する実証である。同一 spec 要件
 （CE-1 failing source region text）に対して runner ごとに異なる capability 値を宣言でき、その
 差が record に構造化されて残る、という設計意図が 0b-core probe の実測により裏付けられた。
+
+## 9. 未公開フィールド `matcherResult` の実在と不採用判定（issue #53 / PR #54 レビュー指摘）
+
+### 実測した事実
+
+`TestResult.errors[]` の**実行時オブジェクト**には、`TestError` 型
+（`node_modules/playwright/types/testReporter.d.ts:556-588`）が宣言しないフィールド
+`matcherResult` が載ることがある。`@playwright/test` 1.49.1 pin で実測した内容:
+
+| 観測項目 | 実測値 |
+| --- | --- |
+| 付与条件 | `node_modules/playwright/lib/worker/util.js:25-29` の `testInfoError()` が `error instanceof ExpectError` の場合にのみ `result.matcherResult = error.matcherResult` を代入する。`toEqual`/`toBe` 等の matcher 由来失敗でのみ出現し、`throw new TypeError(...)` や test timeout 由来では `null`（キー自体が無い） |
+| 構造 | `{ name, expected, actual, pass, message }`。`name` は matcher 名（`'toEqual'` / `'toBe'`）、`pass` は `false` |
+| `expected` / `actual` の値 | **ANSI を含まない生の構造化値**。`toEqual` の例で `expected = {"a":2,"b":"y"}` / `actual = {"a":1,"b":"x"}`、`toBe` の例で `"expected string"` / `"actual string"` |
+| 実測装置・観測 | `probes/playwright-0b-core/project/scripts/capture-matcher-result.mjs`、`probes/playwright-0b-core/observations/matcher-result.json` |
+
+すなわち spec §3.2 CE-1 の asserted values（expected/actual）は、**構造化された値としては
+channel に流れている**。「rendered diff テキストとしてしか手に入らない」という当初の 0b-core-1
+記述は、probe の `serializeResult()` が message/stack/location/snippet/value の 5 フィールド
+whitelist を通していたために生じた観測漏れであり、PR #54 レビュー指摘を受けて撤回・訂正した
+（`probes/playwright-0b-core/README.md` 0b-core-1 節の訂正ブロックと CE-1 asserted values 行）。
+
+### 判定: 不採用（determined）
+
+本 composition は `matcherResult` を **evidence として採用しない**。理由:
+
+1. **型契約の外にある** — `reporter.d.ts` の `TestError` に宣言が無く、公開 API の一部として
+   documented されていない。`ExpectError` の内部プロパティを reporter 層へ透過させている
+   実装詳細であり、semver の互換性保証の対象外である。
+2. **版脆弱性** — 採用すると、record の spec §3.2 CE-1 適合性が「pin した 1.49.1 でのみ成立が
+   確認された未公開フィールドの存在」に依存する。Playwright の minor/patch 更新で消失または
+   形状変更が起きても検知できるのは記録時ではなく比較時であり、`instrument` の同一性判定
+   （spec §6.2 same-instrument rule）では捕捉できない失敗モードになる。
+3. 採用しないことによる損失は**限定的**である — asserted values は `message` に
+   `text-embedded-in-message` provenance として残り、composition がその区分を明記する限り
+   spec §3.6 末尾の silent-omission 要件には抵触しない。
+
+### 記録上の扱い
+
+- 0b-core-1 の CE-1 asserted values 判定は「**満たさない**（型が宣言する公開フィールドの範囲
+  では）」を維持する。ただしその根拠は「構造化値が取得できないから」**ではなく**「型契約の外に
+  ある証拠に record の適合判定を依存させないため」であることを明示する。
+- Phase 2 で方針を変える場合（`matcherResult` を採用する場合）は、本節の 3 点を覆す根拠
+  — 具体的には Playwright 側で `matcherResult` が `TestError` に型として追加されたこと —
+  を示した上で本節を改訂する。それまでは本節が「検討済みで不採用」の一次記録である
+  （§6 変更規律に従い、判断の撤回には同節の改訂を要する）。

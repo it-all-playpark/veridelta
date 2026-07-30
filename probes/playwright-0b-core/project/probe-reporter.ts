@@ -89,27 +89,45 @@ function serializeTestCase(test: TestCase) {
   }
 }
 
+// `TestError`（`@playwright/test/reporter` の型）は message/stack/location/
+// snippet/value の5フィールドのみを宣言するが、issue #53 PR #54 レビュー指摘で
+// 判明した通り実行時オブジェクトにはこれ以外のプロパティが載ることがある
+// （例: `matcherResult` — jest-style expect matcher の構造化結果。
+// `node_modules/playwright/lib/worker/util.js` の `testInfoError()` が
+// `ExpectError` の場合に `result.matcherResult = error.matcherResult` として
+// 付与する。型定義（`testReporter.d.ts`）には無い＝ドキュメント化されていない
+// フィールドであり、5フィールド whitelist の従来コードは黙って落としていた）。
+// `matcherResult` を明示的にキャプチャし、型外フィールドの実在を dump から
+// 機械的に確認できるようにする（`(error as { matcherResult?: unknown })` で
+// TestError 型が宣言しないプロパティへ安全にアクセスする）。
+function serializeErrorEntry(error: {
+  message?: string
+  stack?: string
+  location?: unknown
+  snippet?: string
+  value?: string
+}) {
+  const matcherResult = (error as { matcherResult?: unknown }).matcherResult
+  return {
+    message: error.message,
+    stack: error.stack,
+    location: error.location,
+    snippet: error.snippet,
+    value: error.value,
+    // undocumented / type外フィールド。safeSerialize で ANSI 付き rendered
+    // 値や循環参照を機械的に丸めつつ、存在有無をそのまま反映する
+    // （存在しなければ undefined → JSON.stringify でキー自体が省略される）。
+    matcherResult: safeSerialize(matcherResult),
+  }
+}
+
 function serializeResult(result: TestResult) {
   return {
     status: result.status,
     retry: result.retry,
     duration: result.duration,
-    errors: (result.errors ?? []).map((error) => ({
-      message: error.message,
-      stack: error.stack,
-      location: error.location,
-      snippet: error.snippet,
-      value: error.value,
-    })),
-    error: result.error
-      ? {
-          message: result.error.message,
-          stack: result.error.stack,
-          location: result.error.location,
-          snippet: result.error.snippet,
-          value: result.error.value,
-        }
-      : undefined,
+    errors: (result.errors ?? []).map(serializeErrorEntry),
+    error: result.error ? serializeErrorEntry(result.error) : undefined,
     hasStdout: (result.stdout ?? []).length > 0,
     hasStderr: (result.stderr ?? []).length > 0,
   }
