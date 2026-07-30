@@ -104,7 +104,7 @@ Phase 2 conformance fixture の種を兼ねる）:
 | `retries`（project 単位） | **yes** | channel-provided（`FullProject.retries`。実測: `baseline.json` の `config.projects[].retries === 2`） | `retries: 0` では flaky が一度も観測されない（design doc §3.3-3「resolved-vs-file config digest」の本体）。同一 tree でも `retries` の値だけを変えると `TestCase.outcome()` が `'flaky'` になるか `'unexpected'`（fail のまま）になるかが変わる（(b)）。0b-core-3 で `retries: 2` 明示下の `fail→retry→pass` を実測済み（`observations/flaky.json`）。 |
 | `workers` | **yes** | channel-provided（`FullConfig.workers`。実測値 `5`） | §7.8 順序正規化との関係を明記する: spec §7.8 は recorder が observation を canonical 順（test ID 順）に並べ直すことを義務付けており、**report のバイト順序**は `workers` に依存しない。しかし §7.8 が対処するのは「届く順序」だけであり、`workers` が変える**実行時の並行度**（同時に走る worker プロセス数）そのものは別の軸である。並行度が変わればテスト間の資源競合（ポート・一時ファイル・共有 fixture 初期化タイミング）で assertion の成否や message 内容が変わりうる（(a)/(b)）。これは vitest の `pool`/`isolate`（`vitest-native-1.md` §4）が worker 境界の意味論変化で evidence を変えうると判定したのと同型の懸念であり、0b-core probe では専用の A/B 実験を行っていないため実測ではなく構造推論による事前判定（yes）である。 |
 | `timeout`（project 単位のテスト timeout） | **yes** | channel-provided（`FullProject.timeout`。実測: 全 project で `30000`） | timeout 発生時のメッセージに設定値が埋め込まれる。0b-core-2 の実測で `test.setTimeout(1000)` を使った timeout シナリオの `error.message === "Test timeout of 1000ms exceeded."` を確認済み（`observations/failures.json`）— 設定値を変えれば同一 tree でも message バイト列が変わる（(a)）。timeout の発生有無自体で `status`（`'passed'`↔`'timedOut'`）も変わる（(b)）。 |
-| `expect.timeout`（assertion 既定 polling timeout） | **yes（evidence-affecting）だが channel-unavailable** | **channel-unavailable** — `playwright.config.ts:29-31` で `expect: { timeout: 5000 }` を明示指定しているにもかかわらず、resolved `FullConfig`/`FullProject`（`onBegin` の引数）には `expect` プロパティが**存在しない**ことを実測で確認した（`baseline.json` の `config.projects[0]` は `dependencies/name/retries/testDir/testIgnore/testMatch/timeout/use` の8キーのみで `expect` を含まない。`node_modules/playwright/types/test.d.ts` を確認すると `expect?: {...}` は `TestProject`（`:164-166` 相当、authoring 用の入力型）と `TestConfig` の両方に存在するが、`FullProject`（`:650-724`）・`FullConfig`（`:1726-1845`）のどちらにも存在しない — つまり Reporter API の型設計として **resolved expect timeout は reporter に一切公開されない**）。 | 値自体は明らかに evidence-affecting（`toBeVisible`/`toPass` 等 async matcher の待機時間が変われば timeout 失敗の発生有無・message が変わる、(a)/(b)）。しかし本 probe は browserless-first（architecture_decisions）のため page ベースの async matcher timeout 実験は行っておらず、この判定は Reporter API の型・実測 dump 双方から得た**構造的事実**（channel が値を出力しない）に基づく。**Phase 2 実装への申し送り事項**: `instrumentConfigDigest` 相当の実装は `FullConfig` を読むだけでは `expect.timeout` を covering できない。covering するには `playwright.config.ts`（resolved 後ではなく authored source）を tree-reconstruction で解析するか、capability `unsupported` を宣言する（spec §3.6 option (a) 相当を config_digest に転用）必要がある。本 issue の scope（0b-core-6 は列挙の確定であり実装ではない）ではどちらを選ぶかまでは決めない。 |
+| `expect.timeout`（assertion 既定 polling timeout） | **yes（evidence-affecting）だが channel-unavailable** | **channel-unavailable** — `playwright.config.ts:29-31` で `expect: { timeout: 5000 }` を明示指定しているにもかかわらず、resolved `FullConfig`/`FullProject`（`onBegin` の引数）には `expect` プロパティが**存在しない**ことを実測で確認した（`baseline.json` の `config.projects[0]` は `dependencies/name/retries/testDir/testIgnore/testMatch/timeout/use` の8キーのみで `expect` を含まない。`node_modules/playwright/types/test.d.ts` を確認すると `expect?: {...}` は `TestProject`（`:164-166` 相当、authoring 用の入力型）と `TestConfig` の両方に存在するが、`FullProject`（`:650-724`）・`FullConfig`（`:1726-1845`）のどちらにも存在しない — つまり Reporter API の型設計として **resolved expect timeout は reporter に一切公開されない**）。 | 値自体は明らかに evidence-affecting（`toBeVisible`/`toPass` 等 async matcher の待機時間が変われば timeout 失敗の発生有無・message が変わる、(a)/(b)）。しかし本 probe は browserless-first（architecture_decisions）のため page ベースの async matcher timeout 実験は行っておらず、この判定は Reporter API の型・実測 dump 双方から得た**構造的事実**（channel が値を出力しない）に基づく。**Phase 2 実装への申し送り事項**: `instrumentConfigDigest` 相当の実装は `FullConfig` を読むだけでは `expect.timeout` を covering できない。covering するには `playwright.config.ts`（resolved 後ではなく authored source）を tree-reconstruction で解析するか、capability `unsupported` を宣言する（spec §3.6 option (a) 相当を config_digest に転用）必要がある。本 issue の scope（0b-core-6 は列挙の確定であり実装ではない）ではどちらを選ぶかまでは決めない。 Phase 2 決定（issue #55 決定6）: capability `resolved-config-coverage: 'unsupported'` の宣言で開示する（tree-reconstruction 案は不採用）。EVIDENCE_CAPABILITY_NAMES へは追加しないため report の `failure_evidence.degraded_capabilities` には現れず、開示は record の `instrument.capabilities` が担う。 |
 | `projects`（各 project の `name`/`testMatch`/`testIgnore`/`dependencies`/per-project `retries`/`timeout`） | **yes** | channel-provided（`FullConfig.projects[]`。実測: `baseline.json` の3 project すべてで dump 済み） | project 展開が実行される test の分母（test ID 集合）そのものを変える。`testMatch`/`testIgnore` は正規表現として resolve され selector と独立にどのファイルが当該 project に属すかを決め、`dependencies` は 0b-core-5 で実測したとおり skip カスケードの発生条件そのものを決める（(b)、かつ project 名は test ID の一部になるため id 自体が変わる — design doc §3.3 要件2「test ID に project を含める必須性」）。per-project `retries`/`timeout` は上記2行と同じ根拠がそのまま project 粒度で成立する。 |
 | `projects[].testDir` | **no** | 該当なし（config_digest に含めない） | `rootDir`/`configFile` と同じ絶対パス問題（実測: `baseline.json` の全 project で `testDir` は worktree 内絶対パス）。`testMatch`/`testIgnore` が正規表現として実際にどのファイルを拾うかを決めており、`testDir` はその解決の基点にすぎない。worktree 配置を変えただけで値が変わり、同一 config でも `instrument-changed` を過剰発火させる CE-2 型の懸念があるため config_digest には含めない。 |
 | `shard` | **yes** | channel-provided（`FullConfig.shard`。実測値: `null`。値がある場合は `{total, current}` — `node_modules/playwright/types/test.d.ts:1821-1826`） | shard は実行 test 集合（どの test ファイルが当該 shard に割り当てられるか）を変える。同一 tree・同一 selector でも `shard` の値だけを変えれば、当該実行が観測する test ID 集合自体が変わる（(b)）。本 probe は非 shard 実行のみ実測しており（`shard: null` を全観測で確認）、shard 有効時の挙動は Phase 2 の conformance fixture 候補として申し送る（design doc §6 Phase 2「新しい縁の conformance fixture」に resolved-vs-file config は既出だが shard は未列挙 — 追加候補）。 |
@@ -270,3 +270,46 @@ whitelist を通していたために生じた観測漏れであり、PR #54 レ
   — 具体的には Playwright 側で `matcherResult` が `TestError` に型として追加されたこと —
   を示した上で本節を改訂する。それまでは本節が「検討済みで不採用」の一次記録である
   （§6 変更規律に従い、判断の撤回には同節の改訂を要する）。
+
+## 10. Phase 2 実装の capability 宣言（確定）（issue #55 / F4）
+
+`playwright-native/1` は Phase 2 で実装済みである。本節は §8（`source-region-text`）を
+含む `PLAYWRIGHT_CAPABILITIES` 全8項目の確定した宣言文言を一次情報として記載する
+（実装: `src/adapters/playwright/recorder.ts` の `PLAYWRIGHT_CAPABILITIES` 定数）。
+`vitest-native/2` の `VITEST_CAPABILITIES`（6項目、`src/adapters/vitest/recorder.ts:67-74`）
+と同型の `CapabilityDeclaration` だが、playwright は2項目多い —
+`source-region-text`/`retry-evidence`/`resolved-config-coverage` の3項目で vitest と
+宣言値が異なる（vitest は前者2つを持たず、`resolved-config-coverage` という capability
+自体を持たない — vitest の `config_digest` は `instrumentConfigDigest` が resolved config
+を直接読めるため、この capability が意味を持つのは playwright 固有の channel-unavailable
+問題があるからである）。
+
+```
+export const PLAYWRIGHT_CAPABILITIES: CapabilityDeclaration = {
+  verdicts: 'pass',
+  'source-location': 'pass',
+  suppression: 'pass',
+  inventory: 'pass',
+  'failure-evidence': 'pass',
+  'source-region-text': 'pass',       // provenance: tree-reconstructed
+  'retry-evidence': 'pass',           // provenance: annex.attempts
+  'resolved-config-coverage': 'unsupported', // provenance: channel-unavailable
+}
+```
+
+各 provenance:
+
+| capability | 値 | provenance | 根拠 |
+| --- | --- | --- | --- |
+| `source-region-text` | `pass` | `tree-reconstructed` | §8 で確定した宣言をそのまま実装した。`error.location`（channel-provided pointer）+ 記録済みソースツリーから `sourceLineText` を決定的に再構成する。raw `error.snippet`（channel-provided）は line-shift 不安定なため使用しない（0b-core-1/2 実測、`probes/playwright-0b-core/observations/stability-report.json`）。 |
+| `retry-evidence` | `pass` | `annex.attempts` | リトライごとの evidence（各 attempt の `errors`/`frames`）を `FailureFinding.annex.attempts` に格納する（schema.ts の optional 追加、architecture_decisions 参照）。outcome 'flaky' の record 側マッピング（D2 実装機構1）はこの evidence を使って構築される。 |
+| `resolved-config-coverage` | `unsupported` | `channel-unavailable な expect.timeout の開示` | §4 `expect.timeout` 行が確定した Phase 2 決定6の実装。resolved `FullConfig`/`FullProject` が `expect.timeout` を一切公開しないため（§4 実測）、`instrumentConfigDigest`（`src/adapters/playwright/recorder.ts`）はこのフィールドを covering できないことを capability 宣言で開示する。tree-reconstruction 案（`playwright.config.ts` ソース自体を解析する）は不採用。 |
+
+`resolved-config-coverage` は `schema.ts` の `EVIDENCE_CAPABILITY_NAMES`（`failure-evidence` /
+`source-region-text` の2件、CE-1 系の capability に限定）に含まれない — instrument-config
+capability であって evidence capability ではないため。したがって `src/compare.ts` の
+`evidenceDisclosure` が導出する report の `failure_evidence.degraded_capabilities` には
+`resolved-config-coverage` は決して現れない（常に `[]`）。degraded の機械可読な開示は
+record の `instrument.capabilities['resolved-config-coverage'] === 'unsupported'` が担う
+（`conformance/fixtures/pw-smoke/manifest.json` が record 側のこの宣言と report 側の
+`degraded_capabilities` が空であることの両方を conformance で固定している）。

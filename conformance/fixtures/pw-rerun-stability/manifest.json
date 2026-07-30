@@ -1,0 +1,24 @@
+{
+  "name": "pw-rerun-stability",
+  "class": "adversarial",
+  "spec_refs": ["§13.2(a)", "§3.6", "§3.5"],
+  "notes": "playwright-native/1's evidence is tree-reconstructed from `error.location` + the recorded worktree source (source_region = the matched line's text, rel_offsets = frame-line offsets relative to the test's own declaration line) instead of raw `error.snippet` (line-shift unstable -- probes/playwright-0b-core/observations/stability-report.json, line_shift.raw_snippet_identical === false). run_id is the content address of the whole record excluding only the recording group, so two runs at the *same* tree producing the same run_id is a superset proof of evidence stability (CE-2, same argument as adv-rerun-stability). `shifted` is the same test with 3 harmless comment lines inserted above the test declaration line -- the test body and failing line text are byte-for-byte unchanged, only their absolute line numbers move. If the recorder used raw error.snippet (absolute-line-gutter) this project would flip the still-failing test into `updated_fail`; because it reconstructs from source + relative offsets, `evidence_digest`/`structural_fingerprint` stay stable and the test stays in `still_fail_unchanged` (CE-3).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed deterministic red"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 1},
+    {"do": "run", "id": "B", "runner": "playwright", "expectExit": 1},
+    {"do": "compare", "id": "rerun", "baseline": "A", "current": "B", "expectExit": 0, "assertDeterministic": true},
+    {"do": "apply", "project": "shifted"},
+    {"do": "commit", "message": "shift declaration line by 3 harmless comment lines"},
+    {"do": "run", "id": "C", "runner": "playwright", "expectExit": 1},
+    {"do": "compare", "id": "shift", "baseline": "B", "current": "C", "expectExit": 0}
+  ],
+  "assertions": [
+    {"sameValue": [{"report": "A", "path": "current.run_id"}, {"report": "B", "path": "current.run_id"}]},
+    {"report": "A", "path": "current.run_id", "matches": "^run_[0-9a-f]{64}$"},
+    {"report": "rerun", "path": "comparability", "eq": "exact"},
+    {"report": "rerun", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/red.spec.ts::chromium::deterministic red"}},
+    {"report": "shift", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/red.spec.ts::chromium::deterministic red"}}
+  ]
+}

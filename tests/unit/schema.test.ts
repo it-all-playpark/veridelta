@@ -5,6 +5,7 @@ import {
   type RunRecord,
   SchemaViolationError,
 } from '../../src/index.js'
+import type { EvidenceError, FailureFinding } from '../../src/schema.js'
 
 const minimalNoneReport = {
   schema_version: 'veridelta/1',
@@ -321,5 +322,141 @@ describe('record.completeness.module_errors (F1)', () => {
       },
     })
     expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+  })
+})
+
+describe('F2: EvidenceError.source_region / FailureFinding.annex.attempts / annex.attachments (optional, additive)', () => {
+  function makeFindingRecord(
+    finding: RunRecord['observations'][number]['finding'],
+  ) {
+    return makeRunRecord({
+      observations: [{ test_id: 't1', verdict: 'fail', finding }],
+    })
+  }
+
+  it('parses a finding whose evidence.errors[] carries source_region', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: {
+        errors: [
+          {
+            exception_type: 'Error',
+            message: 'boom',
+            rel_offsets: [1],
+            source_region: 'expect(1).toBe(2)',
+          },
+        ],
+      },
+      context_digest: 'c1',
+      annex: { frames: [], console: [], location_line: 5 },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
+  })
+
+  it('parses a finding whose annex carries attempts (retry evidence)', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: { errors: [] },
+      context_digest: 'c1',
+      annex: {
+        frames: [],
+        console: [],
+        location_line: 5,
+        attempts: [
+          {
+            retry: 0,
+            errors: [
+              { exception_type: 'Error', message: 'boom', rel_offsets: [] },
+            ],
+            frames: [{ file: 'a.ts', line: 1, column: 1 }],
+          },
+        ],
+      },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
+  })
+
+  it('parses a finding whose annex carries attachments (name/content_type/body_digest only)', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: { errors: [] },
+      context_digest: 'c1',
+      annex: {
+        frames: [],
+        console: [],
+        location_line: 5,
+        attachments: [
+          {
+            name: 'trace.zip',
+            content_type: 'application/zip',
+            body_digest: 'sha256:ab',
+          },
+          {
+            name: 'unreadable',
+            content_type: 'application/octet-stream',
+            body_digest: null,
+          },
+        ],
+      },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
+  })
+
+  it('throws on an unknown key inside evidence.errors[] (still closed-key otherwise)', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: {
+        errors: [
+          {
+            exception_type: 'Error',
+            message: 'boom',
+            rel_offsets: [],
+            surprise: 1,
+          } as unknown as EvidenceError,
+        ],
+      },
+      context_digest: 'c1',
+      annex: { frames: [], console: [], location_line: 5 },
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+  })
+
+  it('throws on an unknown key inside annex (attempts/attachments spelled wrong stays rejected)', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: { errors: [] },
+      context_digest: 'c1',
+      annex: {
+        frames: [],
+        console: [],
+        location_line: 5,
+        attemps: [],
+      } as unknown as FailureFinding['annex'],
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+  })
+
+  it('still parses a vitest-shaped finding with no source_region/attempts/attachments keys at all', () => {
+    const record = makeFindingRecord({
+      evidence_digest: 'e1',
+      structural_fingerprint: 'f1',
+      evidence: {
+        errors: [
+          {
+            exception_type: 'AssertionError',
+            message: 'boom',
+            rel_offsets: [2],
+          },
+        ],
+      },
+      context_digest: 'c1',
+      annex: { frames: [], console: [], location_line: 5 },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
   })
 })

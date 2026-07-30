@@ -1,0 +1,21 @@
+{
+  "name": "pw-duplicate-title-projects",
+  "class": "pitfall",
+  "spec_refs": ["§3.5", "§12"],
+  "notes": "Project-crossing pitfall fixture for the playwright-native/1 composition (issue #55 / P1): `proj-a` and `proj-b` share the same testMatch (tests/dup.spec.ts) so the exact same test title runs once per project. src/adapters/playwright/recorder.ts derives test ids as `${rel}::${project}::${titles.join(' > ')}` (project-scoped), unlike the vitest recorder, which builds RecorderError on a duplicate id and would otherwise force degraded raw passthrough (spec §3.5 recorder invariants, §12 fail-closed on ambiguity). A clean `--report json` run (no degraded passthrough) with both project-scoped observations present is the machine-checkable proof that project inclusion in the id prevents that collision.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pw-duplicate-title-projects project"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 0},
+    {"do": "show", "id": "rec", "run": "A"},
+    {"do": "parse-run-record", "id": "pr", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false}
+  ],
+  "assertions": [
+    {"report": "rec", "path": "instrument.adapter", "eq": "playwright"},
+    {"report": "rec", "path": "completeness.status", "eq": "complete"},
+    {"report": "rec", "path": "observations", "containsMatch": {"test_id": "tests/dup.spec.ts::proj-a::shared title across projects", "verdict": "pass"}},
+    {"report": "rec", "path": "observations", "containsMatch": {"test_id": "tests/dup.spec.ts::proj-b::shared title across projects", "verdict": "pass"}},
+    {"report": "rec", "path": "observations.0.test_id", "matches": "proj-a::shared title across projects$"},
+    {"report": "rec", "path": "observations.1.test_id", "matches": "proj-b::shared title across projects$"}
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "pw-smoke",
+  "class": "pitfall",
+  "spec_refs": ["§3.4", "§9.1", "§3.6"],
+  "notes": "Smoke fixture for the playwright-native/1 composition (issue #55 / F4): a real `vdelta run -- node .../@playwright/test/cli.js test` invocation against a 3-project (setup/auth-tests/chromium) synthetic project records a run, and the recorded instrument identifies itself as the playwright adapter with the capability declaration docs/compositions/playwright-native-1.md §8/§4 fixes (decision 6): source-region-text and retry-evidence are 'pass', resolved-config-coverage is 'unsupported' -- and because resolved-config-coverage is deliberately NOT one of schema.ts's EVIDENCE_CAPABILITY_NAMES, a comparison report's failure_evidence.degraded_capabilities stays empty even though the record itself discloses the degradation (src/compare.ts evidenceDisclosure). The red test's recorded finding also carries a non-empty tree-reconstructed evidence.errors[0].source_region (CE-1, provenance in composition doc §8).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pw-smoke project"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 1},
+    {"do": "show", "id": "rec", "run": "A"},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "A", "expectExit": 0},
+    {"do": "parse-run-record", "id": "pr", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false}
+  ],
+  "assertions": [
+    {"report": "rec", "path": "instrument.adapter", "eq": "playwright"},
+    {"report": "rec", "path": "instrument.composition_id", "eq": "playwright-native/1"},
+    {"report": "rec", "path": "instrument.capabilities.resolved-config-coverage", "eq": "unsupported"},
+    {"report": "rec", "path": "instrument.capabilities.source-region-text", "eq": "pass"},
+    {"report": "rec", "path": "instrument.capabilities.retry-evidence", "eq": "pass"},
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "failure_evidence.composition_id", "eq": "playwright-native/1"},
+    {"report": "cmp", "path": "failure_evidence.degraded_capabilities", "eq": []},
+    {"report": "rec", "path": "observations.0.test_id", "matches": "green\\.spec\\.ts::chromium"},
+    {"report": "rec", "path": "observations.1.test_id", "matches": "red\\.spec\\.ts::chromium"},
+    {"report": "rec", "path": "observations.1.verdict", "eq": "fail"},
+    {"report": "rec", "path": "observations.1.finding.evidence.errors.0.source_region", "matches": ".+"}
+  ]
+}
