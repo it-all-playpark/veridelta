@@ -17,14 +17,15 @@ import { gitHead, resolveRef, treeDigest } from './tree-digest.js'
 
 /**
  * Evidence-quality disclosure for the one path where no record can be read
- * (see {@link integrityFailedReport}). Everywhere else the disclosure comes
- * from the record's own `instrument.adapter` via the registry (§4.2), but here
- * there is no readable record to name an adapter — and §9.1 still requires a
- * non-empty `composition_id`. Where that value should come from is §12-7,
- * undecided (sentinel vs. best-effort `readRunMeta`), so these stay frozen at
- * the pre-seam output rather than being resolved from the registry: resolving
- * `vitest` would assert that an unreadable record was a vitest record, which
- * is precisely the claim this path cannot make.
+ * (see {@link integrityFailedReport}). Everywhere else the disclosure is
+ * derived from the record's own `instrument.capabilities` (§4.2, Step 2), but
+ * here there is no readable record — so deriving from the record is just as
+ * unavailable as deriving from the registry was, and §9.1 still requires a
+ * non-empty `composition_id`. Where that value should come from is still
+ * undecided per §12-7 (sentinel vs. best-effort `readRunMeta`), so these stay
+ * frozen at the pre-seam output: resolving `vitest` would assert that an
+ * unreadable record was a vitest record, which is precisely the claim this
+ * path cannot make.
  */
 const UNREADABLE_RECORD_COMPOSITION_ID = 'vitest-native/1'
 const UNREADABLE_RECORD_DEGRADED_CAPABILITIES = ['source-region-text']

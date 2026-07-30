@@ -17,6 +17,7 @@ import {
   buildRunRecord,
   instrumentConfigDigest,
   type RecordContext,
+  VITEST_CAPABILITIES,
 } from '../../src/adapters/vitest/recorder.js'
 import { canonicalDigest } from '../../src/digest.js'
 
@@ -232,5 +233,26 @@ describe('buildRunRecord completeness.module_errors (F1)', () => {
       child_exit_code: 0,
       module_errors: [],
     })
+  })
+})
+
+describe('buildRunRecord instrument.capabilities (F2)', () => {
+  it('writes the vitest declaration into instrument.capabilities', () => {
+    const worktree = makeScratchDir('vdelta-caps-worktree-')
+    writeFileSync(join(worktree, 'setup.ts'), 'export {}')
+    const record = buildRunRecord(
+      baseCapture(fullConfig(worktree)),
+      baseCtx(worktree),
+    )
+
+    expect(record.instrument.capabilities).toEqual({
+      verdicts: 'pass',
+      'source-location': 'pass',
+      suppression: 'pass',
+      inventory: 'pass',
+      'failure-evidence': 'pass',
+      'source-region-text': 'unsupported',
+    })
+    expect(record.instrument.capabilities).not.toBe(VITEST_CAPABILITIES)
   })
 })

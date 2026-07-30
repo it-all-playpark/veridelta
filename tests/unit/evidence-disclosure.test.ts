@@ -1,9 +1,11 @@
 /**
- * `failure_evidence` provenance (§9.1, §4.2 Step 1 interim rule): the
- * composition and degraded-capability disclosure a report carries must come
- * from the *record's own* adapter, resolved through the registry — not from a
- * constant baked into the comparator. Conformance cannot tell those two apart
- * (every fixture records with vitest), so the distinction is pinned here.
+ * `failure_evidence` provenance (§9.1, §4.2 Step 2): the composition and
+ * degraded-capability disclosure a report carries comes from the *record's
+ * own* `instrument.capabilities` — never from an adapter registry lookup.
+ * A record's declaration travels with the record, so two records naming the
+ * same adapter can still disclose different capabilities, and a record whose
+ * adapter this build does not know still gets a disclosure taken from its
+ * own declaration.
  */
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -23,6 +25,14 @@ function makeRecord(overrides: Partial<RunRecord> = {}): RunRecord {
       adapter_version: '1',
       composition_id: 'vitest-native/2',
       config_digest: 'cfg1',
+      capabilities: {
+        verdicts: 'pass',
+        'source-location': 'pass',
+        suppression: 'pass',
+        inventory: 'pass',
+        'failure-evidence': 'pass',
+        'source-region-text': 'unsupported',
+      },
     },
     environment: {
       runner: 'vitest',
@@ -81,8 +91,8 @@ function reportFor(
   return buildComparisonReport(store, runId, { mode: 'previous-comparable' })
 }
 
-describe('failure_evidence disclosure (§9.1, §4.2)', () => {
-  it('discloses the declaration of the registered adapter itself', () => {
+describe('failure_evidence disclosure (§9.1, §4.2 Step 2)', () => {
+  it('discloses the record’s own composition_id and evidence capabilities', () => {
     const report = reportFor(makeRecord())
     expect(report.failure_evidence).toEqual({
       composition_id: 'vitest-native/2',
@@ -90,9 +100,10 @@ describe('failure_evidence disclosure (§9.1, §4.2)', () => {
     })
   })
 
-  it('never stamps the vitest composition onto a foreign record', () => {
-    // The decisive reason the seam exists (§5, plan B rejection): a report for
-    // a run this build did not instrument must not claim `vitest-native/1`.
+  it('derives disclosure from the record, not from a registry lookup, for a foreign adapter', () => {
+    // Decisive evidence that disclosure is record-derived, not registry-derived:
+    // this adapter name is unknown to the registry, yet its own declaration
+    // still drives the output.
     const report = reportFor(
       makeRecord({
         instrument: {
@@ -100,14 +111,59 @@ describe('failure_evidence disclosure (§9.1, §4.2)', () => {
           adapter_version: '9',
           composition_id: 'some-other-runner/1',
           config_digest: 'cfg1',
+          capabilities: {
+            'failure-evidence': 'unsupported',
+            'source-region-text': 'unsupported',
+          },
         },
       }),
     )
     expect(report.failure_evidence.composition_id).toBe('some-other-runner/1')
-    expect(report.failure_evidence.degraded_capabilities).toEqual([])
+    expect(report.failure_evidence.degraded_capabilities).toEqual([
+      'failure-evidence',
+      'source-region-text',
+    ])
   })
 
-  it('discloses the adapter of the current run when abstaining', () => {
+  it('discloses an empty list for a record with no capabilities declaration (old record)', () => {
+    const oldRecord = makeRecord()
+    const { capabilities, ...instrumentWithoutCapabilities } =
+      oldRecord.instrument
+    const report = reportFor({
+      ...oldRecord,
+      instrument: instrumentWithoutCapabilities,
+    })
+    expect(report.failure_evidence).toEqual({
+      composition_id: 'vitest-native/2',
+      degraded_capabilities: [],
+    })
+  })
+
+  it('only discloses evidence-bearing capabilities, not other unsupported capabilities', () => {
+    const report = reportFor(
+      makeRecord({
+        instrument: {
+          adapter: 'vitest',
+          adapter_version: '1',
+          composition_id: 'vitest-native/2',
+          config_digest: 'cfg1',
+          capabilities: {
+            verdicts: 'pass',
+            'source-location': 'pass',
+            suppression: 'pass',
+            inventory: 'unsupported',
+            'failure-evidence': 'pass',
+            'source-region-text': 'unsupported',
+          },
+        },
+      }),
+    )
+    expect(report.failure_evidence.degraded_capabilities).toEqual([
+      'source-region-text',
+    ])
+  })
+
+  it('discloses the current record’s own capabilities when abstaining', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vdelta-disclosure-'))
     scratchDirs.push(dir)
     const store = new RunStore(dir)

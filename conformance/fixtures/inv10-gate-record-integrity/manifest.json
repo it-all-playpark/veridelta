@@ -2,7 +2,7 @@
   "name": "inv10-gate-record-integrity",
   "class": "invariant",
   "spec_refs": ["INV-10", "§11.2", "§6.3"],
-  "notes": "The threat model includes the deceiving agent. After recording run A, the agent shells into the local store and flips the single failing observation's verdict from fail to pass in .veridelta/runs/<A>.json. Because run_id is the content address of the record (recording group excluded), the gate recomputes the address, detects the mismatch, and abstains: comparability_detail record-integrity-failed/failed and gate.verdict inconclusive. Tampering is caught structurally, not by trusting the stored bytes.",
+  "notes": "The threat model includes the deceiving agent. After recording run A, the agent shells into the local store and flips the single failing observation's verdict from fail to pass in .veridelta/runs/<A>.json. Because run_id is the content address of the record (recording group excluded), the gate recomputes the address, detects the mismatch, and abstains: comparability_detail record-integrity-failed/failed and gate.verdict inconclusive. Tampering is caught structurally, not by trusting the stored bytes. The unreadable-record path's failure_evidence is frozen at pre-seam values per §12-7 (unchanged even after capabilities became record-derived).",
   "steps": [
     {"do": "apply", "project": "base"},
     {"do": "commit", "message": "seed failing test"},
@@ -13,6 +13,8 @@
   "assertions": [
     {"report": "g", "path": "gate.verdict", "eq": "inconclusive"},
     {"report": "g", "path": "comparability_detail.reason", "eq": "record-integrity-failed"},
-    {"report": "g", "path": "comparability_detail.kind", "eq": "failed"}
+    {"report": "g", "path": "comparability_detail.kind", "eq": "failed"},
+    {"report": "g", "path": "failure_evidence.composition_id", "eq": "vitest-native/1"},
+    {"report": "g", "path": "failure_evidence.degraded_capabilities", "eq": ["source-region-text"]}
   ]
 }

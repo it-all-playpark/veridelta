@@ -17,7 +17,11 @@
  */
 import { readFileSync, realpathSync } from 'node:fs'
 import { isAbsolute, join, relative } from 'node:path'
-import { AdapterCaptureError, type RecordContext } from '../../adapter.js'
+import {
+  AdapterCaptureError,
+  type CapabilityDeclaration,
+  type RecordContext,
+} from '../../adapter.js'
 import { canonicalDigest } from '../../digest.js'
 import { redactText, redactValue } from '../../redact.js'
 import {
@@ -51,6 +55,23 @@ export class RecorderError extends AdapterCaptureError {
 
 /** Re-exported from the seam: the context shape is runner-neutral (§4.1). */
 export type { RecordContext }
+
+/**
+ * Capability declaration for the `vitest-native` composition series (§3.4).
+ * Unchanged since `/1`, and still true under `/2`: only `source-region-text`
+ * is degraded (CE-1 — vitest's structured channel carries no failing-source
+ * region text), everything else this composition claims is met. The `/2`
+ * version bump (record shape: 9-item config_digest covering +
+ * `completeness.module_errors`) does not touch this declaration.
+ */
+export const VITEST_CAPABILITIES: CapabilityDeclaration = {
+  verdicts: 'pass',
+  'source-location': 'pass',
+  suppression: 'pass',
+  inventory: 'pass',
+  'failure-evidence': 'pass',
+  'source-region-text': 'unsupported',
+}
 
 export function buildRunRecord(
   capture: Capture,
@@ -115,6 +136,7 @@ export function buildRunRecord(
       adapter_version: ctx.adapterVersion,
       composition_id: COMPOSITION_ID,
       config_digest: instrumentConfigDigest(capture, ctx.worktree),
+      capabilities: { ...VITEST_CAPABILITIES },
     },
     environment: {
       runner: capture.runner,

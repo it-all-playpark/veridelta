@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft |
 | **Schema identifier** | `veridelta/1` |
-| **Spec revision** | 0.3.1 — 2026-07-16 |
+| **Spec revision** | 0.4.0 — 2026-07-30 |
 | **License** | MIT |
 | **Reference implementation** | `vdelta` (this repository; in development) |
 
@@ -135,7 +135,7 @@ mutation is detectable.
 | `schema_version` | `"veridelta/1"` | REQUIRED. |
 | `repo` | repo identity, worktree path, branch lineage, `cwd` | REQUIRED. |
 | `invocation` | canonicalized command, test selector | REQUIRED. Selector is recorded as normalized by the adapter. |
-| `instrument` | adapter name, adapter version, runner config digest | REQUIRED. Together these identify the *measuring instrument* (§6.2). The runner config digest MUST cover the effective configuration that alters evidence quality or structure — including assertion-introspection mode, traceback style, and diff/message truncation settings — however that configuration is supplied (command line, configuration files, plugins, or environment). |
+| `instrument` | adapter name, adapter version, runner config digest, `capabilities` | REQUIRED. Together the first three fields identify the *measuring instrument* (§6.2). The runner config digest MUST cover the effective configuration that alters evidence quality or structure — including assertion-introspection mode, traceback style, and diff/message truncation settings — however that configuration is supplied (command line, configuration files, plugins, or environment). `capabilities`: a map from capability name to `pass` \| `fail` \| `unsupported` (§3.4). The value set is closed (§14); capability names are open. This is a disclosure the record carries about itself, never a stream-matching key (§5.1) — capabilities are a function of (adapter name, adapter version, composition). Records produced before this field existed omit it; consumers MUST NOT treat its absence as a hard error (§9.4). |
 | `environment` | runner, runtime, OS, fingerprint of adapter-declared comparison-relevant env vars | REQUIRED. Secret **values** MUST NOT be stored; fingerprints only (§15). |
 | `provenance` | `head` (VCS revision), `dirty_diff_digest`, `tree_digest` | REQUIRED. `tree_digest` MUST identify the exact source content the run executed against, computed per §3.5. Provenance is **evidence of what was compared, never a stream-matching key** (§5.1). |
 | `surface` | observed test inventory digest; digests of test source and test-relevant config files; suppression metadata | REQUIRED to the extent the adapter's declared capabilities allow. |
@@ -152,7 +152,7 @@ mutation is detectable.
 | `phase` | SHOULD | e.g., `collection` \| `setup` \| `call` \| `teardown`, if the capability is declared. |
 | `suppression` | SHOULD | skip/xfail markers and reasons, if observable. |
 | `source_ref` | MAY | file/line of the test definition, if the capability is declared. |
-| `finding` | MUST when red | FailureFinding (§3.3). |
+| `finding` | MUST when red; MAY otherwise | FailureFinding (§3.3). A finding attached to a non-red observation is a disclosure of evidence; it is never consulted for status derivation (INV-3). |
 | `detail` | MAY | non-trust detail (e.g., duration). Never used for status derivation. |
 
 ### 3.3. FailureFinding
@@ -473,10 +473,31 @@ additionally carries the `near_miss` disclosure when §5.4 requires it.
 | `selector-relation-unknown` | `determined` |
 | `store-corrupt` | `failed` |
 | `adapter-crashed` | `failed` |
+| `adapter-unknown` | `failed` |
 | `record-integrity-failed` | `failed` |
 
 `kind: failed` reasons additionally trigger the fail-open behavior of INV-5
 where applicable. This enum is closed (§14).
+
+`adapter-unknown`: the record names an adapter this implementation does not
+know **and** the record itself carries no capability declaration, so no
+disclosure can be derived on its behalf. Implementations that read the
+declaration from the record (`instrument.capabilities`, §3.1) do not emit
+this reason for records that carry one.
+
+This reason presupposes an implementation that resolves capabilities through
+a means other than the record itself (e.g. a static adapter registry keyed by
+`instrument.adapter`), against which "known" versus "unknown" adapter names
+are meaningful. An implementation that derives `failure_evidence` solely from
+the record's own declaration (§9.1) has no such registry and therefore no
+notion of an adapter name it "does not know" — every record is read the same
+way regardless of which adapter wrote it. For a record with no capability
+declaration at all (written before `instrument.capabilities` existed, or by
+an adapter that never populates it), such an implementation MUST NOT abstain
+with `adapter-unknown`; it continues the comparison and discloses
+`degraded_capabilities: []`, the same "empty list otherwise" posture §9.1
+already specifies. `adapter-unknown` remains available for implementations
+that do maintain a registry independent of the record.
 
 ### 6.4. Selector semantics and containment proof
 
@@ -1148,6 +1169,14 @@ None violates an invariant; each is disclosed rather than papered over.
 
 ## Revision history
 
+- **0.4.0 (2026-07-30)** — Added `instrument.capabilities` to the Run record
+  (§3.1): a disclosure-only map from capability name to `pass` \| `fail` \|
+  `unsupported`, closed on value and open on name, never a stream-matching
+  key. `TestObservation.finding` is now MAY on non-red observations (§3.2),
+  making evidence disclosure possible outside failures while keeping status
+  derivation (INV-3) unaffected. Added `adapter-unknown` to the closed
+  `comparability_detail` enum (§6.3), for records naming an unknown adapter
+  and carrying no capability declaration of their own.
 - **0.3.1 (2026-07-16)** — Adapter roadmap reordered (§12, informative):
   Playwright second, by the same dogfood-first criterion that flipped the
   first target to vitest in 0.3.0 — maintained e2e suites are available as

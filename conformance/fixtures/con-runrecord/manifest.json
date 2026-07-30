@@ -2,12 +2,17 @@
   "name": "con-runrecord",
   "class": "consumer",
   "spec_refs": ["§9.4", "§3.1", "§3.2", "§7.1"],
-  "notes": "The run-record parser accepts a genuine recorded record and rejects one with an unknown closed-enum value. A real run is recorded, then its stored record parses cleanly (expectError:false). The single observation's verdict is then edited to a value outside the canonical verdict enum (pass|fail|error|skip|xfail|xpass|not_run); re-parsing MUST be a hard error.",
+  "notes": "The run-record parser accepts a genuine recorded record and rejects one with an unknown closed-enum value. A real run is recorded, then its stored record parses cleanly (expectError:false). The single observation's verdict is then edited to a value outside the canonical verdict enum (pass|fail|error|skip|xfail|xpass|not_run); re-parsing MUST be a hard error. instrument.capabilities (F1, §3.4) is also exercised: capability *names* are open (an unknown/future name still parses), but values remain a closed enum (an unknown value is a hard error, scoped to the capabilities field itself so it does not interfere with the verdict-enum assertion below).",
   "steps": [
     {"do": "apply", "project": "base"},
     {"do": "commit", "message": "seed failing test"},
     {"do": "run", "id": "A", "expectExit": 1},
     {"do": "parse-run-record", "id": "pv", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"instrument.capabilities": {"some-future-capability": "pass"}}},
+    {"do": "parse-run-record", "id": "pc", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"instrument.capabilities": {"verdicts": "totally-bogus"}}},
+    {"do": "parse-run-record", "id": "pb", "path": ".veridelta/runs/{RUN:A}.json", "expectError": true},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"instrument.capabilities": {"some-future-capability": "pass"}}},
     {"do": "edit-json", "path": ".veridelta/runs/{RUN:A}.json", "set": {"observations.0.verdict": "totally-bogus"}},
     {"do": "parse-run-record", "id": "pe", "path": ".veridelta/runs/{RUN:A}.json", "expectError": true}
   ],

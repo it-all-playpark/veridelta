@@ -14,14 +14,20 @@
  * `splitCommandSelector` know only the runner's *argv surface*, `record` knows
  * only its *structured channel*.
  */
-import type { RunRecord } from './schema.js'
+import {
+  CAPABILITY_VALUES,
+  type CapabilityValue,
+  type RunRecord,
+} from './schema.js'
 
+export type { CapabilityValue }
 /**
- * The three-valued capability convention (§3.4). The value set is closed
- * (§14); capability *names* stay open so an adapter may declare its own.
+ * The three-valued capability convention (§3.4). Defined in `schema.ts`
+ * because `parseRunRecord` needs it for `instrument.capabilities` value
+ * validation; re-exported here so adapter code keeps importing it from the
+ * adapter seam.
  */
-export const CAPABILITY_VALUES = ['pass', 'fail', 'unsupported'] as const
-export type CapabilityValue = (typeof CAPABILITY_VALUES)[number]
+export { CAPABILITY_VALUES }
 export type CapabilityDeclaration = Readonly<Record<string, CapabilityValue>>
 
 /**
