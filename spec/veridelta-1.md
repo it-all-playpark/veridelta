@@ -485,6 +485,20 @@ disclosure can be derived on its behalf. Implementations that read the
 declaration from the record (`instrument.capabilities`, §3.1) do not emit
 this reason for records that carry one.
 
+This reason presupposes an implementation that resolves capabilities through
+a means other than the record itself (e.g. a static adapter registry keyed by
+`instrument.adapter`), against which "known" versus "unknown" adapter names
+are meaningful. An implementation that derives `failure_evidence` solely from
+the record's own declaration (§9.1) has no such registry and therefore no
+notion of an adapter name it "does not know" — every record is read the same
+way regardless of which adapter wrote it. For a record with no capability
+declaration at all (written before `instrument.capabilities` existed, or by
+an adapter that never populates it), such an implementation MUST NOT abstain
+with `adapter-unknown`; it continues the comparison and discloses
+`degraded_capabilities: []`, the same "empty list otherwise" posture §9.1
+already specifies. `adapter-unknown` remains available for implementations
+that do maintain a registry independent of the record.
+
 ### 6.4. Selector semantics and containment proof
 
 A recorded selector denotes the invocation's **inclusion intent**. Exclusion
