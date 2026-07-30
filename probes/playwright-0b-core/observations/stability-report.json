@@ -1,0 +1,59 @@
+{
+  "playwright_version": "1.49.1",
+  "steps": {
+    "rerun": {
+      "stable": true,
+      "location_line_run_a": 35,
+      "location_line_run_b": 35,
+      "digest": {
+        "exceptionType": "Error",
+        "message": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 2\n+ Received  + 2\n\n  Object {\n-   \"a\": 2,\n-   \"b\": \"y\",\n+   \"a\": 1,\n+   \"b\": \"x\",\n  }",
+        "location": {
+          "enclosingSymbol": "assertObjectShape",
+          "symbolRelativeOffsetLine": 1,
+          "sourceLineText": "expect({ a: 1, b: 'x' }).toEqual({ a: 2, b: 'y' })",
+          "column": 28
+        }
+      },
+      "raw_snippet_identical": true
+    },
+    "line_shift": {
+      "location_line_before": 35,
+      "location_line_after": 38,
+      "line_delta": 3,
+      "absolute_location_line_changed": true,
+      "symbol_relative_offset_before": 1,
+      "symbol_relative_offset_after": 1,
+      "source_line_text_before": "expect({ a: 1, b: 'x' }).toEqual({ a: 2, b: 'y' })",
+      "source_line_text_after": "expect({ a: 1, b: 'x' }).toEqual({ a: 2, b: 'y' })",
+      "reconstructed_digest_stable": true,
+      "raw_snippet_identical": false,
+      "raw_snippet_before": "\u001b[0m \u001b[90m 33 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 34 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m }\n \u001b[90m 37 |\u001b[39m\n \u001b[90m 38 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m",
+      "raw_snippet_after": "\u001b[0m \u001b[90m 36 |\u001b[39m \u001b[90m// error.location に残す。\u001b[39m\n \u001b[90m 37 |\u001b[39m \u001b[36mfunction\u001b[39m assertObjectShape() {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 38 |\u001b[39m   expect({ a\u001b[33m:\u001b[39m \u001b[35m1\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'x'\u001b[39m })\u001b[33m.\u001b[39mtoEqual({ a\u001b[33m:\u001b[39m \u001b[35m2\u001b[39m\u001b[33m,\u001b[39m b\u001b[33m:\u001b[39m \u001b[32m'y'\u001b[39m })\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 39 |\u001b[39m }\n \u001b[90m 40 |\u001b[39m\n \u001b[90m 41 |\u001b[39m \u001b[36mfunction\u001b[39m assertStringEquality() {\u001b[0m"
+    },
+    "unrelated_edit": {
+      "stable": true,
+      "location_line_before": 35,
+      "location_line_after": 35
+    }
+  },
+  "candidate_digest_fields": [
+    "exceptionType (best-effort message-prefix parse; TestError has no structured type field)",
+    "message (ANSI-stripped; whole-field, excluded when volatile per CE-5 — see locator-blocked.md)",
+    "location.enclosingSymbol (first named stack frame matching error.location file:line:col)",
+    "location.symbolRelativeOffsetLine (error.location.line - symbol declaration line, both tree-reconstructed at run time)",
+    "location.sourceLineText (source file line text at error.location.line, tree-reconstructed at run time)",
+    "location.column (stable under line-shift; not excluded)"
+  ],
+  "excluded_fields": [
+    "duration",
+    "retry",
+    "absolute error.location.line",
+    "raw error.snippet (embeds absolute line-number gutter text; see excluded_fields_detail)",
+    "error.location.file (absolute path)"
+  ],
+  "excluded_fields_detail": {
+    "raw_error_snippet": "error.snippet includes a rendered gutter with the absolute line number (e.g. \" 35 |\") for the highlighted line and surrounding context lines. Empirically (see steps.line_shift.raw_snippet_identical) this makes the raw snippet field NOT line-shift-stable even though its highlighted source code text is unchanged. A line-shift-stable composition must extract the highlighted line text from the snippet (or from location.sourceLineText, which this script reconstructs directly from the tree) rather than digesting the raw snippet string."
+  },
+  "ok": true
+}
