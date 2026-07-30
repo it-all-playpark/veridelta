@@ -12,7 +12,6 @@ import { fileURLToPath } from 'node:url'
 import {
   type Adapter,
   AdapterCaptureError,
-  type CapabilityDeclaration,
   type CaptureChannel,
   type CommandSelector,
 } from '../../adapter.js'
@@ -22,7 +21,16 @@ import {
   buildRunRecord,
   COMPOSITION_ID,
   DECLARED_ENV_VARS,
+  VITEST_CAPABILITIES,
 } from './recorder.js'
+
+/**
+ * Re-exported from the recorder (§3.4): the declaration lives in
+ * `recorder.ts` so `buildRunRecord` can write it into `instrument.capabilities`
+ * without an import cycle. Kept here too so existing consumers of this
+ * descriptor module keep importing it from `adapter.js`.
+ */
+export { VITEST_CAPABILITIES }
 
 /**
  * Absolute path of the in-process vitest reporter that writes the capture.
@@ -154,23 +162,6 @@ export function splitCommandSelector(cmd: readonly string[]): CommandSelector {
     command.push(token)
   }
   return { command, selector }
-}
-
-/**
- * Capability declaration for the `vitest-native` composition series (§3.4).
- * Unchanged since `/1`, and still true under `/2`: only `source-region-text`
- * is degraded (CE-1 — vitest's structured channel carries no failing-source
- * region text), everything else this composition claims is met. The `/2`
- * version bump (record shape: 9-item config_digest covering +
- * `completeness.module_errors`) does not touch this declaration.
- */
-export const VITEST_CAPABILITIES: CapabilityDeclaration = {
-  verdicts: 'pass',
-  'source-location': 'pass',
-  suppression: 'pass',
-  inventory: 'pass',
-  'failure-evidence': 'pass',
-  'source-region-text': 'unsupported',
 }
 
 export const vitestAdapter: Adapter = {

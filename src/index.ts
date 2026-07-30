@@ -12,8 +12,11 @@ import { ADAPTER_NAME, buildRunRecord } from './adapters/vitest/recorder.js'
  * The vitest composition's standing, read off its adapter descriptor through
  * the registry rather than re-exported from the recorder (§4.2): what a
  * consumer sees must be what the adapter declares, so that a second adapter
- * cannot inherit vitest's disclosure. Names and values are frozen for Step 1 —
- * `DEGRADED_CAPABILITIES` is still `['source-region-text']`.
+ * cannot inherit vitest's disclosure. These are static public constants
+ * describing the vitest adapter's *current* declaration — since Step 2, a
+ * report's own `failure_evidence` is no longer derived from them: it is
+ * derived from the run record's own `instrument.capabilities` (§4.2 Step 2),
+ * so this pair plays no part in report generation.
  */
 const vitest = resolveAdapter(ADAPTER_NAME)
 

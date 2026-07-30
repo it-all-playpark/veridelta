@@ -210,6 +210,73 @@ function makeRunRecord(overrides: Partial<RunRecord> = {}): RunRecord {
   }
 }
 
+describe('record.instrument.capabilities (F1, §3.4)', () => {
+  it('parses a record with no instrument.capabilities (pre-F1 record, read back-compat)', () => {
+    expect(() => parseRunRecord(makeRunRecord())).not.toThrow()
+  })
+
+  it('parses a record whose capabilities declare an unknown (future) capability name', () => {
+    const record = makeRunRecord({
+      instrument: {
+        adapter: 'vitest',
+        adapter_version: '1',
+        composition_id: 'vitest-native/2',
+        config_digest: 'cfg1',
+        capabilities: {
+          verdicts: 'pass',
+          'some-future-capability': 'unsupported',
+        },
+      },
+    })
+    expect(() => parseRunRecord(record)).not.toThrow()
+  })
+
+  it('throws when a capability value is outside the closed enum', () => {
+    const record = makeRunRecord({
+      instrument: {
+        adapter: 'vitest',
+        adapter_version: '1',
+        composition_id: 'vitest-native/2',
+        config_digest: 'cfg1',
+        capabilities: { verdicts: 'totally-bogus' } as unknown as Record<
+          string,
+          'pass' | 'fail' | 'unsupported'
+        >,
+      },
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+    expect(() => parseRunRecord(record)).toThrow(
+      /record\.instrument\.capabilities\.verdicts/,
+    )
+  })
+
+  it('throws when instrument.capabilities is not an object', () => {
+    const record = makeRunRecord({
+      instrument: {
+        adapter: 'vitest',
+        adapter_version: '1',
+        composition_id: 'vitest-native/2',
+        config_digest: 'cfg1',
+        capabilities: 'nope' as unknown as Record<
+          string,
+          'pass' | 'fail' | 'unsupported'
+        >,
+      },
+    })
+    expect(() => parseRunRecord(record)).toThrow(SchemaViolationError)
+  })
+})
+
+describe('report.comparability_detail.reason "adapter-unknown" (F1, §6.3)', () => {
+  it('parses a report whose comparability_detail.reason is "adapter-unknown"', () => {
+    const withAdapterUnknown = {
+      ...minimalNoneReport,
+      comparability_detail: { reason: 'adapter-unknown', kind: 'failed' },
+    }
+    expect(() => parseReport(withAdapterUnknown)).not.toThrow()
+  })
+})
+
 describe('record.completeness.module_errors (F1)', () => {
   it('parses a record with no module_errors (pre-F1 record, read back-compat)', () => {
     expect(() => parseRunRecord(makeRunRecord())).not.toThrow()

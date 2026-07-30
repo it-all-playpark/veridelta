@@ -3,13 +3,12 @@
  * the three delta axes, and comparison-report construction. Deterministic:
  * no timestamps, stable sort orders, recency = store insertion order.
  */
-import { degradedCapabilities } from './adapter.js'
-import { findAdapter } from './adapters/registry.js'
 import {
   type BaselineMode,
   type Comparability,
   type ComparabilityDetail,
   type ComparisonReport,
+  EVIDENCE_CAPABILITY_NAMES,
   isRed,
   type NearMiss,
   type NearMissMismatch,
@@ -285,6 +284,14 @@ function judgeComparability(
         to: current.instrument.config_digest,
       },
     ]
+    // §12-6 (confirmed): this trigger condition is unchanged by Step 2 and
+    // stays exactly `adapter` / `adapter_version` / `composition_id` diffing —
+    // no per-capability diff event is added alongside it. `capabilities` is a
+    // function of that same triple (adapter, adapter_version, composition_id);
+    // a record whose declaration differs while all three hold constant is a
+    // declaration bug, not a real capability change to surface. Adding a
+    // second, per-capability trigger would only compound the double-meaning
+    // this event kind already carries (§12-6), not resolve it.
     if (
       baseline.instrument.adapter !== current.instrument.adapter ||
       baseline.instrument.adapter_version !==
@@ -395,37 +402,35 @@ function shortId(runId: string): string {
 /**
  * The evidence-quality disclosure a report carries (§9.1): the composition the
  * *recorded* run's adapter declares, and the evidence capabilities that
- * composition declares `unsupported`. Resolved through the registry from the
- * record's own `instrument.adapter` (§4.2 Step 1 interim rule), never from a
- * statically imported vitest constant — the latter stamps `vitest-native/2`
- * onto every report the moment a second adapter exists, which §9.1 forbids.
+ * composition declares `unsupported`. Both are read straight off the record's
+ * own `instrument` fields (§4.2 Step 2) — never through an adapter registry
+ * lookup. The record carries its own declaration, so the Step 1 interim
+ * question "what does this build know about the record's adapter?" (§12-5) is
+ * gone structurally: there is no adapter to resolve, and no notion of a record
+ * this build "does not know" to fall back for.
  *
- * A record whose adapter this build does not know still gets a report, taken
- * from the record's own declaration: `instrument.composition_id` *is* "the
- * adapter's declared composition" (§9.1), and a build that cannot describe the
- * composition has nothing it may declare unsupported on its behalf ("empty
- * list otherwise", §9.1) — inventing capabilities for a stranger would be the
- * same §9.1 violation in the other direction. Records like this are writable
- * through the public store API, so the path is reachable, not hypothetical.
- * Whether such a record should abstain outright instead — and under which §6.3
- * reason, since none of the closed enum means "no adapter can interpret this
- * record" — is undecided (§12-5); Step 2 removes the question by carrying the
- * declaration in the record itself.
+ * `composition_id` is always the record's own value. `degraded_capabilities`
+ * is the intersection of {@link EVIDENCE_CAPABILITY_NAMES} with the names
+ * whose declared value is `unsupported`, sorted (§4.2 derivation rule).
+ * Records written before `instrument.capabilities` existed have no
+ * declaration at all: rather than guess, the disclosure is an empty list —
+ * the same "empty list otherwise" posture as §9.1, extended so that vdelta
+ * never speaks on behalf of a composition that never declared anything.
  */
 function evidenceDisclosure(record: RunRecord): {
   composition_id: string
   degraded_capabilities: string[]
 } {
-  const adapter = findAdapter(record.instrument.adapter)
-  if (adapter === undefined) {
-    return {
-      composition_id: record.instrument.composition_id,
-      degraded_capabilities: [],
-    }
-  }
+  const caps = record.instrument.capabilities
+  const degraded =
+    caps === undefined
+      ? []
+      : EVIDENCE_CAPABILITY_NAMES.filter(
+          (name) => caps[name] === 'unsupported',
+        ).sort()
   return {
-    composition_id: adapter.compositionId,
-    degraded_capabilities: degradedCapabilities(adapter.declaredCapabilities),
+    composition_id: record.instrument.composition_id,
+    degraded_capabilities: degraded,
   }
 }
 

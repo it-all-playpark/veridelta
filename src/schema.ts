@@ -36,8 +36,28 @@ export const NONE_REASONS = [
   'store-corrupt',
   'adapter-crashed',
   'record-integrity-failed',
+  'adapter-unknown',
 ] as const
 export type NoneReason = (typeof NONE_REASONS)[number]
+
+/**
+ * The three-valued capability convention (§3.4). The value set is closed
+ * (§14); capability *names* stay open so an adapter may declare its own.
+ */
+export const CAPABILITY_VALUES = ['pass', 'fail', 'unsupported'] as const
+export type CapabilityValue = (typeof CAPABILITY_VALUES)[number]
+
+/**
+ * The evidence-bearing capability names (§9.1 "signal-bearing evidence
+ * capabilities"). Capability names in general are open (§3.4, "etc."), but a
+ * report only ever discloses degradation among *these* — the ones whose
+ * `unsupported` value changes what `failure_evidence` can show. A new
+ * evidence capability is added here, not inferred.
+ */
+export const EVIDENCE_CAPABILITY_NAMES = [
+  'failure-evidence',
+  'source-region-text',
+] as const
 
 export const DETAIL_KINDS = ['determined', 'failed'] as const
 export type DetailKind = (typeof DETAIL_KINDS)[number]
@@ -279,6 +299,13 @@ export interface RunRecord {
     adapter_version: string
     composition_id: string
     config_digest: string
+    /**
+     * Records produced before this field existed omit it; consumers MUST NOT
+     * treat its absence as a hard error (same back-compat posture as
+     * `completeness.module_errors`). Capability *names* are open (§3.4);
+     * only the value is validated against {@link CapabilityValue}.
+     */
+    capabilities?: Record<string, CapabilityValue>
   }
   environment: {
     runner: string
@@ -738,12 +765,21 @@ export function parseRunRecord(value: unknown): RunRecord {
   asStringArray(invocation.selector, 'record.invocation.selector')
 
   const instrument = asObject(o.instrument, 'record.instrument')
-  checkKeys(instrument, 'record.instrument', [
-    'adapter',
-    'adapter_version',
-    'composition_id',
-    'config_digest',
-  ])
+  checkKeys(
+    instrument,
+    'record.instrument',
+    ['adapter', 'adapter_version', 'composition_id', 'config_digest'],
+    ['capabilities'],
+  )
+  if ('capabilities' in instrument) {
+    const caps = asObject(
+      instrument.capabilities,
+      'record.instrument.capabilities',
+    )
+    for (const [name, value] of Object.entries(caps)) {
+      asEnum(value, CAPABILITY_VALUES, `record.instrument.capabilities.${name}`)
+    }
+  }
 
   const environment = asObject(o.environment, 'record.environment')
   checkKeys(environment, 'record.environment', [
