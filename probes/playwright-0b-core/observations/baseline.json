@@ -1,0 +1,432 @@
+{
+  "playwright_version": "1.49.1",
+  "scenario": "baseline",
+  "config": {
+    "rootDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+    "configFile": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/playwright.config.ts",
+    "fullyParallel": true,
+    "workers": 5,
+    "shard": null,
+    "forbidOnly": false,
+    "maxFailures": 0,
+    "grep": {
+      "__regexp": "/.*/"
+    },
+    "grepInvert": null,
+    "globalTimeout": 0,
+    "reporter": [
+      [
+        "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/probe-reporter.ts",
+        null
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "projects": [
+      {
+        "name": "setup",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": {
+          "__regexp": "/.*\\.setup\\.ts/"
+        },
+        "testIgnore": [],
+        "dependencies": [],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      },
+      {
+        "name": "auth-tests",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": {
+          "__regexp": "/(auth|session)\\.spec\\.ts/"
+        },
+        "testIgnore": [],
+        "dependencies": [
+          "setup"
+        ],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      },
+      {
+        "name": "chromium",
+        "testDir": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project",
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "testIgnore": {
+          "__regexp": "/(auth|session)\\.spec\\.ts/"
+        },
+        "dependencies": [
+          "setup"
+        ],
+        "retries": 2,
+        "timeout": 30000,
+        "use": {
+          "launchOptions": {}
+        }
+      }
+    ]
+  },
+  "tests": [
+    {
+      "test": {
+        "id": "5cfdf7d9fac68b9178d2-87d4a96bb83ad83b361c",
+        "titlePath": [
+          "",
+          "setup",
+          "tests/auth.setup.ts",
+          "authenticate"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/auth.setup.ts",
+          "line": 6,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 2,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "string mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 13,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 2,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "object shape mismatch is observed with asserted/expected/actual"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 3,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "custom exception type is preserved"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 18,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 0,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "d2e30edf93c6681ee681-236a54bcb03aa95f7356",
+        "titlePath": [
+          "",
+          "auth-tests",
+          "tests/auth.spec.ts",
+          "auth: fails when PROBE_FAIL_AUTH=1"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/auth.spec.ts",
+          "line": 14,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 3,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "c6e8bda6ab13f2e60a8a-0fad964f5b8f8df89fae",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/locator.spec.ts",
+          "locator: waiting for nonexistent element produces volatile retry log"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/locator.spec.ts",
+          "line": 21,
+          "column": 8
+        },
+        "expectedStatus": "skipped",
+        "annotations": [
+          {
+            "type": "skip"
+          }
+        ],
+        "outcome": "skipped",
+        "tags": []
+      },
+      "result": {
+        "status": "skipped",
+        "retry": 0,
+        "duration": 0,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "d2e30edf93c6681ee681-3a556723f7251a9d4118",
+        "titlePath": [
+          "",
+          "auth-tests",
+          "tests/auth.spec.ts",
+          "auth: authored skip"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/auth.spec.ts",
+          "line": 10,
+          "column": 1
+        },
+        "expectedStatus": "skipped",
+        "annotations": [
+          {
+            "type": "skip"
+          }
+        ],
+        "outcome": "skipped",
+        "tags": []
+      },
+      "result": {
+        "status": "skipped",
+        "retry": 0,
+        "duration": 2,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "1aae486e083f733d33b6-f2153994fa6fa7801f1a",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/app.spec.ts",
+          "app assertions (CE-1 observation)",
+          "timeout message is observed"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/app.spec.ts",
+          "line": 23,
+          "column": 3
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 0,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "d2e30edf93c6681ee681-e9bc145a1c39b1e74a16",
+        "titlePath": [
+          "",
+          "auth-tests",
+          "tests/auth.spec.ts",
+          "auth: always passes"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/auth.spec.ts",
+          "line": 6,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "expected",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 0,
+        "duration": 4,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "662d18f5d0a558202ea7-96b3714533f07428b750",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/flaky.spec.ts",
+          "flaky: first attempt fails, retry passes"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts",
+          "line": 8,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "unexpected",
+        "tags": []
+      },
+      "result": {
+        "status": "failed",
+        "retry": 0,
+        "duration": 1,
+        "errors": [
+          {
+            "message": "Error: flaky: first attempt fails",
+            "stack": "Error: flaky: first attempt fails\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts:10:11",
+            "location": {
+              "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts",
+              "column": 11,
+              "line": 10
+            },
+            "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m test(\u001b[32m'flaky: first attempt fails, retry passes'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({}\u001b[33m,\u001b[39m testInfo) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m   \u001b[36mif\u001b[39m (testInfo\u001b[33m.\u001b[39mretry \u001b[33m===\u001b[39m \u001b[35m0\u001b[39m) {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mError\u001b[39m(\u001b[32m'flaky: first attempt fails'\u001b[39m)\n \u001b[90m    |\u001b[39m           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m   }\n \u001b[90m 12 |\u001b[39m   expect(\u001b[36mtrue\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[36mtrue\u001b[39m)\n \u001b[90m 13 |\u001b[39m })\u001b[0m"
+          }
+        ],
+        "error": {
+          "message": "Error: flaky: first attempt fails",
+          "stack": "Error: flaky: first attempt fails\n    at /Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts:10:11",
+          "location": {
+            "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts",
+            "column": 11,
+            "line": 10
+          },
+          "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m test(\u001b[32m'flaky: first attempt fails, retry passes'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({}\u001b[33m,\u001b[39m testInfo) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m   \u001b[36mif\u001b[39m (testInfo\u001b[33m.\u001b[39mretry \u001b[33m===\u001b[39m \u001b[35m0\u001b[39m) {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mError\u001b[39m(\u001b[32m'flaky: first attempt fails'\u001b[39m)\n \u001b[90m    |\u001b[39m           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m   }\n \u001b[90m 12 |\u001b[39m   expect(\u001b[36mtrue\u001b[39m)\u001b[33m.\u001b[39mtoBe(\u001b[36mtrue\u001b[39m)\n \u001b[90m 13 |\u001b[39m })\u001b[0m"
+        },
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    },
+    {
+      "test": {
+        "id": "662d18f5d0a558202ea7-96b3714533f07428b750",
+        "titlePath": [
+          "",
+          "chromium",
+          "tests/flaky.spec.ts",
+          "flaky: first attempt fails, retry passes"
+        ],
+        "location": {
+          "file": "/Users/naramotoyuuji/ghq/github.com/it-all-playpark/veridelta/.claude/worktrees/df-53/probes/playwright-0b-core/project/tests/flaky.spec.ts",
+          "line": 8,
+          "column": 1
+        },
+        "expectedStatus": "passed",
+        "annotations": [],
+        "outcome": "flaky",
+        "tags": []
+      },
+      "result": {
+        "status": "passed",
+        "retry": 1,
+        "duration": 2,
+        "errors": [],
+        "hasStdout": false,
+        "hasStderr": false
+      }
+    }
+  ],
+  "all_test_ids": [
+    "5cfdf7d9fac68b9178d2-87d4a96bb83ad83b361c",
+    "d2e30edf93c6681ee681-e9bc145a1c39b1e74a16",
+    "d2e30edf93c6681ee681-3a556723f7251a9d4118",
+    "d2e30edf93c6681ee681-236a54bcb03aa95f7356",
+    "1aae486e083f733d33b6-bd39bfc8a4656332a7dd",
+    "1aae486e083f733d33b6-2a70bf0c2e7370ee819a",
+    "1aae486e083f733d33b6-89709c9e10b4fa8bcb4e",
+    "1aae486e083f733d33b6-f2153994fa6fa7801f1a",
+    "662d18f5d0a558202ea7-96b3714533f07428b750",
+    "c6e8bda6ab13f2e60a8a-0fad964f5b8f8df89fae"
+  ],
+  "unreported_tests": []
+}
