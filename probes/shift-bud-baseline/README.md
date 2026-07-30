@@ -7,11 +7,12 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.4.0 / `vitest-native/2`。**
-> 初版は 0.3.0 / `vitest-native/1` で記録したが、issue #39（PR #46）が record 形状を
-> 変更したため spec §6.2 の same-instrument rule により comparability が切れ、
-> 2026-07-30 に録り直した。0.3.0 版の manifest と `runs/` は git 履歴に残る。
-> 経緯は末尾の「検証ログ」を参照。
+> **現行 baseline は vdelta 0.5.0 / `vitest-native/2`。**
+> 初版は 0.3.0 / `vitest-native/1`、2版は 0.4.0 / `/2` だった。
+> record 形状を変える変更が入るたびに spec §6.2 の same-instrument rule で
+> comparability が切れるため、2026-07-30 に2回録り直している
+> （0.3.0 → 0.4.0: issue #39 / PR #46、0.4.0 → 0.5.0: issue #49 / PR #50）。
+> 旧版の manifest と `runs/` は git 履歴に残る。経緯は末尾の「検証ログ」を参照。
 
 ## 内容
 
@@ -19,6 +20,7 @@ retention policy）ため、根拠 record が蒸発しうる。それを避け�
 | --- | --- |
 | `manifest.json` | 前提条件・コントロール証明・6ストリームのサマリ・superseded 2件 |
 | `runs/<run_id>.json.gz` | 各 run の **run_id preimage**（record から `recording` グループを除いたもの）。gzip 済み |
+| `diff-preimages.mjs` | 旧 baseline と新記録の**構造 diff**。§8.3 の「run_id の変化が想定した group の差分としてのみ説明可能であること」を機械判定する。使い方はファイル冒頭のコメント参照 |
 
 ## run_id preimage という性質
 
@@ -43,19 +45,23 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_9d6a7b84` | 1958 | complete |
-| frontend | `run_7936135c` | 1540 | complete |
-| shared | `run_ec8d2c42` | 457 | complete |
-| landing | `run_4dc1dfde` | 76 | complete |
-| video | `run_333c56bc` | 195 | complete |
-| e2e | `run_d3adfa6d` | 30 | complete |
+| backend | `run_b719cc15` | 1958 | complete |
+| frontend | `run_c138e4b0` | 1540 | complete |
+| shared | `run_132d59a1` | 457 | complete |
+| landing | `run_5e62bd6c` | 76 | complete |
+| video | `run_29f716db` | 195 | complete |
+| e2e | `run_66400da0` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
-**観測数は 6/6 とも 0.3.0 baseline と同一** — Step 2 は record 形状を変えたが検証面は
-1件も動いていない。
+**観測数は 6/6 とも 0.3.0 / 0.4.0 baseline と同一** — Step 2 の2段階はいずれも record 形状を
+変えたが、検証面は1件も動いていない。
 
-`superseded` の2件（`run_6627c832` / `run_422927fe`）は baseline ではない。
+全ストリームが `instrument.capabilities` を6項目宣言している
+（`verdicts` / `source-location` / `suppression` / `inventory` / `failure-evidence` が `pass`、
+`source-region-text` が `unsupported`）。0.4.0 以前の record はこのフィールドを持たない。
+
+`superseded` の2件（`run_a5abf83d` / `run_3e87582b`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -88,7 +94,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.4.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.5.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -111,7 +117,7 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_ec8d2c42` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_132d59a1` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -139,8 +145,13 @@ spec §3.5 の設計どおりの挙動。
 
 したがって:
 
-- ❌ **Step 1 / Step 2 の挙動凍結検証には使えない。** 事前・事後の関係が成立していない。
-  各 Step の主基準は in-repo A/B replay（`tests/conformance/ab-replay.test.ts`）が担う。
+- ❌ **Step 1 の挙動凍結検証には使えない。** 事前・事後の関係が成立していない
+  （Step 1 は Phase 0a より先に着地した）。主基準は in-repo A/B replay
+  （`tests/conformance/ab-replay.test.ts`）が担う。
+- ✅ **Step 2（capabilities 載せ替え）の完了条件3 の判定には実際に使えた。**
+  0.4.0 の preimage を保存していたため、0.5.0 との構造 diff で
+  「差分が capabilities group と adapter_version のみ」を機械判定できた
+  （2026-07-30 の検証ログ）。
 - ✅ **前向きの回帰基準として使える。** record 形状を変えないはずの変更が
   これらの run_id を再現できなければ、それは意図しない挙動変化である。
 - ✅ **§8.3 副基準1（capture replay）の入力**として使える。
@@ -203,3 +214,52 @@ spec §3.5 の設計どおりの挙動。
   今回は `completeness.module_errors` が失敗ファイルを **84件 / 43件** 列挙する。
   text renderer も `coverage=536/536 [INCOMPLETE: crashed]` / `surface: reduced (1004 events)` を
   併記するため、「100% なのに検証面の 65〜73% が消えている」という誤読が塞がれている。
+
+### 2026-07-30 — Phase 1 Step 2 完了に伴う録り直し（0.4.0 → 0.5.0）と §8.3 条件3 の機械判定
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.5.0`（npm 公開版。PR #50 = issue #49 マージ後の PR #51 release） |
+| 変更 | `instrument.capabilities` の record 化（設計 §4.2 = Phase 1 Step 2 の本体） |
+| `composition_id` | **`vitest-native/2` のまま**（capability declaration の内容は不変、載せる場所のみ変更） |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`、node v24.18.1（前回と同一） |
+| 結果 | 全 run_id が変化。**§8.3 Step 2 の完了条件3 を機械判定して PASS** |
+
+**設計 §8.3 が定める Step 2 の完了条件3**「run_id の変化は、宣言した
+`instrument.capabilities` group の差分としてのみ説明可能であること」を、
+0.4.0 baseline の preimage（本 probe に保存済み）と 0.5.0 の preimage の**構造 diff**で
+機械判定した。結果は 6/6 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.4.0"` → `"0.5.0"` |
+| `instrument.capabilities` | （なし）→ 6項目の宣言 |
+
+**これ以外の差分はゼロ。** `observations` は 6/6 とも完全一致（配列丸ごとバイト同一）、
+`config_digest` / `surface` / `provenance` / `environment` も不変。
+
+near-miss disclosure がこれを独立に裏付けている: backend / frontend / shared / e2e の
+near-miss は `instrument.adapter_version` の差分**のみ**を開示した。
+0.3.0 → 0.4.0 のときは `config_digest` も併記されていたので、
+capabilities の追加が digest を動かしていないことが report 側からも読める。
+
+> **これが baseline を「前向きの回帰基準」として実際に使った初めてのケースである。**
+> 0.4.0 の preimage を保存していたからこそ、「record 形状が変わったが検証面は不変」を
+> 主張ではなく機械判定で示せた。§8.3 が baseline manifest に run_id 文字列だけでなく
+> preimage 本体の保存を要求している理由がここにある。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_132d59a1` が一致。決定性は維持
+- **F-2 の再確認** — 0.5.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去2版と同一）
+- **capabilities の宣言** — 6ストリーム全てが6項目を宣言。
+  `degraded_capabilities` は `EVIDENCE_CAPABILITY_NAMES` との積集合により
+  `['source-region-text']` のままで、§8.3 完了条件2 も満たす
+
+> **注意（0.4.0 以前の record を 0.5.0 build で読む場合）:** `instrument.capabilities` は
+> optional であり、宣言を持たない record に対して `evidenceDisclosure()` は
+> 「推測せず空リストを返す」設計である（`src/compare.ts`）。したがって 0.4.0 baseline を
+> 0.5.0 build で読むと `degraded_capabilities` は `['source-region-text']` ではなく `[]` になる。
+> 比較自体は `adapter_version` 差で `instrument-changed` に落ちるので実害はないが、
+> **保存済み baseline の evidence 開示が新 build 下で変わる**点は把握しておくこと。
