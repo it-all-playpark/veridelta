@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/it-all-playpark/veridelta/compare/v0.4.0...v0.5.0) (2026-07-30)
+
+
+### Features
+
+* **schema:** instrument.capabilities を registry ではなく record へ載せる ([#49](https://github.com/it-all-playpark/veridelta/issues/49)) ([aedb4ba](https://github.com/it-all-playpark/veridelta/commit/aedb4ba2693efe12208e4b574327c49747f51ee1))
+
 ## [0.4.0](https://github.com/it-all-playpark/veridelta/compare/v0.3.1...v0.4.0) (2026-07-29)
 
 
