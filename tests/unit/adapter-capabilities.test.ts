@@ -14,6 +14,7 @@ import {
   type CapabilityDeclaration,
   degradedCapabilities,
 } from '../../src/adapter.js'
+import { PLAYWRIGHT_CAPABILITIES } from '../../src/adapters/playwright/adapter.js'
 import { resolveAdapter } from '../../src/adapters/registry.js'
 import {
   VITEST_CAPABILITIES,
@@ -65,6 +66,50 @@ describe('vitest capability declaration (§4.1)', () => {
       degradedCapabilities(resolveAdapter('vitest').declaredCapabilities),
     ).toEqual(['source-region-text'])
     expect(DEGRADED_CAPABILITIES).toEqual(['source-region-text'])
+  })
+})
+
+describe('playwright capability declaration (F2, docs/compositions/playwright-native-1.md §8, decision 6)', () => {
+  it('declares the full 8-capability set frozen (verdicts through resolved-config-coverage)', () => {
+    // Unlike vitest, source-region-text is 'pass' here (tree-reconstructed —
+    // doc §8), and this composition additionally declares retry-evidence
+    // ('pass') and resolved-config-coverage ('unsupported', expect.timeout
+    // is never exposed on resolved FullConfig — doc §4 expect.timeout row).
+    expect(PLAYWRIGHT_CAPABILITIES).toEqual({
+      verdicts: 'pass',
+      'source-location': 'pass',
+      suppression: 'pass',
+      inventory: 'pass',
+      'failure-evidence': 'pass',
+      'source-region-text': 'pass',
+      'retry-evidence': 'pass',
+      'resolved-config-coverage': 'unsupported',
+    })
+  })
+
+  it("derives ['resolved-config-coverage'] from the helper — a distinct thing from a report's degraded_capabilities", () => {
+    // degradedCapabilities() is a generic reduction over ANY
+    // CapabilityDeclaration (§4.2): it reports every 'unsupported' key,
+    // regardless of whether that key is evidence-bearing. This is NOT the
+    // same set a comparison report's failure_evidence.degraded_capabilities
+    // would carry for a playwright record: that field is derived only from
+    // schema.ts's EVIDENCE_CAPABILITY_NAMES (['failure-evidence',
+    // 'source-region-text'] — frozen, decision 6), neither of which
+    // playwright declares 'unsupported'. So a playwright run's report-level
+    // failure_evidence.degraded_capabilities is always [], even though this
+    // helper-level reduction is ['resolved-config-coverage'].
+    expect(degradedCapabilities(PLAYWRIGHT_CAPABILITIES)).toEqual([
+      'resolved-config-coverage',
+    ])
+  })
+
+  it('declares only values from the closed enum (§3.4)', () => {
+    for (const [name, value] of Object.entries(PLAYWRIGHT_CAPABILITIES)) {
+      expect(
+        CAPABILITY_VALUES,
+        `capability '${name}' declares an unknown value '${value}'`,
+      ).toContain(value)
+    }
   })
 })
 

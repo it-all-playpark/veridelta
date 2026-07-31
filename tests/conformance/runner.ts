@@ -55,6 +55,12 @@ const REPO_ROOT = join(import.meta.dirname, '..', '..')
  */
 export const DEFAULT_CLI = join(REPO_ROOT, 'dist', 'cli.js')
 const VITEST_MJS = join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs')
+const PLAYWRIGHT_CLI = join(
+  REPO_ROOT,
+  'node_modules',
+  '@playwright/test',
+  'cli.js',
+)
 
 /**
  * vitest/vite's config search (lilconfig) climbs parent directories with no
@@ -537,18 +543,38 @@ class FixtureContext {
   }
 
   private async stepRun(step: Step): Promise<void> {
-    this.ensureConfigBoundary()
+    const runner = step.runner === 'playwright' ? 'playwright' : 'vitest'
     const args = Array.isArray(step.args) ? step.args.map(String) : []
-    const child = [
-      'run',
-      '--report',
-      'json',
-      '--',
-      process.execPath,
-      VITEST_MJS,
-      'run',
-      ...args,
-    ]
+    let child: string[]
+    if (runner === 'playwright') {
+      // playwright's own config search only ever looks at the cwd it is
+      // invoked from -- it does not climb ancestor directories the way
+      // vite/vitest's does (§2 CONFIG_FILE_NAMES doc comment) -- so the
+      // boundary marker vitest fixtures need would be pure workspace
+      // pollution here and is skipped.
+      child = [
+        'run',
+        '--report',
+        'json',
+        '--',
+        process.execPath,
+        PLAYWRIGHT_CLI,
+        'test',
+        ...args,
+      ]
+    } else {
+      this.ensureConfigBoundary()
+      child = [
+        'run',
+        '--report',
+        'json',
+        '--',
+        process.execPath,
+        VITEST_MJS,
+        'run',
+        ...args,
+      ]
+    }
     const env = (step.env ?? {}) as Record<string, string>
     const result = await this.vdelta(child, env)
     if (

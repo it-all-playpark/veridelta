@@ -28,7 +28,8 @@
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./vitest": "./dist/adapters/vitest/reporter.js"
+    "./vitest": "./dist/adapters/vitest/reporter.js",
+    "./playwright": "./dist/adapters/playwright/reporter.cjs"
   },
   "files": [
     "dist",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
+    "@playwright/test": "1.49.1",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"

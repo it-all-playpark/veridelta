@@ -103,7 +103,7 @@ describe('vdelta run --adapter (§4.3)', () => {
     const { workspace, script, marker } = makeWorkspace()
 
     const result = await spawnCli(
-      ['run', '--adapter', 'playwright', '--', process.execPath, script],
+      ['run', '--adapter', 'jest', '--', process.execPath, script],
       workspace,
     )
 
@@ -113,7 +113,7 @@ describe('vdelta run --adapter (§4.3)', () => {
     // code but not a usable answer to "which names may I pass".
     expect(result.code).toBe(1)
     expect(result.stderr).toBe(
-      "vdelta: unknown adapter 'playwright' — known adapters: vitest\n",
+      "vdelta: unknown adapter 'jest' — known adapters: vitest, playwright\n",
     )
     expect(result.stdout).toBe('')
     // Degrading instead would have run the child and swallowed the typo.
@@ -131,7 +131,7 @@ describe('vdelta run --adapter (§4.3)', () => {
 
     expect(result.code).toBe(1)
     expect(result.stderr).toContain("unknown adapter 'nope'")
-    expect(result.stderr).toContain('known adapters: vitest')
+    expect(result.stderr).toContain('known adapters: vitest, playwright')
     expect(result.stderr).not.toContain('internal error')
     expect(existsSync(marker)).toBe(false)
   })

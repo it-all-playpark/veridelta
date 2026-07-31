@@ -1,0 +1,21 @@
+{
+  "name": "pw-shard-config",
+  "class": "pitfall",
+  "spec_refs": ["§3.1", "§6.2"],
+  "notes": "Shard covering pitfall for playwright-native/1 (issue #55 / P3, resolving the 0b-core-6 ambiguity as 'include'): `--shard` is a CLI flag that changes playwright's resolved FullConfig.shard without touching the config file on disk, and docs/compositions/playwright-native-1.md §4's judgement table puts `shard` in the `instrument.config_digest` covering set. Run A (no flag) and run B (--shard=1/2) against the identical committed playwright.config.ts must record different config_digest values, proving the digest covers the shard field per the table. B's observations shrinking to its shard slice is playwright's own documented behavior and is intentionally not asserted here (task P3 note) -- the digest difference alone is the machine-checkable proof of covering.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pw-shard-config project"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 0},
+    {"do": "run", "id": "B", "runner": "playwright", "args": ["--shard=1/2"], "expectExit": 0},
+    {"do": "show", "id": "recA", "run": "A"},
+    {"do": "show", "id": "recB", "run": "B"},
+    {"do": "parse-run-record", "id": "prA", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false},
+    {"do": "parse-run-record", "id": "prB", "path": ".veridelta/runs/{RUN:B}.json", "expectError": false}
+  ],
+  "assertions": [
+    {"differentValue": [{"report": "recA", "path": "instrument.config_digest"}, {"report": "recB", "path": "instrument.config_digest"}]},
+    {"report": "recA", "path": "instrument.adapter", "eq": "playwright"},
+    {"report": "recB", "path": "instrument.adapter", "eq": "playwright"}
+  ]
+}

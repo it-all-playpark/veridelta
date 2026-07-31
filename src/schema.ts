@@ -268,6 +268,14 @@ export interface EvidenceError {
   actual?: string
   operator?: string
   rel_offsets: number[]
+  /**
+   * tree-reconstructed failing source region text (composition-declared,
+   * e.g. `playwright-native/1`'s `source-region-text: 'pass'`). Part of the
+   * digest core (included in `evidence_digest`). Absent for compositions
+   * that do not reconstruct it (e.g. vitest, `source-region-text:
+   * 'unsupported'`) — additive, optional field (schema.ts §14 draft-phase).
+   */
+  source_region?: string
 }
 
 export interface FailureFinding {
@@ -279,6 +287,27 @@ export interface FailureFinding {
     frames: { file: string; line: number; column: number }[]
     console: { type: string; content: string }[]
     location_line: number | null
+    /**
+     * Per-attempt retry evidence (composition-declared, e.g.
+     * `playwright-native/1`'s `retry-evidence: 'pass'`): failed attempts
+     * other than the one `evidence`/`evidence_digest` was built from.
+     * Absent for compositions that do not carry retry evidence.
+     */
+    attempts?: {
+      retry: number
+      errors: EvidenceError[]
+      frames: { file: string; line: number; column: number }[]
+    }[]
+    /**
+     * Test-run attachment descriptors (name/content-type/body digest only —
+     * never the body itself or an absolute path). Absent when the attempt
+     * carried no attachments or the composition does not capture them.
+     */
+    attachments?: {
+      name: string
+      content_type: string
+      body_digest: string | null
+    }[]
   }
 }
 
@@ -721,7 +750,7 @@ function validateFinding(v: unknown, path: string): void {
       eo,
       `${path}.evidence.errors[${i}]`,
       ['exception_type', 'message', 'rel_offsets'],
-      ['expected', 'actual', 'operator'],
+      ['expected', 'actual', 'operator', 'source_region'],
     )
     asString(eo.exception_type, `${path}.evidence.errors[${i}].exception_type`)
     asString(eo.message, `${path}.evidence.errors[${i}].message`)
@@ -733,7 +762,12 @@ function validateFinding(v: unknown, path: string): void {
   })
   asString(o.context_digest, `${path}.context_digest`)
   const annex = asObject(o.annex, `${path}.annex`)
-  checkKeys(annex, `${path}.annex`, ['frames', 'console', 'location_line'])
+  checkKeys(
+    annex,
+    `${path}.annex`,
+    ['frames', 'console', 'location_line'],
+    ['attempts', 'attachments'],
+  )
 }
 
 /**

@@ -1,0 +1,20 @@
+{
+  "name": "pw-context-digest",
+  "class": "adversarial",
+  "spec_refs": ["§3.6", "§7.3"],
+  "notes": "playwright-native/1's finding.context_digest is the canonicalDigest of stdio entries and attachments ({name, content_type, body_digest} -- src/adapters/playwright/recorder.ts buildFinding), separate from evidence_digest (errors only). A rerun with the same attachment body (A vs B) MUST leave still_fail_unchanged entries without context_changed (spec §3.6: annex material carrying compositions compute context_digest; identical annex -> no context_changed). Changing only the attachment body via env (A vs C, PW_ATTACH_BODY) MUST NOT alter evidence_digest (the assertion is a fixed, env-independent failure) so the transition stays still_fail_unchanged (§7.3: context_digest does not affect transition classification) -- but MUST set context_changed: true with an anchor on that entry, disclosing the attachment-only diff.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pw-context-digest project"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 1},
+    {"do": "run", "id": "B", "runner": "playwright", "expectExit": 1},
+    {"do": "compare", "id": "stable", "baseline": "A", "current": "B", "expectExit": 0},
+    {"do": "run", "id": "C", "runner": "playwright", "env": {"PW_ATTACH_BODY": "changed"}, "expectExit": 1},
+    {"do": "compare", "id": "changed", "baseline": "A", "current": "C", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "stable", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/ctx.spec.ts::chromium::red: context digest sensitivity"}},
+    {"reportNotContains": {"report": "stable", "text": "context_changed"}},
+    {"report": "changed", "path": "transitions.still_fail_unchanged", "containsMatch": {"test_id": "tests/ctx.spec.ts::chromium::red: context digest sensitivity", "context_changed": true}}
+  ]
+}

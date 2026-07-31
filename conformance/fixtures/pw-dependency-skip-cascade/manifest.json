@@ -1,0 +1,28 @@
+{
+  "name": "pw-dependency-skip-cascade",
+  "class": "adversarial",
+  "spec_refs": ["§11.1", "§7.3", "§3.4"],
+  "notes": "Playwright's dependency-skip cascade must never make a blocked project's tests vanish from the record (spec §11.1 ungameable floor). Run A has setup green: auth-tests executes normally, so both 'auth: always passes' (pass) and the authored 'auth: authored skip' (test.skip(), suppression.marker 'skip') reach onTestEnd and are reported. Run B sets PW_FAIL_SETUP=1: setup fails, auth-tests is entirely blocked, and both tests never reach onTestEnd -- but the recorder still synthesizes them into `observations` as verdict 'skip' with suppression.marker 'dependency' (src/adapters/playwright/recorder.ts toUnreportedObservation). Per the measured constraint in probes/playwright-0b-core/observations/setup-cascade.json, a blocked project's unreported tests (authored skip included) all carry annotations: [] and are structurally indistinguishable, so the authored/dependency distinction can only be asserted on run A's reported record -- run B intentionally asserts both tests converge on marker 'dependency' (regression-fixed, not a bug). At the comparison-report level the comparator itself is unmodified (architecture decision, PR #55 review): the setup regression surfaces as a genuine transitions.new_fail entry (nothing hides the real root cause) and comparability stays 'exact', which is the concrete, mechanical proof that nothing was dropped from B's inventory relative to A -- the dependent tests are not misclassified as transitions.fail_to_skip either (they were never red in the baseline, so that category would be a wrong/gameable attribution). The finer-grained attribution UX (e.g. a dedicated pass-to-skip-via-dependency transition category) is explicitly out of scope per §12-4.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed pw-dependency-skip-cascade project"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 0},
+    {"do": "show", "id": "recA", "run": "A"},
+    {"do": "run", "id": "B", "runner": "playwright", "env": {"PW_FAIL_SETUP": "1"}, "expectExit": 1},
+    {"do": "show", "id": "recB", "run": "B"},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0},
+    {"do": "parse-run-record", "id": "prA", "path": ".veridelta/runs/{RUN:A}.json", "expectError": false},
+    {"do": "parse-run-record", "id": "prB", "path": ".veridelta/runs/{RUN:B}.json", "expectError": false}
+  ],
+  "assertions": [
+    {"report": "recA", "path": "observations", "containsMatch": {"test_id": "tests/auth.spec.ts::auth-tests::auth: always passes", "verdict": "pass"}},
+    {"report": "recA", "path": "observations", "containsMatch": {"test_id": "tests/auth.spec.ts::auth-tests::auth: authored skip", "verdict": "skip", "suppression": {"marker": "skip"}}},
+    {"report": "recA", "path": "observations", "containsMatch": {"test_id": "tests/dep.setup.ts::setup::provision", "verdict": "pass"}},
+    {"report": "recB", "path": "observations", "containsMatch": {"test_id": "tests/auth.spec.ts::auth-tests::auth: always passes", "verdict": "skip", "suppression": {"marker": "dependency", "note": "blocked by red dependency project setup"}}},
+    {"report": "recB", "path": "observations", "containsMatch": {"test_id": "tests/auth.spec.ts::auth-tests::auth: authored skip", "verdict": "skip", "suppression": {"marker": "dependency", "note": "blocked by red dependency project setup"}}},
+    {"report": "recB", "path": "observations", "containsMatch": {"test_id": "tests/dep.setup.ts::setup::provision", "verdict": "fail"}},
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.new_fail", "contains": "tests/dep.setup.ts::setup::provision"},
+    {"report": "cmp", "path": "transitions.fail_to_skip", "eq": []}
+  ]
+}

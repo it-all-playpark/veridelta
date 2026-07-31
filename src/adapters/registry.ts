@@ -10,10 +10,11 @@
  * stay recordable-but-degraded at the call site, never a hard failure (INV-5).
  */
 import type { Adapter, CaptureChannel, DetectResult } from '../adapter.js'
+import { playwrightAdapter } from './playwright/adapter.js'
 import { vitestAdapter } from './vitest/adapter.js'
 
 /** Every known adapter, in a deterministic order. */
-export const ADAPTERS: readonly Adapter[] = [vitestAdapter]
+export const ADAPTERS: readonly Adapter[] = [vitestAdapter, playwrightAdapter]
 
 /** Known adapter names, in registry order — for diagnostics and `--adapter`. */
 export function adapterNames(

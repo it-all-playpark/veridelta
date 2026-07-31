@@ -22,6 +22,7 @@ import type {
   CaptureChannel,
   DetectResult,
 } from '../../src/adapter.js'
+import { playwrightAdapter } from '../../src/adapters/playwright/adapter.js'
 import {
   ADAPTERS,
   adapterNames,
@@ -55,7 +56,7 @@ function stubAdapter(
 
 describe('adapter registry (§4.3)', () => {
   it('lists adapters in a deterministic order', () => {
-    expect(adapterNames()).toEqual(['vitest'])
+    expect(adapterNames()).toEqual(['vitest', 'playwright'])
     expect(ADAPTERS.map((a) => a.name)).toEqual(adapterNames())
   })
 
@@ -71,11 +72,13 @@ describe('adapter registry (§4.3)', () => {
   it('resolves a known adapter name to its descriptor', () => {
     expect(resolveAdapter('vitest')).toBe(vitestAdapter)
     expect(findAdapter('vitest')).toBe(vitestAdapter)
+    expect(resolveAdapter('playwright')).toBe(playwrightAdapter)
+    expect(findAdapter('playwright')).toBe(playwrightAdapter)
   })
 
   it('throws on an unknown adapter name and names the known ones', () => {
-    expect(() => resolveAdapter('playwright')).toThrow(/unknown adapter/)
-    expect(() => resolveAdapter('playwright')).toThrow(/vitest/)
+    expect(() => resolveAdapter('jest')).toThrow(/unknown adapter/)
+    expect(() => resolveAdapter('jest')).toThrow(/vitest, playwright/)
   })
 
   it('enumerates every known name, in registry order, in the error', () => {
@@ -96,7 +99,7 @@ describe('adapter registry (§4.3)', () => {
   })
 
   it('reports an unknown name as absent without throwing (fail-closed callers)', () => {
-    expect(findAdapter('playwright')).toBeUndefined()
+    expect(findAdapter('jest')).toBeUndefined()
   })
 
   it('detects a single matching adapter and carries its DetectResult', () => {
@@ -104,6 +107,15 @@ describe('adapter registry (§4.3)', () => {
     expect(detection).toEqual({
       kind: 'unique',
       adapter: vitestAdapter,
+      detected: { tokenIndex: 1 },
+    })
+  })
+
+  it('detects a playwright invocation uniquely', () => {
+    const detection = detectAdapter(['node', '/x/playwright', 'test'])
+    expect(detection).toEqual({
+      kind: 'unique',
+      adapter: playwrightAdapter,
       detected: { tokenIndex: 1 },
     })
   })
@@ -218,8 +230,15 @@ describe('the ambient channel (spec §4.2)', () => {
     expect(claimCapture(makeChannel('not json'))).toBeNull()
     expect(claimCapture(makeChannel('null'))).toBeNull()
     expect(
-      claimCapture(makeChannel(JSON.stringify({ runner: 'playwright' }))),
+      claimCapture(makeChannel(JSON.stringify({ runner: 'jest' }))),
     ).toBeNull()
+  })
+
+  it('claims a playwright capture from its payload', () => {
+    const channel = makeChannel(
+      JSON.stringify({ capture_version: 1, runner: 'playwright' }),
+    )
+    expect(claimCapture(channel)).toBe(playwrightAdapter)
   })
 
   it('breaks a two-adapter tie by registry order rather than degrading', () => {
