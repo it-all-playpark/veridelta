@@ -7,11 +7,14 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.5.0 / `vitest-native/2`。**
-> 初版は 0.3.0 / `vitest-native/1`、2版は 0.4.0 / `/2` だった。
-> record 形状を変える変更が入るたびに spec §6.2 の same-instrument rule で
-> comparability が切れるため、2026-07-30 に2回録り直している
-> （0.3.0 → 0.4.0: issue #39 / PR #46、0.4.0 → 0.5.0: issue #49 / PR #50）。
+> **現行 baseline は vdelta 0.6.0 / `vitest-native/2`。**
+> 初版 0.3.0 / `vitest-native/1` から数えて3回録り直している:
+> 0.3.0 → 0.4.0（issue #39 / PR #46）、0.4.0 → 0.5.0（issue #49 / PR #50）、
+> 0.5.0 → 0.6.0（issue #55 / PR #56）。
+>
+> **`instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの**なので、
+> record 形状が変わらなくても **release が入るだけで** spec §6.2 の same-instrument rule により
+> comparability は切れる。0.5.0 → 0.6.0 がまさにその形（vitest composition は無変更）。
 > 旧版の manifest と `runs/` は git 履歴に残る。経緯は末尾の「検証ログ」を参照。
 
 ## 内容
@@ -45,23 +48,25 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_b719cc15` | 1958 | complete |
-| frontend | `run_c138e4b0` | 1540 | complete |
-| shared | `run_132d59a1` | 457 | complete |
-| landing | `run_5e62bd6c` | 76 | complete |
-| video | `run_29f716db` | 195 | complete |
-| e2e | `run_66400da0` | 30 | complete |
+| backend | `run_f4a4ae29` | 1958 | complete |
+| frontend | `run_a3b3b32c` | 1540 | complete |
+| shared | `run_f5362a51` | 457 | complete |
+| landing | `run_8f0b6e2e` | 76 | complete |
+| video | `run_b481b0fb` | 195 | complete |
+| e2e | `run_fac272dc` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
-**観測数は 6/6 とも 0.3.0 / 0.4.0 baseline と同一** — Step 2 の2段階はいずれも record 形状を
-変えたが、検証面は1件も動いていない。
+**観測数は 6/6 とも 0.3.0 / 0.4.0 / 0.5.0 baseline と同一** — record 形状変更が2回、
+Playwright adapter 追加が1回入ったが、検証面は一度も動いていない。
 
 全ストリームが `instrument.capabilities` を6項目宣言している
 （`verdicts` / `source-location` / `suppression` / `inventory` / `failure-evidence` が `pass`、
 `source-region-text` が `unsupported`）。0.4.0 以前の record はこのフィールドを持たない。
+**Playwright adapter の追加（0.6.0）はこの宣言を変えていない** — `retry-evidence` は
+Playwright 側のみが宣言し、vitest には追加しないと決めたため（issue #53 意思決定(2)）。
 
-`superseded` の2件（`run_a5abf83d` / `run_3e87582b`）は baseline ではない。
+`superseded` の2件（`run_0e22d521` / `run_b5c9f4e8`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -94,7 +99,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.5.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.6.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -117,7 +122,7 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_132d59a1` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_f5362a51` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -141,7 +146,7 @@ spec §3.5 の設計どおりの挙動。
 「Phase 0a で記録した run_id 群と、**Step 1 完了後**に同じ tree T で記録した run_id 群が一致すること」
 と定義している。しかし実際には **Phase 1 Step 1（seam 抽出、PR #36 / `ac3442b`）が Phase 0a より先に
 着地しており**、初版 baseline は Step 1 適用後のバイナリ（0.3.0）で記録された。
-現行 baseline は Step 2 適用後（0.4.0）である。
+現行 baseline は Phase 2（Playwright adapter）着地後（0.6.0）である。
 
 したがって:
 
@@ -152,6 +157,10 @@ spec §3.5 の設計どおりの挙動。
   0.4.0 の preimage を保存していたため、0.5.0 との構造 diff で
   「差分が capabilities group と adapter_version のみ」を機械判定できた
   （2026-07-30 の検証ログ）。
+- ✅ **adapter seam の分離性の検証にも使えた。** Playwright adapter を丸ごと追加した 0.6.0 で、
+  差分が `adapter_version` の1パスのみであることを機械判定できた
+  （2026-07-31 の検証ログ）。「adapter 追加が既存 adapter に漏れない」という
+  seam の設計目的を、in-repo A/B replay とは別軸で裏付ける証拠になる。
 - ✅ **前向きの回帰基準として使える。** record 形状を変えないはずの変更が
   これらの run_id を再現できなければ、それは意図しない挙動変化である。
 - ✅ **§8.3 副基準1（capture replay）の入力**として使える。
@@ -263,3 +272,43 @@ capabilities の追加が digest を動かしていないことが report 側か
 > 0.5.0 build で読むと `degraded_capabilities` は `['source-region-text']` ではなく `[]` になる。
 > 比較自体は `adapter_version` 差で `instrument-changed` に落ちるので実害はないが、
 > **保存済み baseline の evidence 開示が新 build 下で変わる**点は把握しておくこと。
+
+### 2026-07-31 — Phase 2（Playwright adapter）着地に伴う録り直し（0.5.0 → 0.6.0）と seam 分離性の機械判定
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.6.0`（npm 公開版。PR #56 = issue #55 マージ後の PR #57 release） |
+| 変更 | Playwright adapter の追加（Phase 2、flaky マッピングを除く） |
+| vitest composition | **無変更**（`VITEST_CAPABILITIES` 6項目のまま、`src/adapters/vitest/` 差分ゼロ、`EVIDENCE_CAPABILITY_NAMES` 不変） |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`、node v24.18.1（前回と同一） |
+| 結果 | 全 run_id が変化。**差分は `adapter_version` の1パスのみ**で PASS |
+
+**これまでの3回とは意味が違う録り直しである。** 0.3.0→0.4.0 と 0.4.0→0.5.0 は
+「record 形状が変わったから録り直す」だったが、今回は **vitest 側が1バイトも変わっていないのに
+`adapter_version` だけで comparability が切れた**ケース。`instrument.adapter_version` は
+`VDELTA_VERSION` = package version そのものなので、`src/` に `feat` が入って release されれば
+それだけで spec §6.2 の same-instrument rule が発火する。
+
+`diff-preimages.mjs` で 0.5.0 preimage と構造 diff した結果、6/6 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.5.0"` → `"0.6.0"` |
+
+**これ以外の差分はゼロ。** `instrument.capabilities` / `config_digest` / `surface` /
+`provenance` / `environment` はすべて不変、`observations` は 6/6 とも配列丸ごと一致。
+
+> **Playwright adapter を丸ごと追加しても vitest composition が一切摂動していない**ことの
+> 実データによる証明である。adapter seam の設計目的（core から vitest 依存を切り、
+> adapter 追加が既存 adapter に漏れない — 設計 §4.2）を、Phase 1 Step 1 の主基準だった
+> in-repo A/B replay とは**別軸**で裏付ける。seam を入れた本来の狙いが効いていることを、
+> 合成 fixture ではなく実リポジトリの 4256 observations で確認できた。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_f5362a51` が一致。決定性は維持
+- **F-2 の再確認** — 0.6.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去3版と同一）
+- **capabilities の宣言が不変** — 6項目のまま。`retry-evidence` は Playwright 側のみが宣言し
+  vitest には追加しないという issue #53 意思決定(2) が、実 record で守られている
+- **自己検証性** — 全8件について保存した gz から run_id を再計算して一致
