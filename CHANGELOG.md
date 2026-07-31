@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/it-all-playpark/veridelta/compare/v0.5.0...v0.6.0) (2026-07-31)
+
+
+### Features
+
+* **playwright:** Phase 2 の playwright-native/1 adapter を実装する ([f51aebe](https://github.com/it-all-playpark/veridelta/commit/f51aebe9740f0de56078d61f81875c4b72bab14b))
+
 ## [0.5.0](https://github.com/it-all-playpark/veridelta/compare/v0.4.0...v0.5.0) (2026-07-30)
 
 
