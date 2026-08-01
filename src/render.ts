@@ -70,6 +70,12 @@ export function renderReport(report: ComparisonReport): string {
     bucket('fail_to_xfail', t.fail_to_xfail)
     bucket('removed', t.removed)
     bucket('not_observed', t.not_observed)
+    if (t.verification_inconclusive && t.verification_inconclusive.length > 0) {
+      lines.push(
+        `  verification_inconclusive (${t.verification_inconclusive.length}):`,
+      )
+      for (const id of t.verification_inconclusive) lines.push(`    ? ${id}`)
+    }
   }
   if (report.verification_surface) {
     lines.push(

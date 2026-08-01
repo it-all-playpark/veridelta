@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft |
 | **Schema identifier** | `veridelta/1` |
-| **Spec revision** | 0.4.0 — 2026-07-30 |
+| **Spec revision** | 0.5.0 — 2026-08-02 |
 | **License** | MIT |
 | **Reference implementation** | `vdelta` (this repository; in development) |
 
@@ -603,6 +603,16 @@ judgment belongs to the consumer.
 | `out_of_scope` | Red at baseline, provably outside the current run's inclusion selector (§6.4). Occurs **only** under `subset` comparability (§6.1). **Not repaired. Not removed. Not `not_observed`.** Red IDs listed individually; non-red out-of-scope items MAY be reported as counts in `observation_coverage`. |
 | `verification_inconclusive` | Adapter capability or provenance insufficient to classify. |
 
+`verification_inconclusive` additionally covers the runner-retry flaky case:
+when a baseline-red test is observed non-red at current, that observation
+carries a runner-retry-derived `finding` (§7.7's permitted flaky source), and
+the current record's composition declares `instrument.capabilities['retry-evidence']
+== 'pass'`, the disappearance of the red result is not verified as a repair —
+it is classified `verification_inconclusive`, never `repaired_*`. This does
+not fire on records that carry no such capability declaration: absent a
+declaration, nothing is inferred (§7.7's no-inference posture), and the
+transition falls back to the existing `repaired_*` classification.
+
 ### 7.6. Normalization and masking constraints
 
 - Free-form, caller-supplied masking/keying/watching expressions MUST NOT
@@ -1169,6 +1179,14 @@ None violates an invariant; each is disclosed rather than papered over.
 
 ## Revision history
 
+- **0.5.0 (2026-08-02)** — Extended the `verification_inconclusive` decomposition
+  class (§7.5): runner-retry flaky (a baseline-red test observed non-red at
+  current, carrying a retry-derived `finding` under a composition declaring
+  `instrument.capabilities['retry-evidence'] == 'pass'`) is classified
+  `verification_inconclusive`, never `repaired_*`; the report's
+  `outcome_verdict` is `inconclusive` when no regression-class transition is
+  present. Records without the capability declaration are unaffected and keep
+  falling back to `repaired_*`. No change to §3.2.
 - **0.4.0 (2026-07-30)** — Added `instrument.capabilities` to the Run record
   (§3.1): a disclosure-only map from capability name to `pass` \| `fail` \|
   `unsupported`, closed on value and open on name, never a stream-matching

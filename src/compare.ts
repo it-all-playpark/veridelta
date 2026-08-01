@@ -573,6 +573,9 @@ function claimsReport(
   const transitions = emptyTransitions()
   const events: SurfaceEvent[] = []
   const contextChanged = new Set<string>()
+  const retryEvidence =
+    current.instrument.capabilities?.['retry-evidence'] === 'pass'
+  const verificationInconclusive: string[] = []
 
   const testSourceChanged = (rel: string): boolean =>
     baseline.surface.test_sources[rel] !== current.surface.test_sources[rel]
@@ -643,11 +646,15 @@ function claimsReport(
         transitions.not_observed.push(id)
       } else if (c.verdict === 'pass' || c.verdict === 'xpass') {
         if (!partial) {
-          const rel = relOf(id)
-          if (!testSourceChanged(rel) && !anyConfigChanged) {
-            transitions.repaired_same_surface.push(id)
+          if (retryEvidence && c.finding !== undefined) {
+            verificationInconclusive.push(id)
           } else {
-            transitions.repaired_with_test_change.push(id)
+            const rel = relOf(id)
+            if (!testSourceChanged(rel) && !anyConfigChanged) {
+              transitions.repaired_same_surface.push(id)
+            } else {
+              transitions.repaired_with_test_change.push(id)
+            }
           }
         }
       }
@@ -667,6 +674,10 @@ function claimsReport(
     }
   }
   events.push(...configSourceEvents(baseline, current))
+
+  if (verificationInconclusive.length > 0) {
+    transitions.verification_inconclusive = verificationInconclusive
+  }
 
   const lostObservation =
     transitions.not_observed.length > 0 ||
@@ -698,6 +709,9 @@ function claimsReport(
   }
   for (const e of transitions.updated_fail) {
     anchors[`updated_fail:${e.test_id}`] = showAnchor(currentId, e.test_id)
+  }
+  for (const id of verificationInconclusive) {
+    anchors[`verification_inconclusive:${id}`] = showAnchor(currentId, id)
   }
   const currentRed = partial ? redIds(current) : undefined
   if (currentRed) {
@@ -759,6 +773,7 @@ function deriveOutcome(
   partial: boolean,
 ): ComparisonReport['outcome_verdict'] {
   if (t.new_fail.length > 0 || t.updated_fail.length > 0) return 'regressed'
+  if ((t.verification_inconclusive?.length ?? 0) > 0) return 'inconclusive'
   if (partial) return 'inconclusive'
   if (
     t.repaired_same_surface.length > 0 ||
@@ -785,4 +800,5 @@ function sortTransitions(t: Transitions): void {
   t.updated_fail.sort((a, b) =>
     a.test_id < b.test_id ? -1 : a.test_id > b.test_id ? 1 : 0,
   )
+  t.verification_inconclusive?.sort()
 }

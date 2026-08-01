@@ -22,6 +22,49 @@ const minimalNoneReport: ComparisonReport = {
   anchors: { raw: 'vdelta show x --raw' },
 }
 
+describe('renderReport verification_inconclusive (§9.1, §12-1)', () => {
+  it('renders a verification_inconclusive bucket with "?" markers', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      transitions: {
+        new_fail: [],
+        still_fail_unchanged: [],
+        updated_fail: [],
+        repaired_same_surface: [],
+        repaired_with_test_change: [],
+        fail_to_skip: [],
+        fail_to_xfail: [],
+        removed: [],
+        not_observed: [],
+        verification_inconclusive: ['a.test.ts::t', 'b.test.ts::t'],
+      },
+    }
+    const out = renderReport(report)
+    expect(out).toContain('  verification_inconclusive (2):')
+    expect(out).toContain('    ? a.test.ts::t')
+    expect(out).toContain('    ? b.test.ts::t')
+  })
+
+  it('omits the verification_inconclusive bucket when empty or absent', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      transitions: {
+        new_fail: [],
+        still_fail_unchanged: [],
+        updated_fail: [],
+        repaired_same_surface: [],
+        repaired_with_test_change: [],
+        fail_to_skip: [],
+        fail_to_xfail: [],
+        removed: [],
+        not_observed: [],
+      },
+    }
+    const out = renderReport(report)
+    expect(out).not.toContain('verification_inconclusive')
+  })
+})
+
 describe('renderReport near-miss (§9.1)', () => {
   it('prints reason, near-miss run id, and mismatch lines when near_miss is present', () => {
     const report: ComparisonReport = {
