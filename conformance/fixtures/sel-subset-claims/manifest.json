@@ -1,0 +1,23 @@
+{
+  "name": "sel-subset-claims",
+  "class": "pitfall",
+  "spec_refs": ["§6.1", "§6.4", "§7.4"],
+  "notes": "Companion to pit-selector-changed: once the vitest adapter declares `selector-relation` and proves a prefix narrowing (baseline selector `[]` -> current selector `['src']`), the comparator MAY claim `subset` -- but §6.1 bounds exactly what it may say. `src/gone.test.ts` is rewritten under a new title between A and B: its old (red) test_id vanishes while still being selector-in-scope (matchesFn 'yes' for the 'src' token), so it is `removed`, never a false `repaired`. `tests/out.test.ts` (red) falls outside the narrowed selector (matchesFn 'no'): §6.1 MUST still disclose it, in the dedicated `out_of_scope` bucket, distinct from `removed` and never claimed as `repaired`. `src/a.test.ts` stays green and unremarked in both runs. The `selector-subset` surface event carries both selectors and the proving capability (`selector-relation`), the comparator-side half of the §11.1 gate MUST exercised by sel-subset-gate.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + src red + tests red"},
+    {"do": "run", "id": "A", "args": [], "expectExit": 1},
+    {"do": "write-file", "path": "src/gone.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('gone reborn green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "rewrite gone.test.ts under a new title (green), unrelated to scope narrowing"},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "selector-subset", "capability": "selector-relation"}},
+    {"report": "cmp", "path": "transitions.out_of_scope", "eq": ["tests/out.test.ts::out of scope red"]},
+    {"report": "cmp", "path": "transitions.removed", "eq": ["src/gone.test.ts::gone red"]},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "transitions.repaired_with_test_change", "empty": true}
+  ]
+}

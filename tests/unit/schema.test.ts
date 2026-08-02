@@ -460,3 +460,55 @@ describe('F2: EvidenceError.source_region / FailureFinding.annex.attempts / anne
     expect(() => parseRunRecord(record)).not.toThrow()
   })
 })
+
+describe('F2: SurfaceEvent.capability (optional, §7.4)', () => {
+  function makeReportWithEvents(events: Record<string, unknown>[]) {
+    return {
+      ...minimalNoneReport,
+      verification_surface: { status: 'reduced', events },
+    }
+  }
+
+  it('parses a selector-subset event carrying capability alongside from/to', () => {
+    const report = makeReportWithEvents([
+      {
+        kind: 'selector-subset',
+        from: '',
+        to: 'src',
+        capability: 'selector-relation',
+      },
+    ])
+    expect(() => parseReport(report)).not.toThrow()
+  })
+
+  it('throws when capability is not a string', () => {
+    const report = makeReportWithEvents([
+      {
+        kind: 'selector-subset',
+        from: '',
+        to: 'src',
+        capability: 1,
+      },
+    ])
+    expect(() => parseReport(report)).toThrow(SchemaViolationError)
+  })
+
+  it('throws on an unknown field inside a surface event (still closed-key otherwise)', () => {
+    const report = makeReportWithEvents([
+      {
+        kind: 'selector-subset',
+        from: '',
+        to: 'src',
+        proving: 'x',
+      },
+    ])
+    expect(() => parseReport(report)).toThrow(SchemaViolationError)
+  })
+
+  it('still parses an existing-shaped event with no capability key', () => {
+    const report = makeReportWithEvents([
+      { kind: 'selector-changed', from: 'a', to: 'b' },
+    ])
+    expect(() => parseReport(report)).not.toThrow()
+  })
+})

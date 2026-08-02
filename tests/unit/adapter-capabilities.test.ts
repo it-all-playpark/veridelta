@@ -42,6 +42,7 @@ describe('vitest capability declaration (§4.1)', () => {
       inventory: 'pass',
       'failure-evidence': 'pass',
       'source-region-text': 'unsupported',
+      'selector-relation': 'pass',
     })
   })
 

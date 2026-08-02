@@ -71,6 +71,7 @@ export const VITEST_CAPABILITIES: CapabilityDeclaration = {
   inventory: 'pass',
   'failure-evidence': 'pass',
   'source-region-text': 'unsupported',
+  'selector-relation': 'pass',
 }
 
 export function buildRunRecord(

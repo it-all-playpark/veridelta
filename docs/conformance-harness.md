@@ -288,11 +288,22 @@ non-observation, §6.4) plus a `config-source-changed` event.
 - `observation_coverage` strings are `"<observed>/<declared>"` where declared
   counts all collected observations and observed excludes `not_run`.
 - Cross-selector comparisons (explicit-run-id or git-ref where the two runs'
-  selectors differ): the MVP adapter declares no `selector-relation`
-  capability, so containment is unproven ⇒ `comparability: "none"` with
-  `{"reason": "selector-relation-unknown", "kind": "determined"}`, a
-  `selector-changed` surface event, and gate verdict `inconclusive` (§11.1 —
-  never `pass`).
+  selectors differ): the vitest adapter declares the `selector-relation`
+  capability and can prove containment. When the comparison is a same-series
+  (`sameStreamScope`), non-scope-perturbed (no `--changed`/`--testNamePattern`/
+  `-t`/`--shard`/`--related`) pair, both records declare
+  `instrument.capabilities['selector-relation']: "pass"`, both are complete,
+  and the current selector's tokens are each covered by a baseline token
+  (path-segment prefix, §6.4) ⇒ `comparability: "subset"` with a
+  `selector-subset` surface event (`from`/`to` selectors plus
+  `capability: "selector-relation"`), and gate verdict `fail` (§11.1 MUST —
+  a proven narrowing is never a clean `pass`, regardless of `new_fail`).
+  Every other case — `superset`/`disjoint`/`unknown` relations, a
+  scope-perturbing flag, an undeclared/pre-capability adapter, or either run
+  incomplete — falls back to the pre-existing abstention:
+  `comparability: "none"` with `{"reason": "selector-relation-unknown", "kind":
+  "determined"}`, a `selector-changed` surface event, and gate verdict
+  `inconclusive` (§11.1 — never `pass`).
 
 ### 5.6. Secret redaction shapes
 

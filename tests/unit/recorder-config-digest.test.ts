@@ -252,6 +252,7 @@ describe('buildRunRecord instrument.capabilities (F2)', () => {
       inventory: 'pass',
       'failure-evidence': 'pass',
       'source-region-text': 'unsupported',
+      'selector-relation': 'pass',
     })
     expect(record.instrument.capabilities).not.toBe(VITEST_CAPABILITIES)
   })

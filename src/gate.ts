@@ -110,9 +110,20 @@ export async function buildGateReport(
   if (report.verification_surface?.status === 'reduced') {
     triggered.push('verification_surface_reduced')
   }
+  // §11.1 MUST: a proven `subset` narrowing (comparator-side selector-subset
+  // event, src/compare.ts) must never read as a clean pass — regardless of
+  // whether any new_fail accompanies it.
+  if (
+    report.verification_surface?.events.some(
+      (e) => e.kind === 'selector-subset',
+    )
+  ) {
+    triggered.push('selector_subset')
+  }
   // §12-1 decision B-inconclusive: a transition set that only reports
   // unverified (not re-confirmed) baseline-red tests must not read as a
-  // clean pass. Kept last so triggered stays regression-kinds-first,
+  // clean pass. Kept last so triggered stays regression-kinds-first
+  // (new_fail/updated_fail/verification_surface_reduced/selector_subset),
   // verification_inconclusive-last (decision order below relies on that).
   if ((report.transitions?.verification_inconclusive?.length ?? 0) > 0) {
     triggered.push('verification_inconclusive')

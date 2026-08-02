@@ -1,0 +1,28 @@
+{
+  "name": "sel-subset-gate",
+  "class": "invariant",
+  "spec_refs": ["§11.1", "§6.4"],
+  "notes": "§11.1 MUST: a proven `subset` narrowing must never read as a clean gate pass, and an unproven (perturbed) narrowing must never be claimed at all. Run A (no selector) is recorded at c1; a marker commit (c2) keeps A and B content-distinct; run B (`src`) is a proven prefix subset of A -- gate g1 (ref resolving to c1, run B) must therefore report `comparability: 'subset'` with `selector_subset` triggered and `verdict: 'fail'`, even though every observation stayed green (no `new_fail`) -- the fail is the proof of narrowing itself, not a regression. Run C (`-t alpha src`, still at c2's tree) and run D (`-t alpha src/sub`, after a second marker commit c3) both carry the `-t`/`--testNamePattern` scope-perturbing flag (issue decision 4): even though the positional selectors alone (`src` -> `src/sub`) would be a further prefix subset, `commandScopePerturbed` forces the comparator to abstain -- gate g2 (ref resolving to c2, run D) must report `comparability: 'none'`, reason `selector-relation-unknown`, and `verdict: 'inconclusive'` (never `pass`, never a narrowing claim under perturbation). Every test name includes 'alpha' so the `-t alpha` runs never empty-match.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "c1: seed alpha-named green tests under src/, src/sub/, tests/"},
+    {"do": "run", "id": "A", "args": [], "expectExit": 0},
+    {"do": "write-file", "path": "marker.txt", "content": "advance tree before B (keep A and B content-distinct)\n"},
+    {"do": "commit", "message": "c2: advance tree before B"},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0},
+    {"do": "gate", "id": "g1", "ref": "HEAD~1", "run": "B", "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["-t", "alpha", "src"], "expectExit": 0},
+    {"do": "write-file", "path": "marker2.txt", "content": "advance tree before D (keep C and D content-distinct)\n"},
+    {"do": "commit", "message": "c3: advance tree before D"},
+    {"do": "run", "id": "D", "args": ["-t", "alpha", "src/sub"], "expectExit": 0},
+    {"do": "gate", "id": "g2", "ref": "HEAD~1", "run": "D", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "g1", "path": "comparability", "eq": "subset"},
+    {"report": "g1", "path": "gate.verdict", "eq": "fail"},
+    {"report": "g1", "path": "gate.triggered", "contains": "selector_subset"},
+    {"report": "g2", "path": "comparability", "eq": "none"},
+    {"report": "g2", "path": "comparability_detail.reason", "eq": "selector-relation-unknown"},
+    {"report": "g2", "path": "gate.verdict", "eq": "inconclusive"}
+  ]
+}
