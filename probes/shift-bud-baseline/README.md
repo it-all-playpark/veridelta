@@ -7,10 +7,11 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.7.0 / `vitest-native/2`。**
-> 初版 0.3.0 / `vitest-native/1` から数えて4回録り直している:
+> **現行 baseline は vdelta 0.8.0 / `vitest-native/2`。**
+> 初版 0.3.0 / `vitest-native/1` から数えて5回録り直している:
 > 0.3.0 → 0.4.0（issue #39 / PR #46）、0.4.0 → 0.5.0（issue #49 / PR #50）、
-> 0.5.0 → 0.6.0（issue #55 / PR #56）、0.6.0 → 0.7.0（issue #60 / PR #61）。
+> 0.5.0 → 0.6.0（issue #55 / PR #56）、0.6.0 → 0.7.0（issue #60 / PR #61）、
+> 0.7.0 → 0.8.0（issue #64 / PR #65）。
 >
 > **`instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの**なので、
 > record 形状が変わらなくても **release が入るだけで** spec §6.2 の same-instrument rule により
@@ -48,25 +49,31 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_a36aed4e` | 1958 | complete |
-| frontend | `run_5a09350b` | 1540 | complete |
-| shared | `run_d80f20de` | 457 | complete |
-| landing | `run_a8552360` | 76 | complete |
-| video | `run_18ff41b4` | 195 | complete |
-| e2e | `run_3ec9785b` | 30 | complete |
+| backend | `run_da1a45a2` | 1958 | complete |
+| frontend | `run_6591f05a` | 1540 | complete |
+| shared | `run_6375a281` | 457 | complete |
+| landing | `run_492aea61` | 76 | complete |
+| video | `run_9484e7e3` | 195 | complete |
+| e2e | `run_1ffa886c` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
 **観測数は 6/6 とも 0.3.0 / 0.4.0 / 0.5.0 baseline と同一** — record 形状変更が2回、
 Playwright adapter 追加が1回入ったが、検証面は一度も動いていない。
 
-全ストリームが `instrument.capabilities` を6項目宣言している
-（`verdicts` / `source-location` / `suppression` / `inventory` / `failure-evidence` が `pass`、
-`source-region-text` が `unsupported`）。0.4.0 以前の record はこのフィールドを持たない。
-**Playwright adapter の追加（0.6.0）はこの宣言を変えていない** — `retry-evidence` は
-Playwright 側のみが宣言し、vitest には追加しないと決めたため（issue #53 意思決定(2)）。
+全ストリームが `instrument.capabilities` を**7項目**宣言している
+（`verdicts` / `source-location` / `suppression` / `inventory` / `failure-evidence` /
+`selector-relation` が `pass`、`source-region-text` が `unsupported`）。
+0.4.0 以前の record はこのフィールドを持たない。
 
-`superseded` の2件（`run_86ce805f` / `run_0223f7ee`）は baseline ではない。
+宣言の変遷:
+
+- **0.6.0（Playwright adapter 追加）はこの宣言を変えていない** — `retry-evidence` は
+  Playwright 側のみが宣言し、vitest には追加しないと決めたため（issue #53 意思決定(2)）
+- **0.8.0 で `selector-relation` が加わり 6 → 7 項目**（issue #64 / PR #65 = F-5）。
+  これが 0.7.0 → 0.8.0 で `capabilities` が動いた唯一の理由
+
+`superseded` の2件（`run_b9f7f7ef` / `run_21fcc8ea`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -99,7 +106,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.7.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.8.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -122,7 +129,7 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_d80f20de` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_6375a281` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -351,3 +358,44 @@ capabilities の追加が digest を動かしていないことが report 側か
   `retry-evidence` を宣言する record（= Playwright）でのみ発火するため、
   vitest record では構造的に非発火（§12-3 立場B）
 - **自己検証性** — 全8件について保存した gz から run_id を再計算して一致
+
+### 2026-08-02 — F-5（selector-relation capability）着地に伴う録り直し（0.7.0 → 0.8.0）
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.8.0`（npm 公開版。PR #65 = issue #64 マージ後の PR #66 release） |
+| 変更 | `selector-relation` capability と subset comparability（F-5、`previous-superset` を除く） |
+| `VITEST_CAPABILITIES` | **6項目 → 7項目**（`selector-relation: 'pass'` を追加） |
+| `composition_id` | **`vitest-native/2` のまま**（§4 判定表の列挙リストは不変） |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`、node v24.18.1（前回と同一） |
+| 結果 | 全 run_id が変化。**差分は2パスのみ**で PASS |
+
+**これまでの5回と違い、許容差分が2パス**である（`capabilities` が実際に変わるため）。
+`diff-preimages.mjs` で 0.7.0 preimage と構造 diff した結果、6/6 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.7.0"` → `"0.8.0"` |
+| `instrument.capabilities.selector-relation` | （なし）→ `"pass"` |
+
+**これ以外の差分はゼロ。** `config_digest` / `surface` / `provenance` / `environment` は
+すべて不変、`observations` は 6/6 とも配列丸ごと一致。
+
+> **`selector-relation` が比較側の capability であり、記録側に一切漏れていない**ことの実データ確認。
+> capability 宣言が1項目増えるだけで、記録される観測そのものは1バイトも動いていない。
+> `composition_id` が `/2` のままなのも整合している — F-5 は `config_digest` の
+> 列挙リスト（`docs/compositions/vitest-native-1.md` §4）を変えていないため。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_6375a281` が一致。決定性は維持
+- **F-2 の再確認** — 0.8.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去5版と同一）
+- **自己検証性** — 全8件について保存した gz から run_id を再計算して一致
+
+> **`diff-preimages.mjs` の修正:** 許容パスの判定を**完全一致から prefix 一致に変えた**。
+> diff は object 同士を再帰するため、既存 object にキーが増えると親ではなく子のパスで
+> 報告される（`instrument.capabilities` ではなく
+> `instrument.capabilities.selector-relation`）。今回まさにこれを踏み、
+> 親を許容指定したのに FAIL になった。prefix 一致なら親の指定で配下を許容でき、
+> 粒度を絞りたければ子パスまで書けばよい。

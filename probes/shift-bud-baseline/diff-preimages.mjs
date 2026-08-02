@@ -30,9 +30,23 @@ if (!OLD_DIR || !NEW_DIR) {
   )
   process.exit(2)
 }
-const EXPECTED = new Set(
-  allowed.length > 0 ? allowed : ['instrument.adapter_version'],
-)
+const EXPECTED = allowed.length > 0 ? allowed : ['instrument.adapter_version']
+
+/**
+ * 許容パスは **prefix 一致**で判定する。
+ *
+ * diff は object 同士を再帰するため、既存 object にキーが増えた場合は
+ * 親ではなく子のパスで報告される（例: `instrument.capabilities` に項目が増えると
+ * `instrument.capabilities.selector-relation` として出る）。
+ * 完全一致だけで判定すると、親を許容指定したのに FAIL になって混乱する
+ * — 実際 0.7.0 → 0.8.0 の判定で踏んだ。
+ *
+ * prefix 一致なら `instrument.capabilities` の指定で配下すべてを許容できる。
+ * 粒度を絞りたければ子パスまで書けばよい（`instrument.capabilities.selector-relation`）。
+ */
+function isExpected(path) {
+  return EXPECTED.some((e) => path === e || path.startsWith(`${e}.`))
+}
 
 function load(dir) {
   const out = new Map()
@@ -89,7 +103,7 @@ for (const [pkg, oldE] of oldRuns) {
   n.observations = `<${nObs.length}>`
 
   const diffs = diffPaths(o, n)
-  const unexpected = diffs.filter((d) => !EXPECTED.has(d.path))
+  const unexpected = diffs.filter((d) => !isExpected(d.path))
   const obsSame = JSON.stringify(oObs) === JSON.stringify(nObs)
 
   console.log(`\n=== ${pkg}`)
@@ -98,7 +112,7 @@ for (const [pkg, oldE] of oldRuns) {
   for (const d of diffs) {
     const fmt = (v) => (v === undefined ? '(なし)' : JSON.stringify(v))
     console.log(
-      `  ${EXPECTED.has(d.path) ? 'OK  ' : 'XXX '}${d.path}: ${fmt(d.old)} → ${fmt(d.new)}`,
+      `  ${isExpected(d.path) ? 'OK  ' : 'XXX '}${d.path}: ${fmt(d.old)} → ${fmt(d.new)}`,
     )
   }
   if (!obsSame) {
