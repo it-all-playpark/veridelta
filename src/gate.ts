@@ -110,6 +110,13 @@ export async function buildGateReport(
   if (report.verification_surface?.status === 'reduced') {
     triggered.push('verification_surface_reduced')
   }
+  // §12-1 decision B-inconclusive: a transition set that only reports
+  // unverified (not re-confirmed) baseline-red tests must not read as a
+  // clean pass. Kept last so triggered stays regression-kinds-first,
+  // verification_inconclusive-last (decision order below relies on that).
+  if ((report.transitions?.verification_inconclusive?.length ?? 0) > 0) {
+    triggered.push('verification_inconclusive')
+  }
 
   let verdict: GateVerdict
   if (!stalenessMatch) {
@@ -119,10 +126,19 @@ export async function buildGateReport(
     report.comparability === 'partial'
   ) {
     verdict = 'inconclusive'
-  } else if (triggered.length > 0) {
-    verdict = 'fail'
   } else {
-    verdict = 'pass'
+    // triggered may mix regression kinds (new_fail/updated_fail/
+    // verification_surface_reduced) with verification_inconclusive.
+    // Regression kinds always win (loud direction); if the only member is
+    // verification_inconclusive, the gate can't claim a clean pass either.
+    const regression = triggered.some((t) => t !== 'verification_inconclusive')
+    if (regression) {
+      verdict = 'fail'
+    } else if (triggered.length > 0) {
+      verdict = 'inconclusive'
+    } else {
+      verdict = 'pass'
+    }
   }
 
   const gate: GateReport = {

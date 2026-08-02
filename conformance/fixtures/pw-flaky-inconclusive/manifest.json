@@ -1,0 +1,29 @@
+{
+  "name": "pw-flaky-inconclusive",
+  "class": "adversarial",
+  "spec_refs": ["§7.5", "§7.7", "§11"],
+  "notes": "End-to-end §12-1/§12-3 decision (docs/superpowers/specs/2026-07-28-playwright-adapter-design.md): a Playwright retry that fails then passes must not read as a clean repair. A gitignored attempt counter (outside the git tree, so tree_digest is unchanged across runs -- same technique as adv-flaky-no-inference) drives a deterministic sequence: run A (attempts 1,2, both fail) is baseline-red; run B (attempt 3 fails, attempt 4 retry passes -- Playwright outcome 'flaky') carries a finding on a pass verdict, and because playwright-native/1 always declares instrument.capabilities['retry-evidence']='pass' (recorder.ts PLAYWRIGHT_CAPABILITIES), compare classifies the A->B transition as transitions.verification_inconclusive (not repaired_same_surface) with outcome_verdict 'inconclusive', and gate (ref HEAD~1, run B) reads verdict 'inconclusive' with 'verification_inconclusive' triggered instead of a clean pass. An unrelated tracked change (c2) is committed between run A and run B so that (a) HEAD~1 resolves to c1 at all and (b) run B's provenance.head differs from c1's commit, keeping the git-ref baseline scan (compare.ts resolveBaseline, mode 'git-ref') from matching B against itself -- run A's tree_digest still equals c1's tree because the counter file is gitignored. Finally run C (attempts 5,6, both fail again) demonstrates the event registered in the design doc as an accepted side effect: baseline B (pass+finding) -> current C (red) is new_fail/regressed, not a downgrade from the flaky classification.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "c1: seed attempt-counting flaky test"},
+    {"do": "run", "id": "A", "runner": "playwright", "expectExit": 1},
+    {"do": "write-file", "path": "NOTE.md", "content": "unrelated tracked change so the flaky run's tree differs from c1\n"},
+    {"do": "commit", "message": "c2: unrelated tracked change"},
+    {"do": "run", "id": "B", "runner": "playwright", "expectExit": 0},
+    {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0},
+    {"do": "gate", "id": "g", "ref": "HEAD~1", "run": "B", "expectExit": 0},
+    {"do": "run", "id": "C", "runner": "playwright", "expectExit": 1},
+    {"do": "compare", "id": "cmp2", "baseline": "B", "current": "C", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "exact"},
+    {"report": "cmp", "path": "transitions.verification_inconclusive", "contains": "tests/flaky.spec.ts::chromium::flaky on the fourth attempt"},
+    {"report": "cmp", "path": "transitions.repaired_same_surface", "empty": true},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "inconclusive"},
+    {"report": "g", "path": "gate.verdict", "eq": "inconclusive"},
+    {"report": "g", "path": "gate.triggered", "contains": "verification_inconclusive"},
+    {"report": "g", "path": "gate.staleness.match", "eq": true},
+    {"report": "cmp2", "path": "transitions.new_fail", "contains": "tests/flaky.spec.ts::chromium::flaky on the fourth attempt"},
+    {"report": "cmp2", "path": "outcome_verdict", "eq": "regressed"}
+  ]
+}
