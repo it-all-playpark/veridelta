@@ -104,6 +104,8 @@ describe('commandScopePerturbed', () => {
     ['--changed=HEAD~1'],
     ['--testNamePattern'],
     ['--testNamePattern=x'],
+    ['--test-name-pattern'],
+    ['--test-name-pattern=x'],
     ['-t'],
     ['-t=x'],
     ['--shard=1/2'],

@@ -335,11 +335,16 @@ export function selectorMatches(
  * *total* inventory, so a positional-selector subset relation does not
  * carry over. `--related` is included because it expands the selection
  * through the module dependency graph, a relation `selectorRelation` (path-
- * prefix only) knows nothing about.
+ * prefix only) knows nothing about. `--test-name-pattern` is `--testNamePattern`'s
+ * kebab-case alias (vitest 4.1.10 accepts both spellings for the same flag)
+ * and must perturb scope identically — omitting it would let the alias slip
+ * the pattern's value into the positional selector unperturbed, defeating
+ * this list's fail-closed guarantee for that spelling.
  */
 export const SCOPE_PERTURBING_FLAGS: readonly string[] = [
   '--changed',
   '--testNamePattern',
+  '--test-name-pattern',
   '-t',
   '--shard',
   '--related',
