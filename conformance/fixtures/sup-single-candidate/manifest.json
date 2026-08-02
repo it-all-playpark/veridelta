@@ -1,0 +1,21 @@
+{
+  "name": "sup-single-candidate",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.4", "§6.1"],
+  "notes": "The simplest `previous-superset` shape: one wide run (`A`, selector `[]`) is the only series-mate of the narrow current run (`B`, selector `['src']`). The vitest adapter proves `A` a superset of `B` (empty selector selects the whole inventory), so it is the sole candidate and trivially maximal -- no `baseline.superset_candidates` disclosure (only ever set at >=2 maximal candidates). `tests/out.test.ts` (red) falls outside `B`'s narrower selector and is disclosed via `transitions.out_of_scope`, never claimed `repaired`. The `selector-subset` surface event discloses both selectors (`from` the empty baseline selector, `to` the narrow current one) and the proving capability.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + out-of-scope red"},
+    {"do": "run", "id": "A", "args": [], "expectExit": 1},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "baseline.mode", "eq": "previous-superset"},
+    {"report": "cmp", "path": "baseline.selection_reason", "eq": "most-recent-maximal-proven-superset"},
+    {"report": "cmp", "path": "baseline.superset_candidates", "defined": false},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "selector-subset", "capability": "selector-relation", "from": "", "to": "src"}},
+    {"report": "cmp", "path": "transitions.out_of_scope", "eq": ["tests/out.test.ts::out of scope red"]}
+  ]
+}

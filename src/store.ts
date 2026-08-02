@@ -42,6 +42,8 @@ import { join } from 'node:path'
 import { canonicalJson } from './canonical.js'
 import { sha256Hex } from './digest.js'
 import {
+  CAPABILITY_VALUES,
+  type CapabilityValue,
   COMPLETENESS_STATUSES,
   type CompletenessStatus,
   parseRunRecord,
@@ -128,6 +130,8 @@ export interface RunMeta {
     adapter_version: string
     composition_id: string
     config_digest: string
+    /** Lenient extraction (F1): only entries with a valid CapabilityValue survive; see {@link extractCapabilities}. */
+    capabilities?: Record<string, CapabilityValue>
   }
   provenance: { head: string | null; tree_digest: string }
   completeness: { status: CompletenessStatus; child_exit_code: number }
@@ -155,6 +159,33 @@ function asMetaString(v: unknown, runId: string, path: string): string {
 function asMetaStringArray(v: unknown, runId: string, path: string): string[] {
   if (!Array.isArray(v)) metaFail(runId, `${path}: expected array`)
   return v.map((e, i) => asMetaString(e, runId, `${path}[${i}]`))
+}
+
+/**
+ * Lenient `instrument.capabilities` extraction (F1): `extractRunMeta` is a
+ * shallow, non-strict scan of records that may not even be the eventually-
+ * selected baseline (§9.4 strict validation is deferred to the single
+ * chosen candidate — see `resolveBaseline`'s pre-filter split). An invalid
+ * entry here is therefore dropped rather than a StoreCorruptError: it would
+ * reject non-candidate records the strict `readRun` parser never even sees.
+ * Returns `undefined` (property omitted) when `v` is not a plain object —
+ * absent or malformed `capabilities` is the same "no declaration" case the
+ * schema's own back-compat posture already treats leniently.
+ */
+function extractCapabilities(
+  v: unknown,
+): Record<string, CapabilityValue> | undefined {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return undefined
+  const out: Record<string, CapabilityValue> = {}
+  for (const [name, value] of Object.entries(v as Record<string, unknown>)) {
+    if (
+      typeof value === 'string' &&
+      (CAPABILITY_VALUES as readonly string[]).includes(value)
+    ) {
+      out[name] = value as CapabilityValue
+    }
+  }
+  return out
 }
 
 /**
@@ -189,6 +220,7 @@ function extractRunMeta(value: unknown, runId: string): RunMeta {
   }
 
   const instrumentRaw = asMetaObject(o.instrument, runId, 'record.instrument')
+  const capabilities = extractCapabilities(instrumentRaw.capabilities)
   const instrument = {
     adapter: asMetaString(
       instrumentRaw.adapter,
@@ -210,6 +242,7 @@ function extractRunMeta(value: unknown, runId: string): RunMeta {
       runId,
       'record.instrument.config_digest',
     ),
+    ...(capabilities !== undefined ? { capabilities } : {}),
   }
 
   const provenanceRaw = asMetaObject(o.provenance, runId, 'record.provenance')

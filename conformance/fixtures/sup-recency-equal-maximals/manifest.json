@@ -1,0 +1,21 @@
+{
+  "name": "sup-recency-equal-maximals",
+  "class": "pitfall",
+  "spec_refs": ["§5.2"],
+  "notes": "`W1` and `W2` share the exact same selector (`[]`) but different trees (`tests/t.test.ts` flips red to green between them), so they are mutual `'equal'` under `selectorRelation` -- never `'superset'` -- and neither demotes the other: both stay maximal against current `C` (selector `['src']`), and `baseline.superset_candidates` MUST disclose 2 even though the selector is literally identical (no equal-selector dedupe, spec §5.2 normative). The more recent `W2` wins the recency tie-break. `transitions.out_of_scope` staying undefined is the observational proof: had the stale `W1` won instead, `tests/t.test.ts`'s baseline-red verdict would surface there (it is outside `C`'s narrower selector); `W2` recorded it green, so nothing is disclosed.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + t red"},
+    {"do": "run", "id": "W1", "args": [], "expectExit": 1},
+    {"do": "write-file", "path": "tests/t.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('t now green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "flip tests/t.test.ts to green, same selector as W1 for W2"},
+    {"do": "run", "id": "W2", "args": [], "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "baseline.superset_candidates", "eq": 2},
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "transitions.out_of_scope", "defined": false}
+  ]
+}

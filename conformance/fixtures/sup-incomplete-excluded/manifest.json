@@ -1,0 +1,22 @@
+{
+  "name": "sup-incomplete-excluded",
+  "class": "pitfall",
+  "spec_refs": ["§5.2"],
+  "notes": "`W2` (selector `[]`, same series as `W1`) is a proven superset of current `C` (selector `['src']`) too, and more recent than `W1` -- but its stored record is edited to `completeness.status: 'partial'` after the fact (simulating a crashed/interrupted re-run whose record survived). `previous-superset`'s series-mate scan pre-filters on `completeness.status === 'complete'` before candidacy is even considered (same discipline as `previous-comparable`/`git-ref`), so `W2` never becomes a candidate and the older, complete `W1` is the sole (and therefore trivially maximal) candidate -- no `baseline.superset_candidates` disclosure. `tests/t.test.ts` (red in `W1`) is outside `C`'s narrower selector and is disclosed via `transitions.out_of_scope`, confirming `W1`, not the excluded `W2`, was selected.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + t red"},
+    {"do": "run", "id": "W1", "args": [], "expectExit": 1},
+    {"do": "write-file", "path": "src/a.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('a still green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "modify src/a.test.ts, unrelated to tests/t.test.ts red"},
+    {"do": "run", "id": "W2", "args": [], "expectExit": 1},
+    {"do": "edit-json", "path": ".veridelta/runs/{RUN:W2}.json", "set": {"completeness.status": "partial"}},
+    {"do": "run", "id": "C", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "baseline.superset_candidates", "defined": false},
+    {"report": "cmp", "path": "transitions.out_of_scope", "contains": "tests/t.test.ts::t red"}
+  ]
+}

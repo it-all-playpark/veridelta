@@ -617,7 +617,19 @@ class FixtureContext {
 
   private compareArgs(step: Step): string[] {
     const args = ['compare']
-    if (typeof step.ref === 'string') {
+    if (step.superset === true) {
+      if (
+        typeof step.ref === 'string' ||
+        (typeof step.baseline === 'string' && typeof step.current === 'string')
+      ) {
+        this.fail(
+          `compare ${String(step.id)}: superset cannot be combined with ref or baseline+current`,
+        )
+      }
+      args.push('--superset')
+      if (typeof step.current === 'string')
+        args.push(this.resolveRunRef(step.current))
+    } else if (typeof step.ref === 'string') {
       args.push('--ref', step.ref)
       if (typeof step.current === 'string')
         args.push(this.resolveRunRef(step.current))

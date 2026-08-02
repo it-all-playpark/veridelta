@@ -1,0 +1,20 @@
+{
+  "name": "sup-abstain-relation-unknown",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3", "§6.4"],
+  "notes": "The only series-mate `A` (selector `['src']`) and current `C` (selector `['src/a', 'tests']`) neither contain one another: `'src'` overlaps `'src/a'` (a path-segment prefix relation) without covering `'tests'`, so `selectorRelation` returns `'unknown'` (overlap without full containment either way), not `'subset'`/`'superset'`/`'disjoint'`. `A` is therefore never a candidate, but the unknown relation is recorded, so `previous-superset` abstains `selector-relation-unknown`/`determined` -- distinct from `baseline-missing` (no candidate, all relations decided). No weak-match fallback: `baseline` stays `null`.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed a green + other green + t green"},
+    {"do": "run", "id": "A", "args": ["src"], "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["src/a", "tests"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "none"},
+    {"report": "cmp", "path": "comparability_detail.reason", "eq": "selector-relation-unknown"},
+    {"report": "cmp", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "cmp", "path": "comparability_detail.near_miss", "defined": false},
+    {"report": "cmp", "path": "baseline", "eq": null}
+  ]
+}

@@ -30,6 +30,7 @@ export type BaselineSpec =
   | { mode: 'previous-comparable' }
   | { mode: 'explicit-run-id'; runId: string }
   | { mode: 'git-ref'; ref: string; commit: string; tree: string }
+  | { mode: 'previous-superset' }
 
 export class CompareOperationError extends Error {
   constructor(message: string) {
@@ -58,6 +59,27 @@ export function streamKey(r: StreamKeyView): string {
     r.repo.cwd,
     r.invocation.command,
     r.invocation.selector,
+    r.instrument.adapter,
+    r.instrument.adapter_version,
+    r.instrument.config_digest,
+  ])
+}
+
+/**
+ * Series key (§5.1): the stream key minus the selector — solely used to
+ * scope `previous-superset` candidacy to the same series of runs. Never
+ * widens what `streamKey`/`previous-comparable` treat as comparable: a
+ * series-mate found through this key still needs its own proven selector
+ * relation (via the adapter's `selectorRelation`) before it becomes a
+ * `previous-superset` candidate.
+ */
+export function seriesKey(r: StreamKeyView): string {
+  return JSON.stringify([
+    r.repo.identity,
+    r.repo.worktree,
+    r.repo.branch,
+    r.repo.cwd,
+    r.invocation.command,
     r.instrument.adapter,
     r.instrument.adapter_version,
     r.instrument.config_digest,
@@ -172,6 +194,31 @@ export interface BaselineResolution {
   mode: BaselineMode
   selectionReason: string
   failure?: ComparabilityDetail
+  /** Set (>=2) only when `previous-superset` selection had more than one maximal candidate. */
+  supersetCandidates?: number
+}
+
+/**
+ * §5.2 `previous-superset` tie-break (normative): among tied maximal
+ * candidates, `pos` (store insertion order — higher is more recent) wins.
+ * A true `pos` tie is only reachable synthetically (the append-only,
+ * de-duplicated index makes `pos` a total order in practice); ties break on
+ * the lexicographically-larger `run_id`. Returns `null` for an empty list.
+ */
+export function latestMaximal(
+  entries: readonly { runId: string; pos: number }[],
+): string | null {
+  let best: { runId: string; pos: number } | undefined
+  for (const e of entries) {
+    if (
+      best === undefined ||
+      e.pos > best.pos ||
+      (e.pos === best.pos && e.runId > best.runId)
+    ) {
+      best = e
+    }
+  }
+  return best?.runId ?? null
 }
 
 /**
@@ -259,6 +306,108 @@ export function resolveBaseline(
         mode: 'git-ref',
         selectionReason: `no-complete-run-recorded-at-${spec.ref}`,
         failure: { reason: 'baseline-missing', kind: 'determined' },
+      }
+    }
+    case 'previous-superset': {
+      // 1. Series-mates: same series (streamKey minus selector), complete,
+      // excluding current. Pre-filter only (RunMeta) — same discipline as
+      // previous-comparable/git-ref above.
+      const key = seriesKey(current)
+      const ids = store.listRunIds()
+      const seriesMates: { runId: string; pos: number; meta: RunMeta }[] = []
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i]!
+        if (id === currentId) continue
+        const meta = store.readRunMeta(id)
+        if (meta.completeness.status !== 'complete') continue
+        if (seriesKey(meta) !== key) continue
+        seriesMates.push({ runId: id, pos: i, meta })
+      }
+
+      // 2. Gating (fail-closed, mirrors judgeSelectorMismatch): an
+      // undeclared adapter method, an un-declaring/perturbed current record,
+      // demotes every series-mate's relation to 'unknown'.
+      const adapter = findAdapter(current.instrument.adapter)
+      const relationFn = adapter?.selectorRelation
+      const perturbedFn = adapter?.commandScopePerturbed
+      const currentGatingOk =
+        relationFn !== undefined &&
+        perturbedFn !== undefined &&
+        current.instrument.capabilities?.['selector-relation'] === 'pass' &&
+        !perturbedFn(current.invocation.command)
+
+      // 3. Candidacy: only a proven `superset` (candidate ⊇ current)
+      // counts. `equal` is previous-comparable's territory, not a
+      // candidate here; `subset`/`disjoint` are decided non-candidates;
+      // `unknown` (including per-mate gating failure) never fabricates a
+      // candidate but also never forecloses one already proven.
+      const candidates: { runId: string; pos: number; meta: RunMeta }[] = []
+      let anyUnknown = false
+      for (const mate of seriesMates) {
+        const decided =
+          currentGatingOk &&
+          mate.meta.instrument.capabilities?.['selector-relation'] === 'pass'
+        const rel = decided
+          ? relationFn!(
+              mate.meta.invocation.selector,
+              current.invocation.selector,
+            )
+          : 'unknown'
+        if (rel === 'superset') {
+          candidates.push(mate)
+        } else if (rel === 'unknown') {
+          anyUnknown = true
+        }
+        // 'equal' / 'subset' / 'disjoint': decided non-candidate, no-op.
+      }
+
+      if (candidates.length === 0) {
+        // §5.4: previous-superset never emits near_miss — a weak match is
+        // never a fallback baseline (§5.3).
+        return {
+          record: null,
+          runId: null,
+          mode: 'previous-superset',
+          selectionReason: anyUnknown
+            ? 'superset-candidacy-undetermined'
+            : 'no-proven-superset-in-series',
+          failure: {
+            reason: anyUnknown
+              ? 'selector-relation-unknown'
+              : 'baseline-missing',
+            kind: 'determined',
+          },
+        }
+      }
+
+      // 4. Maximality (proven-containment partial order, §5.2): a candidate
+      // is maximal unless another candidate proves a strict superset over
+      // it. Equal-selector candidates only prove `equal` against each
+      // other, never `superset`, so neither demotes the other — no
+      // equal-class dedupe (spec §5.2 normative MUST on disclosure).
+      const maximal = candidates.filter(
+        (x) =>
+          !candidates.some(
+            (y) =>
+              y.runId !== x.runId &&
+              relationFn!(
+                y.meta.invocation.selector,
+                x.meta.invocation.selector,
+              ) === 'superset',
+          ),
+      )
+
+      // 5. Winner: most recent maximal candidate (tie-break: run_id desc).
+      const winnerId = latestMaximal(maximal)!
+      // Strict-parse only the winner (§9.4 deferred to the selected
+      // candidate, same discipline as previous-comparable/git-ref).
+      const record = store.readRun(winnerId)
+      return {
+        record,
+        runId: winnerId,
+        mode: 'previous-superset',
+        selectionReason: 'most-recent-maximal-proven-superset',
+        ...(maximal.length >= 2 ? { supersetCandidates: maximal.length } : {}),
       }
     }
   }
@@ -628,6 +777,9 @@ function abstentionReport(
             run_id: resolution.runId,
             mode: resolution.mode,
             selection_reason: resolution.selectionReason,
+            ...(resolution.supersetCandidates !== undefined
+              ? { superset_candidates: resolution.supersetCandidates }
+              : {}),
           }
         : null,
     current: {
@@ -861,6 +1013,9 @@ function claimsReport(
       run_id: resolution.runId!,
       mode: resolution.mode,
       selection_reason: resolution.selectionReason,
+      ...(resolution.supersetCandidates !== undefined
+        ? { superset_candidates: resolution.supersetCandidates }
+        : {}),
     },
     current: {
       run_id: currentId,
