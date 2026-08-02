@@ -7,10 +7,10 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.6.0 / `vitest-native/2`。**
-> 初版 0.3.0 / `vitest-native/1` から数えて3回録り直している:
+> **現行 baseline は vdelta 0.7.0 / `vitest-native/2`。**
+> 初版 0.3.0 / `vitest-native/1` から数えて4回録り直している:
 > 0.3.0 → 0.4.0（issue #39 / PR #46）、0.4.0 → 0.5.0（issue #49 / PR #50）、
-> 0.5.0 → 0.6.0（issue #55 / PR #56）。
+> 0.5.0 → 0.6.0（issue #55 / PR #56）、0.6.0 → 0.7.0（issue #60 / PR #61）。
 >
 > **`instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの**なので、
 > record 形状が変わらなくても **release が入るだけで** spec §6.2 の same-instrument rule により
@@ -48,12 +48,12 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_f4a4ae29` | 1958 | complete |
-| frontend | `run_a3b3b32c` | 1540 | complete |
-| shared | `run_f5362a51` | 457 | complete |
-| landing | `run_8f0b6e2e` | 76 | complete |
-| video | `run_b481b0fb` | 195 | complete |
-| e2e | `run_fac272dc` | 30 | complete |
+| backend | `run_a36aed4e` | 1958 | complete |
+| frontend | `run_5a09350b` | 1540 | complete |
+| shared | `run_d80f20de` | 457 | complete |
+| landing | `run_a8552360` | 76 | complete |
+| video | `run_18ff41b4` | 195 | complete |
+| e2e | `run_3ec9785b` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
@@ -66,7 +66,7 @@ Playwright adapter 追加が1回入ったが、検証面は一度も動いてい
 **Playwright adapter の追加（0.6.0）はこの宣言を変えていない** — `retry-evidence` は
 Playwright 側のみが宣言し、vitest には追加しないと決めたため（issue #53 意思決定(2)）。
 
-`superseded` の2件（`run_0e22d521` / `run_b5c9f4e8`）は baseline ではない。
+`superseded` の2件（`run_86ce805f` / `run_0223f7ee`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -99,7 +99,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.6.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.7.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -122,7 +122,7 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_f5362a51` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_d80f20de` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -161,6 +161,9 @@ spec §3.5 の設計どおりの挙動。
   差分が `adapter_version` の1パスのみであることを機械判定できた
   （2026-07-31 の検証ログ）。「adapter 追加が既存 adapter に漏れない」という
   seam の設計目的を、in-repo A/B replay とは別軸で裏付ける証拠になる。
+- ✅ **記録経路と比較経路の分離の検証にも使えた。** comparator / gate / render / schema を
+  変更した 0.7.0 でも差分は `adapter_version` の1パスのみだった（2026-08-02 の検証ログ）。
+  adapter 軸（0.6.0）に加えて**記録 ↔ 比較の軸**でも分離が効いていることの実データ確認。
 - ✅ **前向きの回帰基準として使える。** record 形状を変えないはずの変更が
   これらの run_id を再現できなければ、それは意図しない挙動変化である。
 - ✅ **§8.3 副基準1（capture replay）の入力**として使える。
@@ -311,4 +314,40 @@ capabilities の追加が digest を動かしていないことが report 側か
   backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去3版と同一）
 - **capabilities の宣言が不変** — 6項目のまま。`retry-evidence` は Playwright 側のみが宣言し
   vitest には追加しないという issue #53 意思決定(2) が、実 record で守られている
+- **自己検証性** — 全8件について保存した gz から run_id を再計算して一致
+
+### 2026-08-02 — flaky マッピング / §12-1 着地に伴う録り直し（0.6.0 → 0.7.0）
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.7.0`（npm 公開版。PR #61 = issue #60 マージ後の PR #62 release） |
+| 変更 | flaky マッピング（D2）と §12-1 gate verdict の実装 |
+| 変更ファイル | `src/compare.ts` / `src/gate.ts` / `src/render.ts` / `src/schema.ts`。**`src/adapters/vitest/` は差分ゼロ** |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`、node v24.18.1（前回と同一） |
+| 結果 | 全 run_id が変化。**差分は `adapter_version` の1パスのみ**で PASS |
+
+`diff-preimages.mjs` で 0.6.0 preimage と構造 diff した結果、6/6 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.6.0"` → `"0.7.0"` |
+
+**これ以外の差分はゼロ。** `instrument.capabilities` / `config_digest` / `surface` /
+`provenance` / `environment` はすべて不変、`observations` は 6/6 とも配列丸ごと一致。
+
+> **flaky マッピングが比較側・gate 側に閉じており、記録側に一切漏れていない**ことの実データ確認。
+> `src/compare.ts` / `src/gate.ts` / `src/render.ts` / `src/schema.ts` を触った変更が
+> vitest の record 構築経路を摂動していない。**0.5.0 → 0.6.0（Playwright adapter 追加）が
+> 「新しい adapter を足しても既存 adapter に漏れない」を示したのに対し、今回は
+> 「comparator / gate を変えても記録が動かない」を示している** — seam の分離が
+> adapter 軸だけでなく記録・比較の軸でも効いていることになる。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_d80f20de` が一致。決定性は維持
+- **F-2 の再確認** — 0.7.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去4版と同一）
+- **capabilities の宣言が不変** — 6項目のまま。flaky マッピングは
+  `retry-evidence` を宣言する record（= Playwright）でのみ発火するため、
+  vitest record では構造的に非発火（§12-3 立場B）
 - **自己検証性** — 全8件について保存した gz から run_id を再計算して一致
