@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/it-all-playpark/veridelta/compare/v0.6.0...v0.7.0) (2026-08-02)
+
+
+### Features
+
+* **gate:** fail→flaky を verification_inconclusive として分類する（§12-1 B-inconclusive） ([839bddd](https://github.com/it-all-playpark/veridelta/commit/839bddd7af0c9606a51d82e20e476b3e68facecf))
+
 ## [0.6.0](https://github.com/it-all-playpark/veridelta/compare/v0.5.0...v0.6.0) (2026-07-31)
 
 
