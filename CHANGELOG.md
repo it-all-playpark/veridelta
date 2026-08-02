@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/it-all-playpark/veridelta/compare/v0.8.0...v0.9.0) (2026-08-02)
+
+
+### Features
+
+* **compare:** previous-superset baseline mode と series key を実装 ([6f9adba](https://github.com/it-all-playpark/veridelta/commit/6f9adbabea676c15d2520ed6a3e646b3310c1906))
+
 ## [0.8.0](https://github.com/it-all-playpark/veridelta/compare/v0.7.0...v0.8.0) (2026-08-02)
 
 
