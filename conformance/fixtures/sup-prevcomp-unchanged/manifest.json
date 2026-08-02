@@ -1,0 +1,21 @@
+{
+  "name": "sup-prevcomp-unchanged",
+  "class": "pitfall",
+  "spec_refs": ["§5.1", "§5.2"],
+  "notes": "Regression guard: `seriesKey` (added for `previous-superset` candidacy) must never widen what `previous-comparable` itself treats as comparable. `W` (selector `[]`) and `N1`/`N2` (selector `['src']`) are all in the same series, but a plain `compare` with no baseline spec still uses `previous-comparable`'s full stream-key match (selector included) and picks the same-selector `N1`, not the wider `W`. `transitions.out_of_scope` staying undefined is the observational proof that no `selector-subset` narrowing ever entered this comparison -- `previous-comparable` never widened its own candidate scope by the series-key addition.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + t red"},
+    {"do": "run", "id": "W", "args": [], "expectExit": 1},
+    {"do": "run", "id": "N1", "args": ["src"], "expectExit": 0},
+    {"do": "write-file", "path": "src/a.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('a green', () => {\n  expect(1).toBe(1)\n})\n\ntest('a second green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "extend src/a.test.ts, same selector as N1 for N2"},
+    {"do": "run", "id": "N2", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "baseline.mode", "eq": "previous-comparable"},
+    {"report": "cmp", "path": "comparability", "eq": "scope_changed"},
+    {"report": "cmp", "path": "transitions.out_of_scope", "defined": false}
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "sup-equal-selector-excluded",
+  "class": "pitfall",
+  "spec_refs": ["§5.1", "§5.2"],
+  "notes": "`A` and `B` share the exact same selector (`['src']`). Under `previous-superset`, `selectorRelation(A.selector, B.selector)` decides `'equal'`, not `'superset'` -- equal-selector candidacy is `previous-comparable`'s territory (§5.1), so `A` is excluded and, being the only series-mate, `previous-superset` abstains `baseline-missing`. The companion `previous-comparable` compare on the identical current run picks `A` by full stream-key match (`scope_changed`, since `B` added a test), proving equal-selector matching still works normally there -- `previous-superset`'s narrower candidacy rule is additive, not a regression of `previous-comparable`.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green"},
+    {"do": "run", "id": "A", "args": ["src"], "expectExit": 0},
+    {"do": "write-file", "path": "src/a.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('a green', () => {\n  expect(1).toBe(1)\n})\n\ntest('a second green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "add a second green test to src/a.test.ts, same selector for B"},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0},
+    {"do": "compare", "id": "cmpSup", "superset": true, "expectExit": 0},
+    {"do": "compare", "id": "cmpPrev", "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmpSup", "path": "comparability", "eq": "none"},
+    {"report": "cmpSup", "path": "comparability_detail.reason", "eq": "baseline-missing"},
+    {"report": "cmpPrev", "path": "comparability", "eq": "scope_changed"},
+    {"report": "cmpPrev", "path": "baseline.mode", "eq": "previous-comparable"}
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "sup-maximal-over-narrower",
+  "class": "pitfall",
+  "spec_refs": ["§5.2"],
+  "notes": "A recency-only tie-break would wrongly pick the more recent, narrower `M` (selector `['src']`) over the older, wider `W` (selector `[]`) as baseline for current `C` (selector `['src/inner']`) -- both are proven supersets of `C`, but `W` also proves a superset over `M` (`selectorRelation([], ['src'])` = `'superset'`), demoting `M` out of the maximal set entirely (§5.2 proven-containment partial order). Only `W` is maximal, so no `baseline.superset_candidates` disclosure. The `selector-subset` event's `from: ''` is the direct observational proof that the wide `W`, not the merely-more-recent `M`, won. `tests/out.test.ts` (red) is observed only by `W` (outside both `M` and `C`'s narrower selectors) and is disclosed via `transitions.out_of_scope` only because `W` was in fact selected.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed inner green + other green + out-of-scope red"},
+    {"do": "run", "id": "W", "args": [], "expectExit": 1},
+    {"do": "write-file", "path": "src/other.test.ts", "content": "import { test, expect } from 'vitest'\n\ntest('other still green', () => {\n  expect(2).toBe(2)\n})\n"},
+    {"do": "commit", "message": "change src/other.test.ts to shift the tree for a fresh run_id"},
+    {"do": "run", "id": "M", "args": ["src"], "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["src/inner"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "selector-subset", "from": ""}},
+    {"report": "cmp", "path": "transitions.out_of_scope", "contains": "tests/out.test.ts::out of scope red"},
+    {"report": "cmp", "path": "baseline.superset_candidates", "defined": false}
+  ]
+}

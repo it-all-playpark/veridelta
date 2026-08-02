@@ -92,7 +92,7 @@ judges anything.
 | Command | Purpose | Exit code |
 |---|---|---|
 | `vdelta run [--report json\|text] -- <cmd>` | Execute, record, report | The child's exit code, unchanged. Internal errors degrade to raw passthrough — vdelta is never worse than its absence. |
-| `vdelta compare [<baseline> <current>] [--ref <git-ref>]` | Compare recorded runs (explicit ids, a git ref, or the previous comparable run) | 0 when the comparison ran (an `inconclusive` result is a successful comparison); 1 on operation failure |
+| `vdelta compare [<baseline> <current>] [--ref <git-ref>] [--superset]` | Compare recorded runs (explicit ids, a git ref, the previous comparable run, or `--superset`: the most recent proven-superset run in the same series, `previous-superset` baseline mode) | 0 when the comparison ran (an `inconclusive` result is a successful comparison); 1 on operation failure |
 | `vdelta show <run-id> [--test <id>\|--raw]` | Drill down into a run record | Retrieval success |
 | `vdelta gate --ref <git-ref> [--policy report-only]` | Policy verdict for CI/agent loops | report-only: 0 when a report was produced; 2 otherwise |
 | `vdelta gc [--max-count <n>] [--max-bytes <n>]` | Reclaim run records beyond the retention policy | 0 = reclaimed or no-op; 1 = failed |

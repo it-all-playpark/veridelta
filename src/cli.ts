@@ -131,9 +131,13 @@ async function cmdRun(argv: string[]): Promise<number> {
   return result.exitCode
 }
 
+const COMPARE_USAGE =
+  'usage: vdelta compare [<baseline-run> <current-run>] [--ref <git-ref>] [--superset] [--report json|text]'
+
 async function cmdCompare(argv: string[]): Promise<number> {
   const { format, rest } = parseReportFlag(argv)
   let ref: string | undefined
+  let superset = false
   const positional: string[] = []
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]!
@@ -142,6 +146,8 @@ async function cmdCompare(argv: string[]): Promise<number> {
       if (ref === undefined) die('--ref expects a git ref')
     } else if (a.startsWith('--ref=')) {
       ref = a.slice('--ref='.length)
+    } else if (a === '--superset') {
+      superset = true
     } else if (a.startsWith('-')) {
       die(`unknown option: ${a}`)
     } else {
@@ -154,7 +160,15 @@ async function cmdCompare(argv: string[]): Promise<number> {
     let currentId: string | null
     let spec: BaselineSpec
 
-    if (ref !== undefined) {
+    if (superset) {
+      if (ref !== undefined) die(COMPARE_USAGE)
+      if (positional.length > 1) die(COMPARE_USAGE)
+      spec = { mode: 'previous-superset' }
+      currentId =
+        positional[0] !== undefined
+          ? store.resolveRunId(positional[0])
+          : store.lastRunId()
+    } else if (ref !== undefined) {
       const resolved = await resolveRef(worktree, ref)
       if (resolved === null) die(`cannot resolve ref: ${ref}`)
       spec = {
@@ -174,9 +188,7 @@ async function cmdCompare(argv: string[]): Promise<number> {
       spec = { mode: 'previous-comparable' }
       currentId = store.lastRunId()
     } else {
-      die(
-        'usage: vdelta compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]',
-      )
+      die(COMPARE_USAGE)
     }
 
     if (currentId === null) die('cannot resolve the current run')
@@ -376,7 +388,7 @@ async function main(): Promise<number> {
       die(
         `usage: vdelta <run|compare|show|gate|gc> ...\n` +
           `  run [--report json|text] [--adapter <name>] -- <command...>\n` +
-          `  compare [<baseline-run> <current-run>] [--ref <git-ref>] [--report json|text]\n` +
+          `  compare [<baseline-run> <current-run>] [--ref <git-ref>] [--superset] [--report json|text]\n` +
           `  show <run-id> [--test <test-id> | --raw]\n` +
           `  gate --ref <git-ref> [--run <run-id>] [--policy report-only] [--report json|text]\n` +
           `  gc [--max-count <n>] [--max-bytes <n>]`,

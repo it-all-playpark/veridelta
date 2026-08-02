@@ -1,0 +1,21 @@
+{
+  "name": "sup-abstain-baseline-missing",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3"],
+  "notes": "The only series-mate of current `C` (selector `[]`, the whole inventory) is `N` (selector `['src']`), a narrower run. `selectorRelation(N.selector, C.selector)` decides `'subset'` -- the relation is fully determined and it is not a superset, so `N` is never a candidate (no unknown involved). With zero candidates and no unknown relation, `previous-superset` abstains `baseline-missing`/`determined`: a decided non-candidate never falls back to a weaker match (§5.3), unlike `baseline-missing` never carries `near_miss` (that disclosure is `previous-comparable`-only, §5.4).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + t green"},
+    {"do": "run", "id": "N", "args": ["src"], "expectExit": 0},
+    {"do": "run", "id": "C", "args": [], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "comparability", "eq": "none"},
+    {"report": "cmp", "path": "comparability_detail.reason", "eq": "baseline-missing"},
+    {"report": "cmp", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "cmp", "path": "comparability_detail.near_miss", "defined": false},
+    {"report": "cmp", "path": "baseline", "eq": null},
+    {"report": "cmp", "path": "outcome_verdict", "eq": "inconclusive"}
+  ]
+}

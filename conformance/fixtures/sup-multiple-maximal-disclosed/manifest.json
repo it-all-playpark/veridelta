@@ -1,0 +1,20 @@
+{
+  "name": "sup-multiple-maximal-disclosed",
+  "class": "pitfall",
+  "spec_refs": ["§5.2"],
+  "notes": "`A` (selector `['src', 'liba']`) and `B` (selector `['src', 'libb']`) are both proven supersets of current `C` (selector `['src/mod']`), but neither proves a superset over the other -- the shared `'src'` token makes their pairwise relation `'unknown'` (overlap without containment either way), so neither demotes the other and both stay maximal. `baseline.superset_candidates` MUST disclose 2 (spec §5.2 normative, no equal-class or overlap-class dedupe). The more recent `B` wins the tie-break; the `selector-subset` event's `from: 'libb src'` is the direct observational proof of which selector was disclosed as baseline (the vitest recorder alphabetically sorts `invocation.selector` at record time -- src/adapters/vitest/recorder.ts -- so `B`'s recorded selector is `['libb', 'src']`, not the `run` step's argument order). `libb/b.test.ts` (red) is outside `C`'s narrower selector and is disclosed via `transitions.out_of_scope`.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed mod green + liba green + libb red"},
+    {"do": "run", "id": "A", "args": ["src", "liba"], "expectExit": 0},
+    {"do": "run", "id": "B", "args": ["src", "libb"], "expectExit": 1},
+    {"do": "run", "id": "C", "args": ["src/mod"], "expectExit": 0},
+    {"do": "compare", "id": "cmp", "superset": true, "expectExit": 0, "assertDeterministic": true}
+  ],
+  "assertions": [
+    {"report": "cmp", "path": "baseline.superset_candidates", "eq": 2},
+    {"report": "cmp", "path": "comparability", "eq": "subset"},
+    {"report": "cmp", "path": "verification_surface.events", "containsMatch": {"kind": "selector-subset", "from": "libb src"}},
+    {"report": "cmp", "path": "transitions.out_of_scope", "contains": "libb/b.test.ts::libb red"}
+  ]
+}

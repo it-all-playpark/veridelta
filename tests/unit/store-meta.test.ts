@@ -145,4 +145,88 @@ describe('RunStore.readRunMeta', () => {
 
     expect(() => store.readRunMeta(runId)).toThrow(StoreCorruptError)
   })
+
+  describe('instrument.capabilities extraction (F1, lenient)', () => {
+    it('keeps only entries whose value is a valid CapabilityValue', () => {
+      const store = makeStore()
+      const record = makeRecord({
+        instrument: {
+          ...makeRecord().instrument,
+          capabilities: {
+            'selector-relation': 'pass',
+            'failure-evidence': 'unsupported',
+          } as unknown as RunRecord['instrument']['capabilities'],
+        },
+      })
+      const { runId } = store.writeRun(record)
+
+      const meta = store.readRunMeta(runId)
+
+      expect(meta.instrument.capabilities).toEqual({
+        'selector-relation': 'pass',
+        'failure-evidence': 'unsupported',
+      })
+    })
+
+    it('drops entries with an invalid value instead of throwing', () => {
+      const store = makeStore()
+      const runId = `run_${'g'.repeat(64)}`
+      const record = makeRecord()
+      const broken = {
+        ...record,
+        instrument: {
+          ...record.instrument,
+          capabilities: {
+            'selector-relation': 'pass',
+            bogus: 'not-a-capability-value',
+            malformed: 42,
+          },
+        },
+      }
+      writeFileSync(
+        join(store.dir, 'runs', `${runId}.json`),
+        `${JSON.stringify(broken)}\n`,
+      )
+
+      let meta: ReturnType<typeof store.readRunMeta> | undefined
+      expect(() => {
+        meta = store.readRunMeta(runId)
+      }).not.toThrow()
+      expect(meta?.instrument.capabilities).toEqual({
+        'selector-relation': 'pass',
+      })
+    })
+
+    it('omits the property entirely when capabilities is absent', () => {
+      const store = makeStore()
+      const record = makeRecord()
+      const { runId } = store.writeRun(record)
+
+      const meta = store.readRunMeta(runId)
+
+      expect(meta.instrument.capabilities).toBeUndefined()
+      expect('capabilities' in meta.instrument).toBe(false)
+    })
+
+    it('omits the property when capabilities is not a plain object', () => {
+      const store = makeStore()
+      const runId = `run_${'h'.repeat(64)}`
+      const record = makeRecord()
+      const broken = {
+        ...record,
+        instrument: {
+          ...record.instrument,
+          capabilities: 'not-an-object',
+        },
+      }
+      writeFileSync(
+        join(store.dir, 'runs', `${runId}.json`),
+        `${JSON.stringify(broken)}\n`,
+      )
+
+      const meta = store.readRunMeta(runId)
+
+      expect(meta.instrument.capabilities).toBeUndefined()
+    })
+  })
 })
