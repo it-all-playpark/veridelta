@@ -1,6 +1,6 @@
 {
   "name": "vdelta",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Reference implementation of veridelta/1 — proof-carrying verification deltas for coding-agent development loops",
   "license": "MIT",
   "repository": {
