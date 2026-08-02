@@ -186,6 +186,7 @@ export interface SurfaceEvent {
   path?: string
   from?: string
   to?: string
+  capability?: string
 }
 
 export interface Transitions {
@@ -536,9 +537,9 @@ function validateTransitions(v: unknown, path: string): void {
 
 function validateSurfaceEvent(v: unknown, path: string): void {
   const o = asObject(v, path)
-  checkKeys(o, path, ['kind'], ['test_id', 'path', 'from', 'to'])
+  checkKeys(o, path, ['kind'], ['test_id', 'path', 'from', 'to', 'capability'])
   asEnum(o.kind, SURFACE_EVENT_KINDS, `${path}.kind`)
-  for (const k of ['test_id', 'path', 'from', 'to'] as const) {
+  for (const k of ['test_id', 'path', 'from', 'to', 'capability'] as const) {
     if (k in o) asString(o[k], `${path}.${k}`)
   }
 }

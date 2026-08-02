@@ -222,3 +222,22 @@ shared / landing / video / e2e が同一 digest のままなのは covering の�
   spec §6.2 の same-instrument rule どおりで、観測数は 6/6 とも `/1` 時点と一致した。
 - (d) **coverage 表示への completeness 併記は #40** で扱う。本 issue では
   `completeness.module_errors` の record 化までをスコープとする。
+
+### 追記（issue #64: `selector-relation` capability 宣言、`composition_id` 据え置き）
+
+`VITEST_CAPABILITIES`（`src/adapters/vitest/recorder.ts`）に `'selector-relation': 'pass'`
+を追加した。adapter は `selectorRelation` / `selectorMatches`（pure function、
+`src/adapters/vitest/adapter.ts`）を実装し、comparator（`src/compare.ts`）はこの宣言と
+両 record の completeness / series 一致 / 非摂動 command を条件に、prefix 被覆の selector
+narrowing を `comparability: 'subset'` として証明できるようになった（§11.1 の gate MUST は
+`src/gate.ts` 側）。
+
+`composition_id` は `vitest-native/2` に据え置く。§6 の変更規律（本文書冒頭の "composition
+change requires an adapter version change" と同義の規律）上、composition 変更に当たるのは
+**§4 の判定表**（`instrumentConfigDigest` の covering 項目）が変わる場合であり、
+`selector-relation` は判定表と無関係な別軸の capability 宣言であるため、この追加は
+composition の変更ではない。§4 判定表・§1–§6 本文は本追記の対象外（無変更）。
+
+**後続 TODO**: `probes/shift-bud-baseline/` の録り直しが必要。`instrument.capabilities` に
+`selector-relation` が増えるため、既存 baseline との差分は `instrument.adapter_version` /
+`instrument.capabilities` に現れる想定（§7 実装後の実測と同じ形で記録する）。

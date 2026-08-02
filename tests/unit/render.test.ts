@@ -65,6 +65,48 @@ describe('renderReport verification_inconclusive (§9.1, §12-1)', () => {
   })
 })
 
+describe('renderReport out_of_scope (§9.1, §6.1)', () => {
+  it('renders an out_of_scope bucket with "✗" markers when present', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      transitions: {
+        new_fail: [],
+        still_fail_unchanged: [],
+        updated_fail: [],
+        repaired_same_surface: [],
+        repaired_with_test_change: [],
+        fail_to_skip: [],
+        fail_to_xfail: [],
+        removed: [],
+        not_observed: [],
+        out_of_scope: ['tests/out.test.ts::red case'],
+      },
+    }
+    const out = renderReport(report)
+    expect(out).toContain('  out_of_scope (1):')
+    expect(out).toContain('    ✗ tests/out.test.ts::red case')
+  })
+
+  it('omits the out_of_scope bucket when undefined', () => {
+    const report: ComparisonReport = {
+      ...minimalNoneReport,
+      transitions: {
+        new_fail: [],
+        still_fail_unchanged: [],
+        updated_fail: [],
+        repaired_same_surface: [],
+        repaired_with_test_change: [],
+        fail_to_skip: [],
+        fail_to_xfail: [],
+        removed: [],
+        not_observed: [],
+      },
+    }
+    const out = renderReport(report)
+    expect(out).not.toContain('out_of_scope')
+  })
+})
+
 describe('renderReport near-miss (§9.1)', () => {
   it('prints reason, near-miss run id, and mismatch lines when near_miss is present', () => {
     const report: ComparisonReport = {

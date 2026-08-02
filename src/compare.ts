@@ -3,6 +3,7 @@
  * the three delta axes, and comparison-report construction. Deterministic:
  * no timestamps, stable sort orders, recency = store insertion order.
  */
+import { findAdapter } from './adapters/registry.js'
 import {
   type BaselineMode,
   type Comparability,
@@ -267,6 +268,7 @@ interface Judged {
   comparability: Comparability
   detail?: ComparabilityDetail
   events: SurfaceEvent[]
+  outOfScope?: string[]
 }
 
 function judgeComparability(
@@ -312,19 +314,12 @@ function judgeComparability(
     }
   }
   if (!sameSelector(baseline, current)) {
-    // No selector-relation capability in the MVP adapter: containment is
-    // unproven, and unproven never means contained (§6.4).
-    return {
-      comparability: 'none',
-      detail: { reason: 'selector-relation-unknown', kind: 'determined' },
-      events: [
-        {
-          kind: 'selector-changed',
-          from: baseline.invocation.selector.join(' '),
-          to: current.invocation.selector.join(' '),
-        },
-      ],
-    }
+    const result = judgeSelectorMismatch(baseline, current)
+    // `undefined` means the adapter proved the two selectors extensionally
+    // `equal` (e.g. duplicate/case-variant tokens): fall through to the
+    // ordinary exact/scope_changed/partial judgment below rather than
+    // abstaining.
+    if (result !== undefined) return result
   }
   if (!sameStreamScope(baseline, current)) {
     return {
@@ -344,6 +339,118 @@ function judgeComparability(
   return {
     comparability: bInventory === cInventory ? 'exact' : 'scope_changed',
     events: [],
+  }
+}
+
+/** The pre-existing selector-mismatch abstention (§6.4): unproven never means contained. */
+function selectorUnknownAbstention(
+  baseline: RunRecord,
+  current: RunRecord,
+): Judged {
+  return {
+    comparability: 'none',
+    detail: { reason: 'selector-relation-unknown', kind: 'determined' },
+    events: [
+      {
+        kind: 'selector-changed',
+        from: baseline.invocation.selector.join(' '),
+        to: current.invocation.selector.join(' '),
+      },
+    ],
+  }
+}
+
+/**
+ * §6.1/§6.4: baseline and current selectors differ (`sameSelector` already
+ * failed). Asks the record's own declared adapter to prove a `subset`
+ * narrowing; every unproven step falls back to the `selector-relation-
+ * unknown` abstention (fail-closed). Returns `undefined` only when the
+ * adapter proves the two selectors extensionally `equal` — the caller then
+ * falls through to the ordinary exact/scope_changed/partial judgment,
+ * since there is no real selector divergence to abstain over.
+ */
+function judgeSelectorMismatch(
+  baseline: RunRecord,
+  current: RunRecord,
+): Judged | undefined {
+  // Series identity first (issue decision 5): a stream that also diverges on
+  // repo/worktree/branch/cwd/command is not a narrowing question at all.
+  if (!sameStreamScope(baseline, current)) {
+    return selectorUnknownAbstention(baseline, current)
+  }
+
+  const adapter = findAdapter(current.instrument.adapter)
+  const relationFn = adapter?.selectorRelation
+  const matchesFn = adapter?.selectorMatches
+  const perturbedFn = adapter?.commandScopePerturbed
+  if (
+    relationFn === undefined ||
+    matchesFn === undefined ||
+    perturbedFn === undefined ||
+    baseline.instrument.capabilities?.['selector-relation'] !== 'pass' ||
+    current.instrument.capabilities?.['selector-relation'] !== 'pass'
+  ) {
+    // Undeclared adapter method, or either record predates the
+    // `selector-relation` capability declaration: fail-closed.
+    return selectorUnknownAbstention(baseline, current)
+  }
+
+  if (perturbedFn(current.invocation.command)) {
+    // sameStreamScope already holds, so baseline's command is identical:
+    // checking current's command covers both (§6.4, monotonicity reasoning
+    // explicitly disallowed).
+    return selectorUnknownAbstention(baseline, current)
+  }
+
+  const rel = relationFn(
+    current.invocation.selector,
+    baseline.invocation.selector,
+  )
+  if (rel === 'equal') return undefined
+  if (rel !== 'subset') {
+    // superset / disjoint / unknown: none of these license a claim here.
+    // `disjoint` is folded into the same abstention as `unknown` per the
+    // adapter's own doc comment (substring interpretation does not prove
+    // non-overlap).
+    return selectorUnknownAbstention(baseline, current)
+  }
+
+  if (
+    baseline.completeness.status !== 'complete' ||
+    current.completeness.status !== 'complete'
+  ) {
+    // An incomplete run's missing observations are indistinguishable from
+    // bail-induced gaps: the removed/out_of_scope partition would be
+    // unsound.
+    return selectorUnknownAbstention(baseline, current)
+  }
+
+  const currentIds = new Set(current.observations.map((o) => o.test_id))
+  const outOfScope: string[] = []
+  for (const obs of baseline.observations) {
+    if (currentIds.has(obs.test_id)) continue
+    const match = matchesFn(current.invocation.selector, obs.test_id)
+    if (match === 'unknown') {
+      // Per-id guessing is forbidden: one undecidable id downgrades the
+      // whole comparison.
+      return selectorUnknownAbstention(baseline, current)
+    }
+    if (match === 'no') outOfScope.push(obs.test_id)
+    // 'yes': still in scope but unobserved — left for the normal
+    // test-removed/removed handling in claimsReport.
+  }
+
+  return {
+    comparability: 'subset',
+    events: [
+      {
+        kind: 'selector-subset',
+        from: baseline.invocation.selector.join(' '),
+        to: current.invocation.selector.join(' '),
+        capability: 'selector-relation',
+      },
+    ],
+    outOfScope,
   }
 }
 
@@ -491,6 +598,8 @@ export function buildComparisonReport(
     current,
     currentId,
     judged.comparability,
+    judged.events,
+    judged.outOfScope ?? [],
   )
 }
 
@@ -560,6 +669,8 @@ function claimsReport(
   current: RunRecord,
   currentId: string,
   comparability: Comparability,
+  extraEvents: SurfaceEvent[],
+  outOfScope: string[],
 ): ComparisonReport {
   const partial = comparability === 'partial'
   // Reaching a claims report means `sameInstrument` held (§6.2), so baseline
@@ -569,9 +680,10 @@ function claimsReport(
   const bByid = new Map(baseline.observations.map((o) => [o.test_id, o]))
   const cById = new Map(current.observations.map((o) => [o.test_id, o]))
   const allIds = [...new Set([...bByid.keys(), ...cById.keys()])].sort()
+  const outOfScopeSet = new Set(outOfScope)
 
   const transitions = emptyTransitions()
-  const events: SurfaceEvent[] = []
+  const events: SurfaceEvent[] = [...extraEvents]
   const contextChanged = new Set<string>()
   const retryEvidence =
     current.instrument.capabilities?.['retry-evidence'] === 'pass'
@@ -586,6 +698,19 @@ function claimsReport(
     const c = cById.get(id)
 
     if (b && !c) {
+      if (outOfScopeSet.has(id)) {
+        // Excluded by the narrower selector, not removed from the
+        // codebase (§6.1): never a test-removed event, never `removed`.
+        // Only a red out_of_scope id is disclosed at all; green ones are
+        // never claimed anywhere.
+        if (!partial && isRed(b.verdict)) {
+          if (transitions.out_of_scope === undefined) {
+            transitions.out_of_scope = []
+          }
+          transitions.out_of_scope.push(id)
+        }
+        continue
+      }
       events.push({ kind: 'test-removed', test_id: id })
       if (!partial && isRed(b.verdict)) transitions.removed.push(id)
       continue
@@ -713,6 +838,12 @@ function claimsReport(
   for (const id of verificationInconclusive) {
     anchors[`verification_inconclusive:${id}`] = showAnchor(currentId, id)
   }
+  // Evidence for an out_of_scope id lives in the baseline run — it was
+  // never observed by current, so `showAnchor(currentId, ...)` would point
+  // nowhere.
+  for (const id of transitions.out_of_scope ?? []) {
+    anchors[`out_of_scope:${id}`] = showAnchor(resolution.runId!, id)
+  }
   const currentRed = partial ? redIds(current) : undefined
   if (currentRed) {
     for (const id of currentRed)
@@ -792,6 +923,7 @@ function sortTransitions(t: Transitions): void {
   t.fail_to_xfail.sort()
   t.removed.sort()
   t.not_observed.sort()
+  t.out_of_scope?.sort()
   t.still_fail_unchanged.sort((a, b) => {
     const ka = typeof a === 'string' ? a : a.test_id
     const kb = typeof b === 'string' ? b : b.test_id

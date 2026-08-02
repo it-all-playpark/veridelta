@@ -194,4 +194,14 @@ export interface Adapter {
     b: readonly string[],
   ): SelectorRelation
   selectorMatches?(selector: readonly string[], testId: string): SelectorMatch
+
+  /**
+   * §6.4: does the canonical `command` (not the selector) carry a flag that
+   * perturbs execution scope beyond the positional selector — `--changed`,
+   * `--testNamePattern`/`-t`, sharding, related-file expansion? Undeclared
+   * means "unknown whether the command perturbs scope", and the comparator
+   * MUST treat that as unproven (fail-closed): it may not conclude `subset`
+   * from a command it cannot ask.
+   */
+  commandScopePerturbed?(command: readonly string[]): boolean
 }

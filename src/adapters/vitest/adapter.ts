@@ -14,6 +14,8 @@ import {
   AdapterCaptureError,
   type CaptureChannel,
   type CommandSelector,
+  type SelectorMatch,
+  type SelectorRelation,
 } from '../../adapter.js'
 import type { Capture } from './capture.js'
 import {
@@ -164,6 +166,198 @@ export function splitCommandSelector(cmd: readonly string[]): CommandSelector {
   return { command, selector }
 }
 
+/**
+ * §6.4 selector-relation capability, pure-function half: normalizes a raw
+ * selector token the same way regardless of whether it came from the
+ * invocation's own selector or from a test id's `rel` half.
+ *
+ * Lower-cases (vitest's own filter match is case-insensitive — see
+ * {@link isDecidableToken} doc comment), strips a leading `./` and a
+ * trailing `/`, both of which are path-spelling variance rather than
+ * selection intent.
+ */
+export function normalizeToken(token: string): string {
+  let t = token.toLowerCase()
+  if (t.startsWith('./')) t = t.slice(2)
+  if (t.endsWith('/')) t = t.slice(0, -1)
+  return t
+}
+
+/** Glob metacharacters vitest's filter surface treats specially. */
+const GLOB_META = /[*?[\]{}()!]/
+
+/**
+ * Whether a normalized token's *meaning* under vitest's filter is decidable
+ * from its spelling alone (issue #64 decision, spec §6.4). vitest 4.x
+ * resolves positional filters by case-insensitive substring match against
+ * the relative test file path (measured in
+ * `node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js:10860-10872`,
+ * `filterFiles`); a token that is plain lowercase path-ish text behaves the
+ * same way whether that stays substring matching or narrows to a
+ * directory-prefix interpretation. Excluded, because their meaning is not
+ * pinned by that shared ground:
+ *
+ * - tokens starting with `-` (an unfolded flag leaking through, not a
+ *   selector),
+ * - tokens containing a `..` path segment (traversal, not a containable
+ *   prefix),
+ * - tokens starting with `/` (absolute path — outside the worktree-relative
+ *   space {@link tokenCovers} reasons about),
+ * - tokens containing `:` (vitest's `file:line`/`file:column` position
+ *   filter — matches a single location, not a path prefix),
+ * - tokens containing a glob metacharacter (`* ? [ ] { } ( ) !` — matched by
+ *   vitest's own glob engine, not by substring/prefix).
+ */
+export function isDecidableToken(token: string): boolean {
+  if (!/^[a-z0-9._/-]+$/.test(token)) return false
+  if (token.startsWith('-')) return false
+  if (token.startsWith('/')) return false
+  if (token.includes(':')) return false
+  if (GLOB_META.test(token)) return false
+  if (token === '..' || token.split('/').includes('..')) return false
+  return true
+}
+
+/**
+ * `narrow`'s selection is contained in `wide`'s under the path-segment-
+ * prefix reading: identical, or `wide` is a path-segment ancestor of
+ * `narrow`. Sound under both vitest's current substring interpretation and
+ * a hypothetical future directory-prefix interpretation (see
+ * {@link isDecidableToken}) — a strictly narrower notion of containment than
+ * either, never a wider one.
+ */
+export function tokenCovers(wide: string, narrow: string): boolean {
+  return narrow === wide || narrow.startsWith(`${wide}/`)
+}
+
+/**
+ * §6.4 selector-relation capability. `a`/`b` are raw (un-normalized)
+ * `invocation.selector` arrays; the empty array means "no positional
+ * filter" (i.e. selects the whole inventory — vitest's universe).
+ *
+ * The `superset`/`subset` branches for one side empty do not claim
+ * properness (an empty selector could tie a non-empty one extensionally
+ * were the non-empty one to also cover the whole inventory, which this
+ * function cannot know) — only that positional filters narrow and never
+ * widen, so a non-empty selector's selection can never exceed the universe.
+ * The previous-superset "b" and "b" of the comparator, i.e. proving a
+ * *strict* narrowing, is out of scope here (see issue's follow-up "E").
+ *
+ * `disjoint` means the two token sets have no pairwise path-segment-prefix
+ * overlap. It does **not** prove the two selectors' matched test sets are
+ * disjoint under vitest's actual substring interpretation: tokens `"alpha"`
+ * and `"beta"` are pairwise prefix-disjoint here, yet both match a file
+ * named `alpha-beta.test.ts`. The comparator that consumes this function
+ * today folds `disjoint` into the same abstention as `unknown`, so this
+ * unsoundness produces no observable wrong claim — but an implementation
+ * that starts consuming `disjoint` as a distinct, stronger signal (e.g. to
+ * assert non-overlap) MUST NOT do so without re-deriving that guarantee;
+ * this comment is the flag to revisit at that point.
+ */
+export function selectorRelation(
+  a: readonly string[],
+  b: readonly string[],
+): SelectorRelation {
+  const normA = [...new Set(a.map(normalizeToken))]
+  const normB = [...new Set(b.map(normalizeToken))]
+
+  if (setsEqual(normA, normB)) return 'equal'
+  if (a.length === 0 && b.length > 0) return 'superset'
+  if (b.length === 0 && a.length > 0) return 'subset'
+
+  if (normA.length > 0 && normB.length > 0) {
+    if (normA.some((t) => !isDecidableToken(t))) return 'unknown'
+    if (normB.some((t) => !isDecidableToken(t))) return 'unknown'
+  }
+
+  const aSubB = normA.every((aTok) =>
+    normB.some((bTok) => tokenCovers(bTok, aTok)),
+  )
+  const bSubA = normB.every((bTok) =>
+    normA.some((aTok) => tokenCovers(aTok, bTok)),
+  )
+  if (aSubB && bSubA) return 'equal'
+  if (aSubB) return 'subset'
+  if (bSubA) return 'superset'
+
+  const anyOverlap = normA.some((aTok) =>
+    normB.some((bTok) => tokenCovers(aTok, bTok) || tokenCovers(bTok, aTok)),
+  )
+  return anyOverlap ? 'unknown' : 'disjoint'
+}
+
+function setsEqual(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  const bSet = new Set(b)
+  return a.every((t) => bSet.has(t))
+}
+
+/**
+ * §6.4 selector-relation capability, second half: does `selector` (a raw
+ * `invocation.selector` array) match a single canonical test id
+ * (`<rel>::<full name>`, `recorder.ts`'s `testId`)?
+ *
+ * Per-token decision, then union across tokens (vitest's positional filters
+ * are inclusive-OR): a single deciding `yes` wins regardless of other
+ * tokens' verdicts; otherwise `no` only when every token is decidably `no`;
+ * otherwise `unknown` (at least one token could not be decided either way).
+ */
+export function selectorMatches(
+  selector: readonly string[],
+  testId: string,
+): SelectorMatch {
+  if (selector.length === 0) return 'yes'
+  const sepIndex = testId.indexOf('::')
+  const rel = normalizeToken(
+    sepIndex === -1 ? testId : testId.slice(0, sepIndex),
+  )
+
+  const perToken = selector.map((raw): SelectorMatch => {
+    const token = normalizeToken(raw)
+    if (!isDecidableToken(token)) return 'unknown'
+    if (tokenCovers(token, rel)) return 'yes'
+    if (!rel.includes(token)) return 'no'
+    return 'unknown'
+  })
+
+  if (perToken.includes('yes')) return 'yes'
+  if (perToken.every((m) => m === 'no')) return 'no'
+  return 'unknown'
+}
+
+/**
+ * §6.4: canonical-command flags that perturb the child's execution scope
+ * beyond the positional selector. `--changed`/`--testNamePattern`/`-t` are
+ * the spec's own examples (comparator MUST NOT infer `subset` past them —
+ * issue decision 4, monotonicity reasoning explicitly disallowed). `--shard`
+ * is included because shard partitioning is not monotone in the file set —
+ * the same shard index selects a different file subset depending on the
+ * *total* inventory, so a positional-selector subset relation does not
+ * carry over. `--related` is included because it expands the selection
+ * through the module dependency graph, a relation `selectorRelation` (path-
+ * prefix only) knows nothing about. `--test-name-pattern` is `--testNamePattern`'s
+ * kebab-case alias (vitest 4.1.10 accepts both spellings for the same flag)
+ * and must perturb scope identically — omitting it would let the alias slip
+ * the pattern's value into the positional selector unperturbed, defeating
+ * this list's fail-closed guarantee for that spelling.
+ */
+export const SCOPE_PERTURBING_FLAGS: readonly string[] = [
+  '--changed',
+  '--testNamePattern',
+  '--test-name-pattern',
+  '-t',
+  '--shard',
+  '--related',
+]
+
+export function commandScopePerturbed(command: readonly string[]): boolean {
+  return command.some((token) =>
+    SCOPE_PERTURBING_FLAGS.some(
+      (flag) => token === flag || token.startsWith(`${flag}=`),
+    ),
+  )
+}
+
 export const vitestAdapter: Adapter = {
   name: ADAPTER_NAME,
   compositionId: COMPOSITION_ID,
@@ -210,4 +404,8 @@ export const vitestAdapter: Adapter = {
     }
     return buildRunRecord(capture, ctx)
   },
+
+  selectorRelation,
+  selectorMatches,
+  commandScopePerturbed,
 }
