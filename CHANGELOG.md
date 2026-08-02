@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/it-all-playpark/veridelta/compare/v0.7.0...v0.8.0) (2026-08-02)
+
+
+### Features
+
+* **vitest:** selector-relation capability と subset comparability を実装 ([#64](https://github.com/it-all-playpark/veridelta/issues/64)) ([c0b58e5](https://github.com/it-all-playpark/veridelta/commit/c0b58e530f28b5f84a0c6843eb5148370e237a76))
+
+
+### Bug Fixes
+
+* **vitest-adapter:** treat --test-name-pattern kebab alias as scope-perturbing ([29a553c](https://github.com/it-all-playpark/veridelta/commit/29a553cbc4fa4f048ba372dfafb1769989069ab5))
+
 ## [0.7.0](https://github.com/it-all-playpark/veridelta/compare/v0.6.0...v0.7.0) (2026-08-02)
 
 
