@@ -541,7 +541,27 @@ spec §12 は Playwright へのコミットを「structured reporter チャネ�
 - **発火条件:** `median(f_i) ≥ 2`、**または** `|F| / 実行 test case 数 ≥ 5%`、**または** すべての有効 run で `f_i / 実行数 > 1%`。
 - 意味: 典型的な1 run が恒常的に複数の手動 drill-down を要求する水準。狙った suite でこそ report が使えなくなる。
 
-**Kill-2（区別する必要がある）:** `flaky → fail` / `fail → flaky` / flaky 回数の変化を区別する機械可読の要求が、具体的な消費者（gate policy、quarantine 自動化など）として Phase 0b〜Phase 2 fixture 設計までに現れた場合。**判定線（anchor 経由の drill-down を D2 の正当な充足手段と認めるか否か）は未決 — §12-2。**
+**Kill-2（区別する必要がある）:** `flaky → fail` / `fail → flaky` / flaky 回数の変化を区別する機械可読の要求が、具体的な消費者（gate policy、quarantine 自動化など）として Phase 0b〜Phase 2 fixture 設計までに現れ、**かつその要求が report（本文 + `anchors`）で充足できない**場合。
+
+**判定線（§12-2 で決着 — 立場A を採用）:** anchor 経由の drill-down は D2 の正当な充足手段と**認める**。根拠は spec 側の2点である:
+
+1. **`anchors` は report 本文の REQUIRED フィールドである**（spec §9.1 の報告スキーマに `anchors` オブジェクトが含まれる）。したがって「report 本文 + anchors」は譲歩ではなく単に「report」であり、本文の外にあるのは anchor が**指す先**（annex の中身）だけである。立場B の「annex を開かず report 本文だけで」という切り方は anchor の所在を取り違えている。
+2. **spec §9.3 は progressive disclosure を MUST と定める** — "Progressive disclosure is mandatory — a consumer can always reach raw evidence"。正規機構として mandatory と定めたものを、使ったら不充足と判定するのは spec と正面から矛盾する。
+
+この判定線での各要求の充足状況:
+
+| 要求 | 充足手段 | 判定 |
+| --- | --- | --- |
+| `fail → flaky` の区別 | `transitions.verification_inconclusive`（**本文**、`TRANSITION_KEYS` に既存） | 充足 |
+| `flaky → fail` の区別 | flaky は verdict `pass` なので `new_fail` / `updated_fail`（**本文**） | 充足 |
+| flaky **回数**の変化 | 本文に無い。`finding.annex` の attempt 別詳細へ anchor 経由（spec §9.3） | 立場A では充足 / 立場B なら Kill 発火 |
+
+**したがって立場A の下で Kill-2 が実際に発火するのは、次の条件をすべて満たす消費者が現れた場合に限られる:**
+
+- 要求する区別が report **本文**から導出できない（上表の3行目の類型）、**かつ**
+- その消費者が**単一の report artifact から、二次取得なしに自動判定しなければならない** — 具体的には required check や gate policy のように、`vdelta show` の追加実行を挟めない実行文脈に置かれている
+
+逆に、triage する人間や、追加取得を挟める自動化（quarantine バッチ等）は anchor で充足するため Kill-2 を発火させない。**「annex を開く必要があった」だけでは発火条件を満たさない。**
 
 **Kill-3（機構が置けない）:** spec §3.2 の MUST / Never 制約（`finding: MUST when red`、`detail: Never used for status derivation`）を破らずに flaky 信号を record に載せられないと判明した場合。
 
@@ -672,7 +692,7 @@ veridelta repo 内 `probes/shift-bud-baseline/` に置く（shift-bud 側の `.v
 | # | 論点 | 立場A | 立場B | 何を決めれば解決するか |
 | --- | --- | --- | --- | --- |
 | **§12-1** | `fail → flaky` のみ（他に regressed 要因なし）のときの **gate verdict** | default gate-relevant set は spec §9.1 通り不変とし、gate はブロックせず件数 + anchor を必ず開示（pass-with-disclosure）。flaky 1件で CI が exit 2 に汚染される洪水を避ける | `verification_inconclusive` 非空を gate の `triggered` または `inconclusive` に反映する。baseline の red が消えたのに gate が pass する経路を作らない | 0b-field の base rate 実測と、gate report の消費者（PR コメント / required check）の要件。**`outcome_verdict` = `inconclusive`（`unchanged` 禁止）は合意済み。** **決着（issue #60「実装着手前の決定事項」で人間確認済み）: 立場B（B-inconclusive）を採用。** `verification_inconclusive` のみが triggered なら gate verdict は `inconclusive`（`gate.triggered` に `'verification_inconclusive'` を含む）。regression 系（`new_fail` / `updated_fail` / `verification_surface_reduced`）が非空なら従来通り `fail` が勝つ。staleness 不一致・comparability none/partial の既存 inconclusive 分岐は不変。<br>根拠: (a) baseline の red が消えたのに gate が pass する経路を作らない（立場B の要請）、(b) `inconclusive` ≠ `fail` なので flaky 1件で CI が exit 2 に汚染される洪水（立場A の懸念）も回避される — 現行 policy は report-only で gate は常に exit 0、将来 blocking policy でも inconclusive の扱いは消費者側の選択に残る、(c) 0b-field 実測（`probes/shift-bud-0b-field` — flaky base rate を実測し Kill-1 非発火を確定、コミット `3e75fb7`）により flaky 頻度が判定材料として得られた上での決定であること、(d) gate report の消費者要件（PR コメント / required check）の検討を経て issue #60 の『実装着手前の決定事項』で人間確認済みであること |
-| **§12-2** | kill criterion 2 の判定線 | `report` 本文 + anchors（spec §9.3 progressive disclosure）込みで充足できない機械可読要求があれば kill | annex を開かず report 本文だけで回答できない triage シナリオが1つでもあれば kill | anchor 経由の drill-down を D2 の正当な充足手段と認めるか。spec §9.3 が anchors を正規機構と定める以上、認めない側に立つと **D2 は設計通り動いても kill される**（自己矛盾）— この整合性をどう扱うか |
+| **§12-2** | kill criterion 2 の判定線 | `report` 本文 + anchors（spec §9.3 progressive disclosure）込みで充足できない機械可読要求があれば kill | annex を開かず report 本文だけで回答できない triage シナリオが1つでもあれば kill | anchor 経由の drill-down を D2 の正当な充足手段と認めるか。spec §9.3 が anchors を正規機構と定める以上、認めない側に立つと **D2 は設計通り動いても kill される**（自己矛盾）— この整合性をどう扱うか。**決着（issue #73）: 立場A を採用。** anchor 経由の drill-down を D2 の正当な充足手段と認める。<br>根拠: (a) **`anchors` は spec §9.1 の報告スキーマに含まれる REQUIRED フィールドであり、report 本文の一部である** — 本文の外にあるのは anchor が指す先（annex の中身）だけなので、立場B の「annex を開かず report 本文だけで」という切り方は anchor の所在を取り違えている、(b) spec §9.3 が "Progressive disclosure is mandatory — a consumer can always reach raw evidence" と正規機構を MUST で定めており、それを使ったら不充足とする判定線は spec と正面から矛盾する、(c) 立場B を採ると D2（attempt 別詳細を annex + anchor で開示する設計そのもの）は定義上ほぼ必ず kill され、本行が指摘する自己矛盾が現実化する。<br>あわせて §7 の Kill-2 に発火条件を具体化した: 本文から導出できない区別を要求し、**かつ**単一の report artifact から二次取得なしに自動判定しなければならない消費者（required check / gate policy 等）が現れた場合に限り発火する。「annex を開く必要があった」だけでは発火しない。 |
 | **§12-3** | comparator の flaky トリガーの適用条件 | 素の `c.finding !== undefined`（Step 1 の間でも動く） | capability ゲート付き（current record が `retry-evidence` を宣言する場合のみ）。将来の adapter が別目的で pass に finding を付けたときの silent 誤発火を防ぐ | capability の record 化は Step 2 なので、B を採ると flaky マッピングは Step 2 以降にしか動かない。**Step 順序との依存関係込みで決める**。**決着: 立場B（capability ゲート付き）を採用。** current record の `instrument.capabilities['retry-evidence'] === 'pass'` の場合のみ発火する。解決条件だった Step 順序との依存関係は、capability の record 化（Step 2）が PR#56 で完了したことで解消された。<br>vitest record（`retry-evidence` 宣言なし）や capabilities 未宣言の旧 record では非発火のまま |
 | **§12-4** | 依存 skip カスケードの comparator 表現 | attribution 付き開示 + blocking set からのみ除外（spec §11.1 floor 適合） | `/1` draft 改訂で floor に attribution 例外を切る | 0b-core-5 で dependency skip が構造化チャネル上で区別可能と確認された後、「報告はするが依存起因と機械可読に言い分ける」で狼少年問題が実用上解消するかの実測判定 |
 | **§12-5** | 未知 adapter 名を持つ record に対する abstention reason | 暫定 `adapter-crashed`（`kind: failed`、最近傍）で運用し、専用 reason は Step 2 の spec 改訂項目に載せる | Step 2 の `/1` draft 改訂で専用 reason（例 `adapter-unknown`）を追加してから実装する | **解決条件は満たされた（rev.3）。到達可能である** — `instrument.adapter` は `src/schema.ts` 上ただの `string`（closed enum なし）で、`RunStore.writeRun` は公開 API。既存の `tests/cli/stdout-flush.test.ts` が `adapter: 'test-adapter'` の record を実際に書いて `buildComparisonReport` に流している。現実の経路は「playwright 対応 build が書いた store を vitest しか知らない古い build が読む」。したがって暫定案では足りず **立場B（Step 2 の draft 改訂で専用 reason を追加してから実装）** が選択される。<br>**Step 1 の暫定挙動:** abstain せず record 自身の `instrument.composition_id` を開示し `degraded_capabilities: []` を出す。seam 前は他 adapter の record に `vitest-native/1` を刻印しており（spec §9.1 違反 — §5 案B 却下理由が「決定的」と呼んだもの）、それへの復帰は不可。ただし現挙動も「この build が記述できない composition について degradation 無しと断言する」fail-open であり、**spec §12「undeclared capabilities は never a guess」に対する既知の不適合**である。Step 2 で解消する。 |
