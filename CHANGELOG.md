@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/it-all-playpark/veridelta/compare/v0.9.0...v0.10.0) (2026-08-03)
+
+
+### Features
+
+* **run:** vdelta run に previous-superset フォールバックを追加 ([e885b19](https://github.com/it-all-playpark/veridelta/commit/e885b192bebfbf4783be0963475125be97511812))
+
 ## [0.9.0](https://github.com/it-all-playpark/veridelta/compare/v0.8.0...v0.9.0) (2026-08-02)
 
 
