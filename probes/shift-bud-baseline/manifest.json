@@ -1,13 +1,13 @@
 {
-  "probe": "shift-bud Phase 0a baseline (vdelta 0.8.0 / vitest-native/2)",
+  "probe": "shift-bud Phase 0a baseline (vdelta 0.9.0 / vitest-native/2)",
   "design_doc": "docs/superpowers/specs/2026-07-28-playwright-adapter-design.md",
   "design_section": "§8.3 baseline manifest 仕様 / §6 Phase 0a",
-  "generated_by": "vdelta run (F-5 selector-relation capability 着地に伴う録り直し)",
+  "generated_by": "vdelta run (F-5-E previous-superset baseline mode / series key 着地に伴う録り直し)",
   "supersedes": {
-    "vdelta_version": "0.7.0",
+    "vdelta_version": "0.8.0",
     "composition_id": "vitest-native/2",
-    "reason": "issue #64 (PR #65) が F-5（selector-relation capability と subset comparability）を実装した。VITEST_CAPABILITIES に selector-relation: pass が加わり6項目 → 7項目になったため、instrument.capabilities が変化する。composition_id は /2 のまま（config_digest の列挙リストは変わらない）。あわせて adapter_version も release で 0.8.0 に上がる。0.7.0 の manifest と runs/ は git 履歴（v0.8.0 以前）に残る。",
-    "record_path_isolation_verified": "selector-relation が比較側の capability であり記録側に漏れていないことを、0.7.0 preimage との構造 diff で機械判定して PASS。6/6 とも差分は instrument.adapter_version と instrument.capabilities.selector-relation の2パスのみで、config_digest / surface / provenance / environment は不変、observations は配列丸ごと一致。capability 宣言が1項目増えるだけで、記録される観測そのものは1バイトも動いていない。"
+    "reason": "issue #68 (PR #69) が F-5-E（previous-superset baseline mode と series key）を実装した。いずれも比較側（resolveBaseline / seriesKey）の追加であり、記録側（recorder）と capability 宣言には一切手が入っていない。したがって instrument.capabilities は7項目のまま、composition_id も /2 のまま変わらない。変わるのは release で上がる adapter_version だけである。0.8.0 の manifest と runs/ は git 履歴（v0.9.0 以前）に残る。",
+    "record_path_isolation_verified": "previous-superset / series key が比較側の変更であり記録側に漏れていないことを、0.8.0 preimage との構造 diff で機械判定して PASS。6/6 とも差分は instrument.adapter_version の1パスのみで、instrument.capabilities / config_digest / surface / provenance / environment はすべて不変、observations は配列丸ごと一致（457 / 1958 / 1540 / 76 / 195 / 30）。0.8.0 の録り直しが2パスだったのに対し今回が1パスに収まったことが、capability を触っていないことの機械的な裏付けである。"
   },
   "preconditions": {
     "subject_repo": "playpark-llc/shift-bud",
@@ -21,8 +21,8 @@
       "pnpm --filter @shift-bud/shared build"
     ],
     "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。この欠落は completeness.module_errors として構造化列挙される。",
-    "vdelta_version": "0.8.0",
-    "vdelta_source": "npm 公開版 vdelta@0.8.0（npx -y vdelta@0.8.0）",
+    "vdelta_version": "0.9.0",
+    "vdelta_source": "npm 公開版 vdelta@0.9.0（npx -y vdelta@0.9.0）",
     "node_version": "v24.18.1",
     "runner_version": "4.1.10",
     "declared_env": {
@@ -37,15 +37,15 @@
   "control_proof": {
     "description": "§8.3 が要求するコントロール証明。同一 vdelta・同一 tree で packages/shared を2回記録し run_id が一致することを確認した。",
     "package": "packages/shared",
-    "run_id": "run_6375a2815d863152df9a9dd997d6c926d02e1f0f3cfee5c3bb3c69a6fe0ecbf0",
+    "run_id": "run_b228cea1360abaea95fe36b4983a365164cd3e3c77dcdacb2c1f6e5425055ecf",
     "repetitions": 2,
     "stable": true,
-    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 baseline と同じ挙動。"
+    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 baseline と同じ挙動。"
   },
   "streams": [
     {
       "package": "packages/backend",
-      "run_id": "run_da1a45a2396142dc45dea5dca02949040d96e47c93c1d16ee9d36c598d313132",
+      "run_id": "run_b8ac197d96f6becb00d2f7bc20eb0e9573342abda00fe1f6628ec9dd6b60da39",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -59,7 +59,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb",
         "capabilities": {
@@ -100,7 +100,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_6591f05a8cd176c35e72df2b549dbe16c9de6287d3863829d28fa9d9718a7ec6",
+      "run_id": "run_28b7761abbfeab48c166a7128ec7a376484208c2e9c19754379245c67dadad19",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -112,7 +112,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7",
         "capabilities": {
@@ -153,7 +153,7 @@
     },
     {
       "package": "packages/shared",
-      "run_id": "run_6375a2815d863152df9a9dd997d6c926d02e1f0f3cfee5c3bb3c69a6fe0ecbf0",
+      "run_id": "run_b228cea1360abaea95fe36b4983a365164cd3e3c77dcdacb2c1f6e5425055ecf",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -165,7 +165,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -205,7 +205,7 @@
     },
     {
       "package": "packages/landing",
-      "run_id": "run_492aea6140243103906ba6a6ed44eb327bf75682a578a8ba8c55612aa5c4e5f3",
+      "run_id": "run_2d9a0587bba60a23e16429cd988954feaf61e1be1efa2e25f61f259535e0631b",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -217,7 +217,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -257,7 +257,7 @@
     },
     {
       "package": "packages/video",
-      "run_id": "run_9484e7e36073885b2aad231151569318c62dbda956f43edadda463894bf6706e",
+      "run_id": "run_0b4b5d1410f878521435a27ba3950fd4c950609e3c66ef6ccebde9ac4ef87798",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -269,7 +269,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -309,7 +309,7 @@
     },
     {
       "package": "packages/e2e",
-      "run_id": "run_1ffa886c3ec3b2d303fc7eaf1261db21d50332b80c8dceea251602f3d8c6e322",
+      "run_id": "run_8fad1bc542b42daf8b2efeb2c4a09ccf962e98b3ee73e01e7420026a7650cc69",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -323,7 +323,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -365,7 +365,7 @@
   "superseded": [
     {
       "package": "packages/backend",
-      "run_id": "run_b9f7f7efc53d4d9f1e0fd91e7b90922cd1cf65de32d6b7005aa682ad716b67ed",
+      "run_id": "run_cd8e98217850e1f16b2c5616daf28d501729eb34f64f26ce90f184158e677da1",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -379,7 +379,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb",
         "capabilities": {
@@ -444,7 +444,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_21fcc8eac20c85f8f860a57884fa6b59003d7f063b97d4b6ddf9261a0d1574ee",
+      "run_id": "run_40a3df821906469b705d96e1c7b269425117a0e4152d4207c52ad7addd461e25",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -456,7 +456,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7",
         "capabilities": {
@@ -520,7 +520,7 @@
       "unhandled_errors": 0
     }
   ],
-  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。",
+  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。退避先は worktree の外に置くこと — 内側に置くと ignore 対象外の未追跡ファイルとして tree に現れ、provenance.tree_digest が baseline と食い違う。",
   "totals": {
     "streams": 6,
     "observations": 4256,

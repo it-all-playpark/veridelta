@@ -7,11 +7,11 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.8.0 / `vitest-native/2`。**
-> 初版 0.3.0 / `vitest-native/1` から数えて5回録り直している:
+> **現行 baseline は vdelta 0.9.0 / `vitest-native/2`。**
+> 初版 0.3.0 / `vitest-native/1` から数えて6回録り直している:
 > 0.3.0 → 0.4.0（issue #39 / PR #46）、0.4.0 → 0.5.0（issue #49 / PR #50）、
 > 0.5.0 → 0.6.0（issue #55 / PR #56）、0.6.0 → 0.7.0（issue #60 / PR #61）、
-> 0.7.0 → 0.8.0（issue #64 / PR #65）。
+> 0.7.0 → 0.8.0（issue #64 / PR #65）、0.8.0 → 0.9.0（issue #68 / PR #69）。
 >
 > **`instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの**なので、
 > record 形状が変わらなくても **release が入るだけで** spec §6.2 の same-instrument rule により
@@ -49,12 +49,12 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_da1a45a2` | 1958 | complete |
-| frontend | `run_6591f05a` | 1540 | complete |
-| shared | `run_6375a281` | 457 | complete |
-| landing | `run_492aea61` | 76 | complete |
-| video | `run_9484e7e3` | 195 | complete |
-| e2e | `run_1ffa886c` | 30 | complete |
+| backend | `run_b8ac197d` | 1958 | complete |
+| frontend | `run_28b7761a` | 1540 | complete |
+| shared | `run_b228cea1` | 457 | complete |
+| landing | `run_2d9a0587` | 76 | complete |
+| video | `run_0b4b5d14` | 195 | complete |
+| e2e | `run_8fad1bc5` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
@@ -72,8 +72,10 @@ Playwright adapter 追加が1回入ったが、検証面は一度も動いてい
   Playwright 側のみが宣言し、vitest には追加しないと決めたため（issue #53 意思決定(2)）
 - **0.8.0 で `selector-relation` が加わり 6 → 7 項目**（issue #64 / PR #65 = F-5）。
   これが 0.7.0 → 0.8.0 で `capabilities` が動いた唯一の理由
+- **0.9.0（F-5-E `previous-superset` / series key）はこの宣言を変えていない** — E は
+  比較側の baseline 選択の話であり、記録側には触れていない（issue #68 / PR #69）
 
-`superseded` の2件（`run_b9f7f7ef` / `run_21fcc8ea`）は baseline ではない。
+`superseded` の2件（`run_cd8e9821` / `run_40a3df82`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -106,7 +108,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.8.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.9.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -129,7 +131,7 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_6375a281` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_b228cea1` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -399,3 +401,49 @@ capabilities の追加が digest を動かしていないことが report 側か
 > `instrument.capabilities.selector-relation`）。今回まさにこれを踏み、
 > 親を許容指定したのに FAIL になった。prefix 一致なら親の指定で配下を許容でき、
 > 粒度を絞りたければ子パスまで書けばよい。
+
+### 2026-08-03 — F-5-E（`previous-superset` / series key）着地に伴う録り直し（0.8.0 → 0.9.0）
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.9.0`（npm 公開版。PR #69 = issue #68 マージ後の PR #70 release） |
+| 変更 | `previous-superset` baseline mode と `seriesKey`（F-5-E）。**いずれも比較側のみ** |
+| `VITEST_CAPABILITIES` | **7項目のまま**（`selector-relation` を含む。追加削除なし） |
+| `composition_id` | **`vitest-native/2` のまま** |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`、node v24.18.1（前回と同一） |
+| 結果 | 全 run_id が変化。**差分は1パスのみ**で PASS |
+
+**0.8.0 の録り直しが2パスだったのに対し、今回は1パスに戻った。**
+`diff-preimages.mjs` を既定の許容パス（`instrument.adapter_version` のみ）で回した結果、6/6 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.8.0"` → `"0.9.0"` |
+
+**これ以外の差分はゼロ。** `capabilities` / `config_digest` / `surface` / `provenance` /
+`environment` はすべて不変、`observations` は 6/6 とも配列丸ごと一致
+（457 / 1958 / 1540 / 76 / 195 / 30）。
+
+> **1パスに収まったこと自体が受け入れ基準の機械判定である。** issue #68 は
+> 「capability を変えていない」ことを受け入れ基準に挙げ、その検証手段として
+> 「許容差分は `instrument.adapter_version` の1パスのみになるはず。2パス以上出たら
+> capability を触ってしまっている」と事前に宣言していた。E は baseline **選択**の話であり、
+> 記録される観測には触れない — それが実データで裏付けられた。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_b228cea1` が一致。決定性は維持。
+  2回目が `baseline-missing` のままなのも過去6版と同じ（content addressing が完全重複を畳む）
+- **F-2 の再確認** — 0.9.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去6版と同一）。
+  superseded 2件も 0.8.0 との構造 diff で `instrument.adapter_version` の1パスのみの PASS
+- **自己検証性** — 全8件について保存した gz から `sha256(canonicalJson(preimage))` を再計算して
+  ファイル名と一致することを確認。あわせて**同じ手順を 0.8.0 の gz 6件にも適用して一致を確認**し、
+  検証コード自体が正しいことを先に担保してから 0.9.0 を検証した
+
+> **superseded を録り直すときの退避先は worktree の外に置くこと。** 今回まず
+> `packages/shared/dist.vdelta-bak` へ退避して失敗した。`dist/` は `.gitignore` されているが
+> `dist.vdelta-bak` は対象外なので、**未追跡ファイルとして tree に現れ**
+> `provenance.tree_digest` が `f0ffc727…` → `d0a11915…`、`dirty_diff_digest` も動いて
+> baseline と provenance が揃わなくなる（構造 diff が4件の XXX で FAIL して露見）。
+> `/tmp` など repo 外へ退避し、記録前に `git status --short` が空であることを確認する。
