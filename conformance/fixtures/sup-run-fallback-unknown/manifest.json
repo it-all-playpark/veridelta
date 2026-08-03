@@ -1,0 +1,19 @@
+{
+  "name": "sup-run-fallback-unknown",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3", "§6.4"],
+  "notes": "`vdelta run`'s 2-stage default baseline resolution (issue #72): when stage 1 (`previous-comparable`) abstains `baseline-missing` and stage 2 (`previous-superset`) abstains for a *different* reason, stage 2's report is what's returned, so the more specific reason surfaces to the consumer instead of being collapsed into `baseline-missing`. `C`'s only series-mate `A` (selector `['src']`) and `C` (selector `['src/a', 'tests']`) neither contain one another: `'src'` overlaps `'src/a'` without covering `'tests'`, so `selectorRelation` returns `'unknown'` (same shape as `sup-abstain-relation-unknown`). `A` is never a candidate, but the undecided relation is recorded, so stage 2 abstains `selector-relation-unknown`/`determined` -- distinct from `baseline-missing` -- and that stage-2 report (with `baseline: null` and no `near_miss`, since `previous-superset` reports never carry that `previous-comparable`-only field) is what `vdelta run` returns.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed a green + other green + t green"},
+    {"do": "run", "id": "A", "args": ["src"], "expectExit": 0},
+    {"do": "run", "id": "C", "args": ["src/a", "tests"], "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "C", "path": "comparability", "eq": "none"},
+    {"report": "C", "path": "comparability_detail.reason", "eq": "selector-relation-unknown"},
+    {"report": "C", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "C", "path": "comparability_detail.near_miss", "defined": false},
+    {"report": "C", "path": "baseline", "eq": null}
+  ]
+}

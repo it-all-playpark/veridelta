@@ -1,0 +1,21 @@
+{
+  "name": "sup-run-fallback-subset",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3", "§6.1"],
+  "notes": "`vdelta run`'s 2-stage default baseline resolution (issue #72) falls through to stage 2 (`previous-superset`) when stage 1 abstains `baseline-missing`: `B`'s only series-mate is the wider run `A` (selector `[]`), so stage 1 has no same-stream candidate. Stage 2 proves `A` a superset of `B` (empty selector selects the whole inventory) and wins, disclosed via `baseline.mode: 'previous-superset'` and `baseline.selection_reason: 'most-recent-maximal-proven-superset'` (not silently, per §5.3). `tests/out.test.ts` (red) falls outside `B`'s narrower selector and is disclosed via `transitions.out_of_scope`, never claimed `repaired` -- identical to `sup-single-candidate`'s `cmp` assertion, since both fixtures share the same `projects/base` seed.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + out-of-scope red"},
+    {"do": "run", "id": "A", "args": [], "expectExit": 1},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "B", "path": "comparability", "eq": "subset"},
+    {"report": "B", "path": "baseline.mode", "eq": "previous-superset"},
+    {"report": "B", "path": "baseline.selection_reason", "eq": "most-recent-maximal-proven-superset"},
+    {"report": "B", "path": "baseline.superset_candidates", "defined": false},
+    {"report": "B", "path": "verification_surface.events", "containsMatch": {"kind": "selector-subset", "capability": "selector-relation", "from": "", "to": "src"}},
+    {"report": "B", "path": "transitions.out_of_scope", "eq": ["tests/out.test.ts::out of scope red"]},
+    {"sameValue": [{"report": "B", "path": "baseline.run_id"}, {"report": "A", "path": "current.run_id"}]}
+  ]
+}

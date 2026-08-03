@@ -1,0 +1,19 @@
+{
+  "name": "sup-run-fallback-missing",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3", "§5.4"],
+  "notes": "`vdelta run`'s 2-stage default baseline resolution (issue #72): when stage 2 (`previous-superset`) also abstains `baseline-missing`, the report returned to the consumer is stage 1's (`previous-comparable`) unchanged, not stage 2's. `C`'s only series-mate is `N` (selector `['src']`), a narrower run: `selectorRelation(N.selector, C.selector)` decides `'subset'`, so `N` is never a `previous-superset` candidate and stage 2 abstains `baseline-missing`/`determined` too (same shape as `sup-abstain-baseline-missing`). Because both stages land on `baseline-missing`, stage 1's report is what's returned -- this fixture intentionally does not assert on `comparability_detail.near_miss`, since stage 1's §5.4 near_miss disclosure may or may not be present depending on the vitest adapter's own comparison and is orthogonal to the fallback logic under test here.",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + t green"},
+    {"do": "run", "id": "N", "args": ["src"], "expectExit": 0},
+    {"do": "run", "id": "C", "args": [], "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "C", "path": "comparability", "eq": "none"},
+    {"report": "C", "path": "comparability_detail.reason", "eq": "baseline-missing"},
+    {"report": "C", "path": "comparability_detail.kind", "eq": "determined"},
+    {"report": "C", "path": "baseline", "eq": null},
+    {"report": "C", "path": "outcome_verdict", "eq": "inconclusive"}
+  ]
+}
