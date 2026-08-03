@@ -365,7 +365,7 @@
   "superseded": [
     {
       "package": "packages/backend",
-      "run_id": "run_b9f7f7efc53d4d9f1e0fd91e7b90922cd1cf65de32d6b7005aa682ad716b67ed",
+      "run_id": "run_cd8e98217850e1f16b2c5616daf28d501729eb34f64f26ce90f184158e677da1",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -379,7 +379,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb",
         "capabilities": {
@@ -444,7 +444,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_21fcc8eac20c85f8f860a57884fa6b59003d7f063b97d4b6ddf9261a0d1574ee",
+      "run_id": "run_40a3df821906469b705d96e1c7b269425117a0e4152d4207c52ad7addd461e25",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -456,7 +456,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.8.0",
+        "adapter_version": "0.9.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7",
         "capabilities": {
@@ -520,7 +520,7 @@
       "unhandled_errors": 0
     }
   ],
-  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。",
+  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。退避先は worktree の外に置くこと — 内側に置くと ignore 対象外の未追跡ファイルとして tree に現れ、provenance.tree_digest が baseline と食い違う。",
   "totals": {
     "streams": 6,
     "observations": 4256,

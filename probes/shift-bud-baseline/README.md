@@ -75,7 +75,7 @@ Playwright adapter 追加が1回入ったが、検証面は一度も動いてい
 - **0.9.0（F-5-E `previous-superset` / series key）はこの宣言を変えていない** — E は
   比較側の baseline 選択の話であり、記録側には触れていない（issue #68 / PR #69）
 
-`superseded` の2件（`run_b9f7f7ef` / `run_21fcc8ea`）は baseline ではない。
+`superseded` の2件（`run_cd8e9821` / `run_40a3df82`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -434,6 +434,16 @@ capabilities の追加が digest を動かしていないことが report 側か
 
 - **コントロール証明** — `packages/shared` を2回記録し `run_b228cea1` が一致。決定性は維持。
   2回目が `baseline-missing` のままなのも過去6版と同じ（content addressing が完全重複を畳む）
-- **自己検証性** — 保存した gz から `sha256(canonicalJson(preimage))` を再計算して
+- **F-2 の再確認** — 0.9.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去6版と同一）。
+  superseded 2件も 0.8.0 との構造 diff で `instrument.adapter_version` の1パスのみの PASS
+- **自己検証性** — 全8件について保存した gz から `sha256(canonicalJson(preimage))` を再計算して
   ファイル名と一致することを確認。あわせて**同じ手順を 0.8.0 の gz 6件にも適用して一致を確認**し、
   検証コード自体が正しいことを先に担保してから 0.9.0 を検証した
+
+> **superseded を録り直すときの退避先は worktree の外に置くこと。** 今回まず
+> `packages/shared/dist.vdelta-bak` へ退避して失敗した。`dist/` は `.gitignore` されているが
+> `dist.vdelta-bak` は対象外なので、**未追跡ファイルとして tree に現れ**
+> `provenance.tree_digest` が `f0ffc727…` → `d0a11915…`、`dirty_diff_digest` も動いて
+> baseline と provenance が揃わなくなる（構造 diff が4件の XXX で FAIL して露見）。
+> `/tmp` など repo 外へ退避し、記録前に `git status --short` が空であることを確認する。
