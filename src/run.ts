@@ -195,6 +195,55 @@ function signalNumber(signal: NodeJS.Signals): number {
   return table[signal] ?? 15
 }
 
+/**
+ * F1: the default baseline resolution `vdelta run` performs -- an additive
+ * 2-stage fallback over `buildComparisonReport` (spec §5.2/§5.3).
+ *
+ * Stage 1 is `previous-comparable`. Whenever stage 1 resolves a baseline (or
+ * abstains for any reason other than `baseline-missing`), that report is
+ * returned unchanged: the fallback code path below is never reached, so
+ * every previously-successful comparison stays byte-identical (additivity).
+ *
+ * Stage 2 (`previous-superset`) only runs when stage 1 abstained with
+ * `baseline-missing`. §5.3's "never fall back silently" is satisfied by the
+ * REQUIRED disclosure on a stage-2 win: `baseline.mode` is
+ * `'previous-superset'`, `baseline.selection_reason` is
+ * `'most-recent-maximal-proven-superset'`, and the report carries a
+ * `selector-subset` verification-surface event -- `subset` is itself a
+ * normal, spec-defined comparability (§6.1), not a silent downgrade.
+ *
+ * If stage 2 also abstains with `baseline-missing`, the stage-1 report is
+ * returned so its §5.4 `near_miss` disclosure (a `previous-comparable`-only
+ * field) is preserved rather than lost. Any other stage-2 abstention
+ * (`selector-relation-unknown`, `store-corrupt`, ...) is returned as-is, so
+ * consumers keep the reason distinction §5.2 (#68 D) requires between "no
+ * candidate existed" and "a candidate's relation couldn't be decided".
+ */
+export function buildRunComparisonReport(
+  store: RunStore,
+  runId: string,
+): ComparisonReport {
+  const first = buildComparisonReport(store, runId, {
+    mode: 'previous-comparable',
+  })
+  if (
+    first.comparability !== 'none' ||
+    first.comparability_detail?.reason !== 'baseline-missing'
+  ) {
+    return first
+  }
+  const second = buildComparisonReport(store, runId, {
+    mode: 'previous-superset',
+  })
+  if (
+    second.comparability === 'none' &&
+    second.comparability_detail?.reason === 'baseline-missing'
+  ) {
+    return first
+  }
+  return second
+}
+
 export async function runAndRecord(
   cmd: string[],
   cwd: string,
@@ -293,9 +342,7 @@ export async function runAndRecord(
       store.releaseLock()
     }
 
-    const report = buildComparisonReport(store, runId, {
-      mode: 'previous-comparable',
-    })
+    const report = buildRunComparisonReport(store, runId)
 
     // Auto-GC (§4.1 SHOULD be bounded): keep the store from growing
     // unbounded across repeated `vdelta run` invocations. Runs *after* the

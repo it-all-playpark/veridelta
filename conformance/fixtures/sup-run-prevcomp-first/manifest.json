@@ -1,0 +1,20 @@
+{
+  "name": "sup-run-prevcomp-first",
+  "class": "pitfall",
+  "spec_refs": ["§5.2", "§5.3"],
+  "notes": "Additivity of `vdelta run`'s 2-stage default baseline resolution (issue #72): even though a wide run (`W`, selector `[]`) exists in the store and would be a valid `previous-superset` candidate, stage 1 (`previous-comparable`) resolves first against the narrower same-stream run `A` (selector `['src']`), so stage 2 is never reached. `B`'s automatic report proves this by carrying `baseline.mode: 'previous-comparable'` (not `'previous-superset'`) and by pointing `baseline.run_id` at `A`'s `current.run_id`, not `W`'s. A marker commit between `A` and `B` keeps the two runs content-distinct so the store does not dedupe them to a single run_id (§3.5).",
+  "steps": [
+    {"do": "apply", "project": "base"},
+    {"do": "commit", "message": "seed src green + out-of-scope red"},
+    {"do": "run", "id": "W", "args": [], "expectExit": 1},
+    {"do": "run", "id": "A", "args": ["src"], "expectExit": 0},
+    {"do": "write-file", "path": "marker.txt", "content": "b\n"},
+    {"do": "commit", "message": "advance tree before B (keep A and B content-distinct)"},
+    {"do": "run", "id": "B", "args": ["src"], "expectExit": 0}
+  ],
+  "assertions": [
+    {"report": "B", "path": "baseline.mode", "eq": "previous-comparable"},
+    {"report": "B", "path": "baseline.selection_reason", "eq": "same-worktree-command-config-scope"},
+    {"sameValue": [{"report": "B", "path": "baseline.run_id"}, {"report": "A", "path": "current.run_id"}]}
+  ]
+}
