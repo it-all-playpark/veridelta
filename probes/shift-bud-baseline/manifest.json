@@ -1,13 +1,13 @@
 {
-  "probe": "shift-bud Phase 0a baseline (vdelta 0.9.0 / vitest-native/2)",
+  "probe": "shift-bud Phase 0a baseline (vdelta 0.10.0 / vitest-native/2)",
   "design_doc": "docs/superpowers/specs/2026-07-28-playwright-adapter-design.md",
   "design_section": "§8.3 baseline manifest 仕様 / §6 Phase 0a",
-  "generated_by": "vdelta run (F-5-E previous-superset baseline mode / series key 着地に伴う録り直し)",
+  "generated_by": "vdelta run (F-5-E フォールバック着地と node bump に伴う録り直し)",
   "supersedes": {
-    "vdelta_version": "0.8.0",
+    "vdelta_version": "0.9.0",
     "composition_id": "vitest-native/2",
-    "reason": "issue #68 (PR #69) が F-5-E（previous-superset baseline mode と series key）を実装した。いずれも比較側（resolveBaseline / seriesKey）の追加であり、記録側（recorder）と capability 宣言には一切手が入っていない。したがって instrument.capabilities は7項目のまま、composition_id も /2 のまま変わらない。変わるのは release で上がる adapter_version だけである。0.8.0 の manifest と runs/ は git 履歴（v0.9.0 以前）に残る。",
-    "record_path_isolation_verified": "previous-superset / series key が比較側の変更であり記録側に漏れていないことを、0.8.0 preimage との構造 diff で機械判定して PASS。6/6 とも差分は instrument.adapter_version の1パスのみで、instrument.capabilities / config_digest / surface / provenance / environment はすべて不変、observations は配列丸ごと一致（457 / 1958 / 1540 / 76 / 195 / 30）。0.8.0 の録り直しが2パスだったのに対し今回が1パスに収まったことが、capability を触っていないことの機械的な裏付けである。"
+    "reason": "issue #72 (PR #75) が vdelta run の baseline 解決に previous-superset の加法的フォールバックを入れた。変更は src/run.ts の呼び出し側のみで、resolveBaseline の選択規則・recorder・capability 宣言には一切手が入っていない。したがって instrument.capabilities は7項目のまま、composition_id も /2 のまま変わらない。あわせて release で adapter_version が 0.10.0 に上がる。**加えて記録環境の node が v24.18.1 → v24.19.0 に上がったため environment.runtime も動く**（README「比較前に検証する前提条件」が予告している正当な変化）。0.9.0 の manifest と runs/ は git 履歴（v0.10.0 以前）に残る。",
+    "record_path_isolation_verified": "0.9.0 preimage との構造 diff で機械判定して PASS。baseline 6/6・superseded 2/2 とも差分は instrument.adapter_version と environment.runtime の2パスのみで、instrument.capabilities / config_digest / surface / provenance はすべて不変、observations は配列丸ごと一致（457 / 1958 / 1540 / 76 / 195 / 30、superseded 528 / 536）。**capabilities が3つ目のパスとして出ていないことが、issue #72 の変更が比較側に閉じている（記録側に漏れていない）ことの機械的な裏付けである。** node bump は許容パスとして明示的に指定したうえでの PASS であり、暗黙に見逃したものではない。"
   },
   "preconditions": {
     "subject_repo": "playpark-llc/shift-bud",
@@ -21,9 +21,9 @@
       "pnpm --filter @shift-bud/shared build"
     ],
     "subject_prep_note": "shared の build は必須。未実施だと backend/frontend が workspace subpath (@shift-bud/shared/*) を解決できず module load に失敗し、観測数が backend 1958→528 / frontend 1540→536 に縮む（superseded 参照）。この欠落は completeness.module_errors として構造化列挙される。",
-    "vdelta_version": "0.9.0",
-    "vdelta_source": "npm 公開版 vdelta@0.9.0（npx -y vdelta@0.9.0）",
-    "node_version": "v24.18.1",
+    "vdelta_version": "0.10.0",
+    "vdelta_source": "npm 公開版 vdelta@0.10.0（npx -y vdelta@0.10.0）",
+    "node_version": "v24.19.0",
     "runner_version": "4.1.10",
     "declared_env": {
       "CI": null,
@@ -37,15 +37,15 @@
   "control_proof": {
     "description": "§8.3 が要求するコントロール証明。同一 vdelta・同一 tree で packages/shared を2回記録し run_id が一致することを確認した。",
     "package": "packages/shared",
-    "run_id": "run_b228cea1360abaea95fe36b4983a365164cd3e3c77dcdacb2c1f6e5425055ecf",
+    "run_id": "run_01d22ca9cbf2f89bc4198bd30d22db08e3d5de4e2307fce6ce4018eb23aea2f3",
     "repetitions": 2,
     "stable": true,
-    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 baseline と同じ挙動。"
+    "note": "2回目は content addressing が完全重複を畳んだため baseline-missing のまま（spec §3.5 の設計どおり）。0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 / 0.9.0 baseline と同じ挙動。"
   },
   "streams": [
     {
       "package": "packages/backend",
-      "run_id": "run_b8ac197d96f6becb00d2f7bc20eb0e9573342abda00fe1f6628ec9dd6b60da39",
+      "run_id": "run_a38681d134b9fb9b78a82e19c6772ca469e5e3039e9457b49410907088516731",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -59,7 +59,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb",
         "capabilities": {
@@ -75,7 +75,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -100,7 +100,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_28b7761abbfeab48c166a7128ec7a376484208c2e9c19754379245c67dadad19",
+      "run_id": "run_0b5b01080189b02e16d2a974c6ce7e785314bd32e7ef455e307227e35cd26d75",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -112,7 +112,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7",
         "capabilities": {
@@ -128,7 +128,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -153,7 +153,7 @@
     },
     {
       "package": "packages/shared",
-      "run_id": "run_b228cea1360abaea95fe36b4983a365164cd3e3c77dcdacb2c1f6e5425055ecf",
+      "run_id": "run_01d22ca9cbf2f89bc4198bd30d22db08e3d5de4e2307fce6ce4018eb23aea2f3",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -165,7 +165,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -181,7 +181,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -205,7 +205,7 @@
     },
     {
       "package": "packages/landing",
-      "run_id": "run_2d9a0587bba60a23e16429cd988954feaf61e1be1efa2e25f61f259535e0631b",
+      "run_id": "run_077bae44996c5d8809c38891a3f1784d629f52d7861bf4da3a3ee21d2427adf4",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -217,7 +217,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -233,7 +233,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -257,7 +257,7 @@
     },
     {
       "package": "packages/video",
-      "run_id": "run_0b4b5d1410f878521435a27ba3950fd4c950609e3c66ef6ccebde9ac4ef87798",
+      "run_id": "run_d42c25ae13825477c65169cf7ca63f945d613adb91e80f90ce3c26643223339d",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -269,7 +269,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -285,7 +285,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -309,7 +309,7 @@
     },
     {
       "package": "packages/e2e",
-      "run_id": "run_8fad1bc542b42daf8b2efeb2c4a09ccf962e98b3ee73e01e7420026a7650cc69",
+      "run_id": "run_b5840cf00273d3eaa118427bd888830a2c4f7aff326cd45d731e043a1b0204f5",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -323,7 +323,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:46ee147e5ae8574e17d93244cf9cafb0ea13fb88993fcd40d63c745cff0c2ea2",
         "capabilities": {
@@ -339,7 +339,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -365,7 +365,7 @@
   "superseded": [
     {
       "package": "packages/backend",
-      "run_id": "run_cd8e98217850e1f16b2c5616daf28d501729eb34f64f26ce90f184158e677da1",
+      "run_id": "run_2c8eaba37881a4a64d2bd4ee144702162807b9536a8a27fbbbc9ec3fd4c02dd0",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -379,7 +379,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:7c7de262366769d1c5f68e62d7f5972ed85d909258ef3b6216a42b48de91ddcb",
         "capabilities": {
@@ -395,7 +395,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -444,7 +444,7 @@
     },
     {
       "package": "packages/frontend",
-      "run_id": "run_40a3df821906469b705d96e1c7b269425117a0e4152d4207c52ad7addd461e25",
+      "run_id": "run_2bcfc36ebb624518fad5c82b5f7a858eca54644a0a5ed6bfb5249ea557b7d68b",
       "run_id_verified": true,
       "invocation": {
         "command": [
@@ -456,7 +456,7 @@
       },
       "instrument": {
         "adapter": "vitest",
-        "adapter_version": "0.9.0",
+        "adapter_version": "0.10.0",
         "composition_id": "vitest-native/2",
         "config_digest": "sha256:0dcfea0bb771b098d686d73c577d721fa858c172329d60f39d99ab1035661cb7",
         "capabilities": {
@@ -472,7 +472,7 @@
       "environment": {
         "runner": "vitest",
         "runner_version": "4.1.10",
-        "runtime": "node v24.18.1",
+        "runtime": "node v24.19.0",
         "os": "darwin",
         "env_fingerprint": "sha256:5d0358ca313787c5a53e9d9cfcda797d32a2bd621e0824fd74837ad46137964e"
       },
@@ -520,7 +520,7 @@
       "unhandled_errors": 0
     }
   ],
-  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。退避先は worktree の外に置くこと — 内側に置くと ignore 対象外の未追跡ファイルとして tree に現れ、provenance.tree_digest が baseline と食い違う。",
+  "superseded_note": "shared 未 build 状態で記録した backend/frontend。baseline ではなく、module load 失敗時の観測欠落を示す証拠として保存する（Phase 0a 所見 F-2）。観測数・module_errors 件数は 0.3.0 / 0.4.0 / 0.5.0 / 0.6.0 / 0.7.0 / 0.8.0 / 0.9.0 の superseded と同一（backend 528 観測 / 84 ファイル、frontend 536 観測 / 43 ファイル）。退避先は worktree の外に置くこと — 内側に置くと ignore 対象外の未追跡ファイルとして tree に現れ、provenance.tree_digest が baseline と食い違う。",
   "totals": {
     "streams": 6,
     "observations": 4256,

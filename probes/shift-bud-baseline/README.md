@@ -7,11 +7,12 @@ shift-bud 側の `.veridelta` store は gitignore され auto-GC もかかる（
 retention policy）ため、根拠 record が蒸発しうる。それを避けるためここに置く
 （§8.3 baseline manifest 仕様）。
 
-> **現行 baseline は vdelta 0.9.0 / `vitest-native/2`。**
-> 初版 0.3.0 / `vitest-native/1` から数えて6回録り直している:
+> **現行 baseline は vdelta 0.10.0 / `vitest-native/2`。**
+> 初版 0.3.0 / `vitest-native/1` から数えて7回録り直している:
 > 0.3.0 → 0.4.0（issue #39 / PR #46）、0.4.0 → 0.5.0（issue #49 / PR #50）、
 > 0.5.0 → 0.6.0（issue #55 / PR #56）、0.6.0 → 0.7.0（issue #60 / PR #61）、
-> 0.7.0 → 0.8.0（issue #64 / PR #65）、0.8.0 → 0.9.0（issue #68 / PR #69）。
+> 0.7.0 → 0.8.0（issue #64 / PR #65）、0.8.0 → 0.9.0（issue #68 / PR #69）、
+> 0.9.0 → 0.10.0（issue #72 / PR #75）。
 >
 > **`instrument.adapter_version` は `VDELTA_VERSION` = package version そのもの**なので、
 > record 形状が変わらなくても **release が入るだけで** spec §6.2 の same-instrument rule により
@@ -49,12 +50,12 @@ const id = 'run_' + createHash('sha256').update(canonicalJson(preimage), 'utf8')
 
 | package | run_id | observations | completeness |
 | --- | --- | --- | --- |
-| backend | `run_b8ac197d` | 1958 | complete |
-| frontend | `run_28b7761a` | 1540 | complete |
-| shared | `run_b228cea1` | 457 | complete |
-| landing | `run_2d9a0587` | 76 | complete |
-| video | `run_0b4b5d14` | 195 | complete |
-| e2e | `run_8fad1bc5` | 30 | complete |
+| backend | `run_a38681d1` | 1958 | complete |
+| frontend | `run_0b5b0108` | 1540 | complete |
+| shared | `run_01d22ca9` | 457 | complete |
+| landing | `run_077bae44` | 76 | complete |
+| video | `run_d42c25ae` | 195 | complete |
+| e2e | `run_b5840cf0` | 30 | complete |
 
 計 **4256 observations**、全ストリームで `report != null`（passthrough に落ちない）。
 Phase 0a の受け入れ基準1 を満たす。
@@ -74,8 +75,10 @@ Playwright adapter 追加が1回入ったが、検証面は一度も動いてい
   これが 0.7.0 → 0.8.0 で `capabilities` が動いた唯一の理由
 - **0.9.0（F-5-E `previous-superset` / series key）はこの宣言を変えていない** — E は
   比較側の baseline 選択の話であり、記録側には触れていない（issue #68 / PR #69）
+- **0.10.0（`vdelta run` の加法的フォールバック）もこの宣言を変えていない** — 変更は
+  `src/run.ts` の呼び出し側のみ（issue #72 / PR #75）
 
-`superseded` の2件（`run_cd8e9821` / `run_40a3df82`）は baseline ではない。
+`superseded` の2件（`run_2c8eaba3` / `run_2bcfc36e`）は baseline ではない。
 下記 F-2 の証拠として保存している。
 
 ### `config_digest` の分岐（F-1 の実データ確認）
@@ -108,7 +111,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @shift-bud/shared build      # 必須。省くと F-2 の観測欠落が起きる
 
 # 2. 各パッケージで記録
-cd packages/<pkg> && npx -y vdelta@0.9.0 run -- npx vitest run <selector>
+cd packages/<pkg> && npx -y vdelta@0.10.0 run -- npx vitest run <selector>
 ```
 
 `selector` は `manifest.json` の `streams[].invocation` を参照（backend のみ `src`、
@@ -126,12 +129,12 @@ e2e は `screenshots/recording/__tests__`、他は空）。
 - subject の commit SHA（`8cf90518`）と `provenance.tree_digest`（`f0ffc727…`）
 - 記録に使う worktree の**絶対パス**（`repo.identity` / `repo.worktree` に入り run_id に効く）
 - vdelta の version（`instrument.adapter_version`。spec §6.2 により instrument 変更は comparability を切る）
-- node version（現 baseline は **v24.18.1**）/ vitest version（`4.1.10`）
+- node version（現 baseline は **v24.19.0**）/ vitest version（`4.1.10`）
 - `CI` / `NODE_ENV` / `TZ` / `LANG`（`environment.env_fingerprint` に入る）
 
 ### コントロール証明
 
-同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_b228cea1` が一致することを確認済み。
+同一 vdelta・同一 tree で `packages/shared` を2回記録し `run_01d22ca9` が一致することを確認済み。
 2回目が `baseline-missing` のままなのは content addressing が完全重複を畳んだ結果であり、
 spec §3.5 の設計どおりの挙動。
 
@@ -447,3 +450,49 @@ capabilities の追加が digest を動かしていないことが report 側か
 > `provenance.tree_digest` が `f0ffc727…` → `d0a11915…`、`dirty_diff_digest` も動いて
 > baseline と provenance が揃わなくなる（構造 diff が4件の XXX で FAIL して露見）。
 > `/tmp` など repo 外へ退避し、記録前に `git status --short` が空であることを確認する。
+
+### 2026-08-04 — `vdelta run` の加法的フォールバック着地と node bump に伴う録り直し（0.9.0 → 0.10.0）
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | `vdelta@0.10.0`（npm 公開版。PR #75 = issue #72 マージ後の PR #76 release） |
+| 変更 | `vdelta run` の baseline 解決に `previous-superset` の加法的フォールバック。**`src/run.ts` の呼び出し側のみ** |
+| `VITEST_CAPABILITIES` | **7項目のまま**（追加削除なし） |
+| `composition_id` | **`vitest-native/2` のまま** |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`（前回と同一） |
+| **node** | **v24.18.1 → v24.19.0（記録機の mise が `lts` を更新）** |
+| 結果 | 全 run_id が変化。**差分は2パス**で PASS |
+
+**これまでと違い、vdelta 以外の変数（node）が同時に動いた回である。**
+`diff-preimages.mjs` に許容パスを2つ明示指定して回した結果、baseline 6/6・superseded 2/2 とも:
+
+| 差分パス | 内容 |
+| --- | --- |
+| `instrument.adapter_version` | `"0.9.0"` → `"0.10.0"` |
+| `environment.runtime` | `"node v24.18.1"` → `"node v24.19.0"` |
+
+**これ以外の差分はゼロ。** `capabilities` / `config_digest` / `surface` / `provenance` は
+すべて不変、`observations` は 8/8 とも配列丸ごと一致（457 / 1958 / 1540 / 76 / 195 / 30、
+superseded 528 / 536）。
+
+> **`instrument.capabilities` が3つ目のパスとして出ていないことが、判定の要点である。**
+> node bump によって許容パスが2つに増えたが、capability を触っていれば
+> `instrument.capabilities.*` が**3つ目**として必ず現れる。したがって
+> 「2パスで PASS」は「1パスで PASS」と同じ強さで capability 不変を主張できる。
+> node bump は許容パスとして**明示指定したうえでの** PASS であり、暗黙に見逃してはいない。
+
+**node を v24.18.1 に固定し直す選択は取らなかった。** node は今後も上がり続けるため、
+古い node を抱え続ける方が不自然であり、上記のとおり判定の鋭さは失われないため。
+`manifest.json` の `preconditions.node_version` を `v24.19.0` に更新した。
+
+確認したこと:
+
+- **コントロール証明** — `packages/shared` を2回記録し `run_01d22ca9` が一致。決定性は維持。
+  store 上 `packages/shared` の complete な 0.10.0 run が**1件しか存在しない**ことが、
+  2回の記録が同一 run_id に畳まれた（= 一致した）ことの機械的な確認になっている
+- **F-2 の再確認** — 0.10.0 でも `shared/dist` 退避時に `completeness.module_errors` が
+  backend 84件 / frontend 43件を列挙（観測数 528 / 536 も過去7版と同一）。
+  退避先を `/tmp`（repo 外）にしたので `provenance.tree_digest` は baseline と同じ `f0ffc727…`
+- **自己検証性** — 全8件について保存した gz から `sha256(canonicalJson(preimage))` を再計算して
+  ファイル名と一致することを確認。あわせて**同じ手順を 0.9.0 の gz 8件にも適用して一致を確認**し、
+  検証コード自体が正しいことを先に担保してから 0.10.0 を検証した
