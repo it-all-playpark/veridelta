@@ -75,12 +75,13 @@ function findVitestToken(cmd: readonly string[]): number | null {
 }
 
 /**
- * vitest 4.x CLI flags that always take their value as a *separate* argv
- * token (`--flag value`), never combined into the flag token itself. Used
- * by {@link splitCommandSelector} to recognize `--flag value` pairs and fold
- * them into a single `--flag=value` canonical token so that space-separated
- * and `=`-joined invocations normalize to the same command array (and
- * therefore the same stream key — see `streamKey` in src/compare.ts).
+ * vitest 4.x / 5.x CLI flags that always take their value as a *separate*
+ * argv token (`--flag value`), never combined into the flag token itself.
+ * Used by {@link splitCommandSelector} to recognize `--flag value` pairs and
+ * fold them into a single `--flag=value` canonical token so that
+ * space-separated and `=`-joined invocations normalize to the same command
+ * array (and therefore the same stream key — see `streamKey` in
+ * src/compare.ts).
  *
  * Deliberately excludes flags whose value is *optional*
  * (`--changed`, `--silent`, `--coverage`, `--browser`, `--inspect`, etc.):
@@ -92,8 +93,12 @@ function findVitestToken(cmd: readonly string[]): number | null {
  * splitting and an abstain (`comparability: 'none'`) rather than a
  * false-positive comparison.
  *
- * Maintenance: this list targets vitest 4.x. Revisit when bumping the
- * vitest minor/major version (see issue #15 Open Question — no automated
+ * Maintenance: this list targets vitest 4.x and 5.x; re-checked against
+ * vitest 5.0.0's CLI option table (dist/chunks/cac.*.js) on 2026-09-14 —
+ * every value-taking flag listed here is still defined with the same arity
+ * (`--minWorkers` / `--workspace` were already absent from 4.1.10's table
+ * and are kept for records made by older vitest). Revisit again when
+ * bumping past vitest 5.x (see issue #15 Open Question — no automated
  * mechanism keeps this in sync with vitest's own CLI surface).
  */
 const VITEST_VALUE_FLAGS: ReadonlySet<string> = new Set([

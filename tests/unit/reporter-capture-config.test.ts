@@ -22,8 +22,8 @@ describe('captureRunnerConfig (F1)', () => {
       testTimeout: 10_000,
       setupFiles: ['/wt/setup.ts', '/wt/setup2.ts'],
       sequence: {
-        sequencer: BaseSequencer,
-        shuffle: false,
+        sequencer: RandomSequencer,
+        shuffle: true,
         concurrent: true,
         seed: 42,
       },
@@ -39,8 +39,8 @@ describe('captureRunnerConfig (F1)', () => {
       test_timeout: 10_000,
       setup_files: ['/wt/setup.ts', '/wt/setup2.ts'],
       sequence: {
-        sequencer: 'BaseSequencer',
-        shuffle_tests: false,
+        sequencer: 'RandomSequencer',
+        shuffle_tests: true,
         concurrent: true,
         seed: 42,
       },
@@ -88,6 +88,40 @@ describe('captureRunnerConfig (F1)', () => {
       concurrent: false,
       seed: 5678,
     })
+  })
+
+  it('drops seed when neither tests nor files are shuffled (vitest 5 assigns Date.now() unconditionally)', () => {
+    // vitest 5's resolveConfig sets `sequence.seed ??= Date.now()`
+    // unconditionally, unlike vitest 4's conditional `??=` under shuffle.
+    // Capturing that seed would make config_digest unique per run and every
+    // compare abstain with baseline-missing (issue #78).
+    const config = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: false,
+        concurrent: false,
+        seed: 1757800000000,
+      },
+    }
+
+    expect(captureRunnerConfig(config).sequence).toEqual({
+      sequencer: 'BaseSequencer',
+      shuffle_tests: false,
+      concurrent: false,
+      seed: null,
+    })
+  })
+
+  it('keeps seed when tests are shuffled even with a non-Random sequencer name', () => {
+    const config = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: true,
+        seed: 7,
+      },
+    }
+
+    expect(captureRunnerConfig(config).sequence.seed).toBe(7)
   })
 
   it('normalizes the retry object form ({count, delay, condition}) to its count', () => {

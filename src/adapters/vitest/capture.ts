@@ -66,6 +66,12 @@ export interface Capture {
       sequencer: string | null
       shuffle_tests: boolean
       concurrent: boolean
+      /**
+       * Numeric only when tests shuffle (`shuffle`) is enabled, or the
+       * resolved sequencer is `RandomSequencer`. Otherwise `null`, even if
+       * vitest itself holds a seed value (vitest 5 unconditionally backfills
+       * `sequence.seed ??= Date.now()` in `resolveConfig`, issue #78).
+       */
       seed: number | null
     }
   }

@@ -19,7 +19,10 @@ import {
   type RecordContext,
   VITEST_CAPABILITIES,
 } from '../../src/adapters/vitest/recorder.js'
+import { captureRunnerConfig } from '../../src/adapters/vitest/reporter.js'
 import { canonicalDigest } from '../../src/digest.js'
+
+class BaseSequencer {}
 
 const scratchDirs: string[] = []
 
@@ -255,5 +258,73 @@ describe('buildRunRecord instrument.capabilities (F2)', () => {
       'selector-relation': 'pass',
     })
     expect(record.instrument.capabilities).not.toBe(VITEST_CAPABILITIES)
+  })
+})
+
+describe('config_digest vs unconditional seed (issue #78)', () => {
+  it('two runs whose resolved config differs only in an unconditional seed share a digest', () => {
+    const worktree = makeScratchDir('vdelta-digest-seed-')
+    writeFileSync(join(worktree, 'setup.ts'), 'export {}')
+
+    const configA = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: false,
+        concurrent: false,
+        seed: 1000,
+      },
+    }
+    const configB = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: false,
+        concurrent: false,
+        seed: 2000,
+      },
+    }
+
+    const digestA = instrumentConfigDigest(
+      baseCapture(captureRunnerConfig(configA)),
+      worktree,
+    )
+    const digestB = instrumentConfigDigest(
+      baseCapture(captureRunnerConfig(configB)),
+      worktree,
+    )
+
+    expect(digestA).toBe(digestB)
+  })
+
+  it('seed still splits the digest when tests are shuffled', () => {
+    const worktree = makeScratchDir('vdelta-digest-seed-shuffle-')
+    writeFileSync(join(worktree, 'setup.ts'), 'export {}')
+
+    const configA = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: true,
+        concurrent: false,
+        seed: 1000,
+      },
+    }
+    const configB = {
+      sequence: {
+        sequencer: BaseSequencer,
+        shuffle: true,
+        concurrent: false,
+        seed: 2000,
+      },
+    }
+
+    const digestA = instrumentConfigDigest(
+      baseCapture(captureRunnerConfig(configA)),
+      worktree,
+    )
+    const digestB = instrumentConfigDigest(
+      baseCapture(captureRunnerConfig(configB)),
+      worktree,
+    )
+
+    expect(digestA).not.toBe(digestB)
   })
 })

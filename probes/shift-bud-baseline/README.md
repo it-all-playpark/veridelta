@@ -496,3 +496,33 @@ superseded 528 / 536）。
 - **自己検証性** — 全8件について保存した gz から `sha256(canonicalJson(preimage))` を再計算して
   ファイル名と一致することを確認。あわせて**同じ手順を 0.9.0 の gz 8件にも適用して一致を確認**し、
   検証コード自体が正しいことを先に担保してから 0.10.0 を検証した
+
+### 2026-09-14 — issue #78 seed 取り込み条件の変更に対する digest 不変判定（baseline 録り直しなし）
+
+| 項目 | 値 |
+| --- | --- |
+| 対象 | local build `dist/cli.js`（= vdelta 0.10.0 + 本 PR の変更、`vdelta --version` で確認） |
+| 変更内容 | seed は `sequence.shuffle === true` または sequencer 名が `RandomSequencer` のときだけ収録し、それ以外は `null`（vitest 5 が `sequence.seed ??= Date.now()` を無条件付与するようになったため、vitest 自身の `Vitest#getSeed()` 意味論に揃えた） |
+| subject | pin SHA `8cf90518`、`tree_digest` `f0ffc727…`（前回と同一。streams 6 件を local build で再記録し `provenance.head` / `provenance.tree_digest` が一致することで機械確認。git 操作は worktree 隔離 hook の対象になるため使わない） |
+| node | v24.19.0 → v24.21.0（実行機のバージョン） |
+| 結果 | 許容パス `instrument.adapter_version environment.runtime` を指定して `diff-preimages.mjs` が **PASS: 説明できない差分 0 件** |
+
+| 差分パス | 内容 |
+| --- | --- |
+| `environment.runtime` | `"node v24.19.0"` → `"node v24.21.0"` |
+
+`instrument.adapter_version` は差分にすら現れなかった（local build も 0.10.0 のため）。
+`instrument.config_digest` は3種とも不変であることを直接確認した:
+
+| package | config_digest |
+| --- | --- |
+| packages/backend | `sha256:7c7de262…`（不変） |
+| packages/frontend | `sha256:0dcfea0b…`（不変） |
+| packages/shared / landing / video / e2e | `sha256:46ee147e…`（不変） |
+
+`observations` は 6/6 とも配列丸ごと一致（1958 / 1540 / 457 / 76 / 195 / 30）。
+**コントロール証明** — `packages/shared` を2回記録し `current.run_id`（`run_18c529cf…`）が一致。
+
+差分ゼロなので `manifest.json` / `runs/` は更新せず、`adapter_version`・`composition_id`
+（`vitest-native/2`）も据え置き。再記録に使った preimage は `.devflow-tmp/`（ephemeral）に
+置いており、baseline の恒久成果物には含めない。

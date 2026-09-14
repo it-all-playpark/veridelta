@@ -3,7 +3,7 @@
   "class": "recall",
   "mutation": "retry-added-via-outside-worktree-config",
   "spec_refs": ["§7.4", "§7.5", "INV-9"],
-  "notes": "Cheat: retry is added not by editing anything inside the git worktree, but by rewriting the ancestor-directory config that lives outside the worktree (vitest.config.mjs written via write-outside into the fixture root). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which cannot climb into the workspace's symlinked node_modules from the fixture root; a plain object is functionally identical to `defineConfig({...})`. The flaky test uses a module-scoped attempt counter, so run A fails deterministically on the first (only) attempt and run B passes deterministically on the second attempt once test.retry: 1 is set -- the test source, the inventory, and the rest of the worktree never change. Since issue #39, `retry` (count) enters `instrument.config_digest` (composition `vitest-native/2`, judgement table item), so this cheat is caught earlier and more strongly than before: `sameInstrument` no longer holds (retry count 0 -> 1), so the comparator reports comparability `none` / reason `instrument-changed` -- it never reaches inventory comparison, so it cannot claim `exact` or any `repaired_*` transition at all (`outcome_verdict: inconclusive`). The external config's own content change (retry field added) still independently fires `config-source-changed` for the external key (worktree-external config cannot be pinned by provenance -- no commit, no worktree diff observes it -- so it is disclosed via the `external:` config_sources key, spec §3.5 / Appendix C residual risk). This fixture asserts the harness never silently claims a green result across an external-config-induced instrument change.",
+  "notes": "vitest 5's config search moved from find-up (`any(configFiles, { cwd: root })`) to `findConfigFile(root)` (root directory only), so it no longer climbs ancestor directories the way vitest 4 does; the external config here is therefore selected explicitly via `--config ../vitest.config.mjs` (resolved relative to the workspace root) so both major versions reach the same ancestor-directory config file and the fixture's assertions (worktree-external config disclosed via `external:`, config-driven retry caught as instrument-changed) hold identically on vitest 4 and 5. Cheat: retry is added not by editing anything inside the git worktree, but by rewriting the ancestor-directory config that lives outside the worktree (vitest.config.mjs written via write-outside into the fixture root). The config is a plain exported object rather than `defineConfig(...)` because vite loads it via esbuild's own module resolution rooted at the file's location, which cannot climb into the workspace's symlinked node_modules from the fixture root; a plain object is functionally identical to `defineConfig({...})`. The flaky test uses a module-scoped attempt counter, so run A fails deterministically on the first (only) attempt and run B passes deterministically on the second attempt once test.retry: 1 is set -- the test source, the inventory, and the rest of the worktree never change. Since issue #39, `retry` (count) enters `instrument.config_digest` (composition `vitest-native/2`, judgement table item), so this cheat is caught earlier and more strongly than before: `sameInstrument` no longer holds (retry count 0 -> 1), so the comparator reports comparability `none` / reason `instrument-changed` -- it never reaches inventory comparison, so it cannot claim `exact` or any `repaired_*` transition at all (`outcome_verdict: inconclusive`). The external config's own content change (retry field added) still independently fires `config-source-changed` for the external key (worktree-external config cannot be pinned by provenance -- no commit, no worktree diff observes it -- so it is disclosed via the `external:` config_sources key, spec §3.5 / Appendix C residual risk). This fixture asserts the harness never silently claims a green result across an external-config-induced instrument change.",
   "steps": [
     {
       "do": "write-outside",
@@ -12,13 +12,13 @@
     },
     {"do": "apply", "project": "base"},
     {"do": "commit", "message": "seed flaky test"},
-    {"do": "run", "id": "A", "expectExit": 1},
+    {"do": "run", "id": "A", "args": ["--config", "../vitest.config.mjs"], "expectExit": 1},
     {
       "do": "write-outside",
       "path": "vitest.config.mjs",
       "content": "export default { test: { retry: 1 } }\n"
     },
-    {"do": "run", "id": "B", "expectExit": 0},
+    {"do": "run", "id": "B", "args": ["--config", "../vitest.config.mjs"], "expectExit": 0},
     {"do": "compare", "id": "cmp", "baseline": "A", "current": "B", "expectExit": 0}
   ],
   "assertions": [
