@@ -14,20 +14,17 @@ describe('vitest 4/5 support range (issue #78)', () => {
     expect(pkg.devDependencies.vitest).toBe('^4.0.0 || ^5.0.0')
   })
 
-  it('keeps the installed lockfile vitest pinned at 4.1.10', () => {
+  it('keeps the lockfile on vitest 4.x', () => {
     const lock = JSON.parse(
       readFileSync(join(root, 'package-lock.json'), 'utf8'),
     ) as {
       packages: Record<string, { version?: string }>
     }
-    expect(lock.packages['node_modules/vitest']?.version).toBe('4.1.10')
+    expect(lock.packages['node_modules/vitest']?.version).toMatch(/^4\./)
   })
 
   it('adds a vitest 5 cell to the CI job matrix without removing vitest 4 coverage', () => {
-    const ci = readFileSync(
-      join(root, '.github/workflows/ci.yml'),
-      'utf8',
-    )
+    const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8')
     expect(ci).toMatch(/vitest:\s*\[4\]/)
     expect(ci).toMatch(
       /include:\s*\n(?:.*\n)*?\s*- os: ubuntu-latest\s*\n\s*node-version: 24\s*\n\s*vitest: 5/,

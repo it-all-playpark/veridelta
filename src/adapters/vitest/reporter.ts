@@ -96,7 +96,8 @@ export function captureRunnerConfig(config: unknown): Capture['config'] {
       sequencer: typeof sequencer === 'function' ? sequencer.name : null,
       shuffle_tests: sequence?.shuffle === true,
       concurrent: sequence?.concurrent === true,
-      seed: shuffled && typeof sequence?.seed === 'number' ? sequence.seed : null,
+      seed:
+        shuffled && typeof sequence?.seed === 'number' ? sequence.seed : null,
     },
   }
 }
