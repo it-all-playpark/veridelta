@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.1](https://github.com/it-all-playpark/veridelta/compare/v0.10.0...v0.10.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* ([#78](https://github.com/it-all-playpark/veridelta/issues/78)) ([1c0e73d](https://github.com/it-all-playpark/veridelta/commit/1c0e73d08bc7f41ed32cdbb2487166b12946d0b4))
+* satisfy lint formatting and relax vitest lockfile pin test ([5ccef69](https://github.com/it-all-playpark/veridelta/commit/5ccef695acba09001030c739c393da093805953e))
+* **tests:** normalize CRLF before matching CI workflow content ([814b2e8](https://github.com/it-all-playpark/veridelta/commit/814b2e8772e15798b8c09d6bf84bf454f1c50285))
+* **vitest:** vitest 5 の無条件 sequence.seed を config_digest から除外し vitest 4/5 両対応にする ([#78](https://github.com/it-all-playpark/veridelta/issues/78)) ([ff147aa](https://github.com/it-all-playpark/veridelta/commit/ff147aa64d3378564242fae11f20106c7d466b0e))
+
 ## [0.10.0](https://github.com/it-all-playpark/veridelta/compare/v0.9.0...v0.10.0) (2026-08-03)
 
 
