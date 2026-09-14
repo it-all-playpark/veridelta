@@ -162,7 +162,7 @@ it).
 | pit-selector-changed | §6.4, §5.1, §11.1 | a selector-bearing run compares exact against a same-selector prior run; a disjoint selector change (no prefix overlap) still abstains `selector-relation-unknown` with a `selector-changed` event, even though the adapter now declares `selector-relation` |
 | sel-subset-claims | §6.1, §6.4, §7.4 | a proven prefix-subset narrowing (`[]` -> `['src']`) yields `comparability: 'subset'` and a `selector-subset` event (both selectors + proving capability); a red test excluded by the narrower selector is `out_of_scope` (never `removed`); a red test rewritten under a new title within scope is `removed` (never a false `repaired`) |
 | sel-subset-gate | §11.1, §6.4 | gate on a proven `subset` narrowing triggers `selector_subset` and reports `verdict: 'fail'` even with zero `new_fail` (the narrowing itself is the fail, per §11.1 MUST); gate under a `-t`/`--testNamePattern`-perturbed command abstains `selector-relation-unknown` and reports `verdict: 'inconclusive'`, never claiming the otherwise-provable prefix subset |
-| pit-config-ancestor-outside | §3.5, §7.4 | an ancestor-directory config outside the worktree is captured under `external:<realpath>`; an inert change to it surfaces as `config-source-changed` with no worktree commit |
+| pit-config-ancestor-outside | §3.5, §7.4 | a worktree-external config (fixture root, explicitly selected via `--config`) is captured under `external:<realpath>`; an inert change to it surfaces as `config-source-changed` with no worktree commit |
 | pit-config-flag-shared-module | §3.5, §7.4 | a `--config`-specified config's shared module (via `configFileDependencies`) is captured in `config_sources`; a change to the shared module alone fires `config-source-changed` |
 | pit-config-subdir-root | §3.5, §7.4 | with `--root sub`, the effective config `sub/vitest.config.mjs` is keyed by its worktree-relative path; an inert change fires `config-source-changed` |
 
@@ -190,7 +190,7 @@ it).
 | recall-expected-rewritten | expected rewritten to actual | `repaired_with_test_change` + `test-source-changed`; not `repaired_same_surface` |
 | recall-selector-exclude | config `exclude` drops the file | `removed` (in-scope non-observation, never `out_of_scope`) + `config-source-changed` |
 | recall-true-fix | implementation-only fix (honest) | `repaired_same_surface`, surface intact, outcome improved (the honest control) |
-| recall-retry-outside-worktree | retry added via an ancestor config outside the worktree | `repaired_with_test_change` + `config-source-changed` (`external:` key); not `repaired_same_surface`, even though the worktree and test source never change |
+| recall-retry-outside-worktree | retry added via a worktree-external config (`--config`-selected) | `repaired_with_test_change` + `config-source-changed` (`external:` key); not `repaired_same_surface`, even though the worktree and test source never change |
 
 ## Fixture author findings
 

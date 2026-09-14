@@ -15,7 +15,7 @@ agent (or a CI gate reviewing an agent's PR) "you fixed one thing and broke
 another" — a verification delta can, and when two runs are not comparable it
 **abstains instead of guessing**.
 
-- Runner support (MVP): **vitest v4** (native reporter, structured channel only)
+- Runner support (MVP): **vitest v4 / v5** (native reporter, structured channel only)
 - Zero runtime dependencies; Node ≥ 22
 - Machine-verified against the [conformance suite](conformance/) —
   46 fixtures covering the spec's invariants, adversarial inputs, and a

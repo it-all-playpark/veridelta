@@ -98,7 +98,7 @@ config **ファイル**の digest（`surface.config_sources`, `recorder.ts:85-90
 | `retry` | yes・収録済み（vitest-native/2、count のみ） | 最終 attempt の結果のみが verdict として報告されるため、flaky な fail が verdict ごと消える（(b)）。報告される `error`（message/exception_type）も attempt により変わりうる（(a)）。§4.1.1 が挙げる Playwright `retries: CI ? 2 : 0` と同型の穴で、vitest 側も `test.retry` / `retry` config で同じ構造を持つ。 | `capture.config.retry` は `count`（number 正規化）のみ収録。`retry` の object 形（`{count, delay, condition}`）のうち `condition`（RegExp/function）は決定的 serialize が保証できないため未収録 — §7 の既知ギャップ (b) 参照。 |
 | `testTimeout` | yes・収録済み（vitest-native/2） | timeout 発生時のメッセージに設定値そのものが埋め込まれる（例: `'Test timed out in Xms'`）。設定値を変えると同一 tree でも message バイト列が変わり（(a)）、timeout の発生有無自体で verdict（pass↔fail）も変わりうる（(b)）。 | `capture.config.test_timeout` を digest 入力に追加。 |
 | `setupFiles` | yes・収録済み（vitest-native/2、解決済みパスリスト） | どの setup ファイルが解決され走るかのリストが、globals/mock の初期状態を変え、evidence 内容に波及する（(a)/(b)）。**covering すべきは解決済みパスのリスト（どの setup が走るか）であり、ファイル内容の digest ではない** — 内容側は `provenance.tree_digest` / `surface.config_sources`（設定ファイル自体を config_files 経由で拾う場合）の担当であり、役割はここで切り分ける。 | covering は `configSourceKey(path, worktree)` による worktree 相対パス（外部は `external:<abs>`）の解決済みリストで、resolved 順を保持（sort しない — setup 実行順は evidence-affecting）。ファイル内容 digest は入れない。 |
-| `sequence`（shuffle/seed/concurrent 等） | yes・収録済み（vitest-native/2、sequencer+shuffle_tests） | 実行順序が変わると、`isolate: false` や外部リソース共有時の state leak を経由して同一 tree でも verdict・evidence が変わりうる（(b)、条件付きで (a)）。 | vitest 4 の `resolveConfig` は `shuffle` の `{files, tests}` object 形を正規化する（`node_modules/vitest/dist/chunks/coverage.DM_a_rWm.js:470-481`）: `tests` 側は `shuffle.tests` boolean になり、`files` 有効は `sequencer` クラス（`RandomSequencer`）としてのみ残る。そのため sequencer class 名 + `shuffle_tests` boolean の両軸で covering する。shuffle 有効かつ seed 未指定の run は vitest が `seed = Date.now()` を補う（同ファイル 481 行の条件付き `??=`）ため、run 毎に `config_digest` が変わり `instrument-changed` で abstain になる — これは実行順が毎回変わるという事実の正直な反映であり、比較したい場合は seed を pin する。 |
+| `sequence`（shuffle/seed/concurrent 等） | yes・収録済み（vitest-native/2、sequencer+shuffle_tests） | 実行順序が変わると、`isolate: false` や外部リソース共有時の state leak を経由して同一 tree でも verdict・evidence が変わりうる（(b)、条件付きで (a)）。 | vitest 4 の `resolveConfig` は `shuffle` の `{files, tests}` object 形を正規化する（`node_modules/vitest/dist/chunks/coverage.DM_a_rWm.js:470-481`）: `tests` 側は `shuffle.tests` boolean になり、`files` 有効は `sequencer` クラス（`RandomSequencer`）としてのみ残る。そのため sequencer class 名 + `shuffle_tests` boolean の両軸で covering する。shuffle 有効かつ seed 未指定の run は vitest が `seed = Date.now()` を補う（同ファイル 481 行の条件付き `??=`）ため、run 毎に `config_digest` が変わり `instrument-changed` で abstain になる — これは実行順が毎回変わるという事実の正直な反映であり、比較したい場合は seed を pin する。seed は shuffle 有効 / RandomSequencer 時のみ収録（issue #78 追記参照）。 |
 
 以上 9 項目すべてが `instrumentConfigDigest`（`src/adapters/vitest/recorder.ts`）で
 covering 済みである（issue #39 実装）。9 項目以外の追加候補として `chaiConfig` の他フィールド
@@ -241,3 +241,42 @@ composition の変更ではない。§4 判定表・§1–§6 本文は本追記
 **後続 TODO**: `probes/shift-bud-baseline/` の録り直しが必要。`instrument.capabilities` に
 `selector-relation` が増えるため、既存 baseline との差分は `instrument.adapter_version` /
 `instrument.capabilities` に現れる想定（§7 実装後の実測と同じ形で記録する）。
+
+### 追記（issue #78: `sequence.seed` の取り込み条件、`composition_id` 据え置き）
+
+vitest 4 の `resolveConfig` は `sequence.seed` を条件付きで補う:
+`if (resolved.sequence.sequencer === RandomSequencer || resolved.sequence.shuffle)
+resolved.sequence.seed ??= Date.now();`（`node_modules/vitest/dist/chunks/coverage.DM_a_rWm.js:481`）。
+vitest 5.0.0 はこの条件を落とし、`resolved.sequence.seed ??= Date.now();` を
+`resolveConfig`（`dist/chunks/index.*.js`）内で無条件に実行する。つまり vitest 5 では
+shuffle が一切有効でない通常の run でも `resolved.sequence.seed` は常に数値
+（`Date.now()`）になる。
+
+vitest 自身の `Vitest#getSeed()` は、実行順のランダム化に seed が実際に使われる場合のみ
+その値を返す設計を保っている: vitest 5 では
+`this.config.sequence.sequencer === RandomSequencer || !!this.config.sequence.shuffle ||
+this.projects.some(p => !!p.config.sequence.shuffle)` を満たすときだけ seed を返し、
+それ以外は `undefined`。adapter（`captureRunnerConfig`,
+`src/adapters/vitest/reporter.ts`）はこの意味論に揃え、`sequence.shuffle === true` または
+resolved sequencer の `Function.name === 'RandomSequencer'` のときだけ `sequence.seed` を
+数値で収録し、それ以外は `null` に正規化する。vitest 自身が「実行順に影響しない」と
+判定した seed 値は evidence-affecting な effective config とみなさない、という判断である。
+
+この変更後も、shuffle 有効時（tests shuffle または files-shuffle 経由の
+`RandomSequencer`）に seed を pin しない run は、run ごとに `instrument.config_digest` が
+変わり `instrument-changed` で abstain になる挙動は不変（§4 判定表 `sequence` 行の記述の
+とおり）。変わるのは「shuffle 無効なのに vitest 5 が黙って埋める seed」を digest から
+除外する capture 側の正規化だけである。
+
+`composition_id` は `vitest-native/2` に据え置く。§4 の判定表は項目の増減も判定変更もなく
+（`sequence` 行は元々「shuffle/seed/concurrent 等」を covering 対象として宣言している）、
+変わるのは capture 側の正規化だけであるため、composition の変更には当たらない。vitest
+自身が `null`（＝実行順に無関係）と報告する seed は、そもそも収録すべき effective config
+ではない。
+
+vitest 4 の既存 record（`probes/shift-bud-baseline/` の vdelta 0.10.0 preimage）との
+`instrument.config_digest` 不変は `diff-preimages.mjs` で機械判定する（F4）。vitest 4 では
+shuffle 無効時の `sequence.seed` は元々 `undefined` であり、旧実装でも
+`typeof sequence?.seed === 'number'` が false になって `null` に落ちていたため、新規則
+（`shuffled && typeof sequence?.seed === 'number'`）でも同じく `null` になり、shift-bud
+baseline のような shuffle 無効構成では digest は不変である。

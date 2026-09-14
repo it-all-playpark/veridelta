@@ -81,6 +81,12 @@ root — stop the upward search themselves and are never overwritten. This is
 a contract fixtures may rely on: fixture behavior MUST NOT depend on any
 configuration outside the fixture root.
 
+vitest 5 では config 探索が root 直下のみ（`findConfigFile(root)`、祖先を遡らない）に
+変わったため、この boundary marker は vitest 4 のためのものであり vitest 5 では無害な
+no-op である。fixture root に置いた外部 config を vitest 5 でも効かせるには run step の
+`args` で `--config ../vitest.config.mjs` を明示する
+（`pit-config-ancestor-outside` / `recall-retry-outside-worktree` が該当）。
+
 Mini vitest projects:
 
 - May contain test files, source files, `vitest.config.ts`, `.gitignore`,
@@ -121,7 +127,7 @@ the fixture):
 | `{"do": "gate", "id": "g", "ref": "<git-ref>", "run": "A"?, "expectExit": 0?, "assertDeterministic": true?}` | Invoke `vdelta gate --ref <ref> --policy report-only --report json` (plus `--run <id>` if `run` given). Stdout gate report stored under `id`. |
 | `{"do": "show", "id": "s", "run": "A", "test": "<test_id>"?, "raw": true?, "expectExit": 0?}` | Invoke `vdelta show`. Stdout stored under `id` (parsed as JSON unless `raw`). |
 | `{"do": "write-file", "path": "...", "content": "..."}` | Write a file in the workspace (workspace-relative path; may target `.veridelta/...` for tampering fixtures). |
-| `{"do": "write-outside", "path": "...", "content": "..."}` | Write a file outside the workspace's git worktree but inside the fixture's tmp territory (`path` is root-relative). For simulating an ancestor-directory config that takes effect on the workspace from outside the repo. Discarded together with the rest of the fixture's tmp territory on cleanup. |
+| `{"do": "write-outside", "path": "...", "content": "..."}` | Write a file outside the workspace's git worktree but inside the fixture's tmp territory (`path` is root-relative). For simulating an ancestor-directory config that takes effect on the workspace from outside the repo (picked up implicitly by vitest 4's ancestor search; vitest 5 requires the run step to pass `--config ../<file>`). Discarded together with the rest of the fixture's tmp territory on cleanup. |
 | `{"do": "edit-json", "path": "...", "set": {"<dot.path>": <value>}}` | Load a JSON file, set the given dot-paths (array indices allowed, e.g. `observations.0.verdict`), write it back. `{RUN:A}` inside `path` expands to the run id recorded by step `A`. |
 | `{"do": "delete", "path": "..."}` | Delete a file or directory in the workspace. |
 | `{"do": "mkdir", "path": "..."}` | Create a directory (e.g. `.veridelta/lock` to simulate held advisory lock). |
@@ -244,9 +250,13 @@ config, however supplied (§3.1). The judgement table (§4 of
 - `setupFiles`: covered as a resolved, ordered list of paths (worktree-relative,
   or `external:<abs path>` when outside the worktree) — which setup files run
   and in what order, not their content (no per-file digest)
-- `sequence`: covered as the post-`resolveConfig` sequencer class name plus
-  the normalized `shuffle_tests` boolean (vitest's `{files, tests}` shuffle
-  object form is normalized by `resolveConfig` before the adapter sees it)
+- `sequence`: covered as the post-`resolveConfig` sequencer class name, the
+  normalized `shuffle_tests` boolean, `concurrent`, and the seed **only when
+  tests or files are shuffled** (`shuffle: true` or `RandomSequencer`);
+  otherwise seed is recorded as `null` because vitest 5 assigns
+  `sequence.seed ??= Date.now()` unconditionally while vitest 4 only does so
+  under shuffle (issue #78) (vitest's `{files, tests}` shuffle object form is
+  normalized by `resolveConfig` before the adapter sees it)
 
 Changing `test.chaiConfig.truncateThreshold` in `vitest.config.ts` between two
 runs therefore yields `comparability: "none"` with reason `instrument-changed`

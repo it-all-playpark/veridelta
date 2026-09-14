@@ -1,5 +1,5 @@
 /**
- * vitest v4 Reporter (Reported Tasks API) — the vdelta capture side of the
+ * vitest v4 / v5 Reporter (Reported Tasks API) — the vdelta capture side of the
  * adapter. Structured-first (§12): consumes only the runner's structured
  * channel (TestCase results, options, locations, console callbacks), never
  * rendered output. Writes a Capture dump to $VDELTA_CAPTURE_FILE at run end;
@@ -71,6 +71,15 @@ export function captureRunnerConfig(config: unknown): Capture['config'] {
 
   const sequence = c?.sequence
   const sequencer = sequence?.sequencer
+  // vitest's own `Vitest#getSeed()` semantics: the seed only shapes execution
+  // order (and therefore evidence) when tests or files are shuffled. vitest 4
+  // resolveConfig sets `seed ??= Date.now()` only under that condition
+  // (coverage.*.js:481); vitest 5 sets it unconditionally (index.*.js), so
+  // an unconditional capture would make config_digest unique per run and
+  // every compare abstain with baseline-missing (issue #78).
+  const shuffled =
+    sequence?.shuffle === true ||
+    (typeof sequencer === 'function' && sequencer.name === 'RandomSequencer')
 
   return {
     include_task_location: c?.includeTaskLocation === true,
@@ -87,7 +96,8 @@ export function captureRunnerConfig(config: unknown): Capture['config'] {
       sequencer: typeof sequencer === 'function' ? sequencer.name : null,
       shuffle_tests: sequence?.shuffle === true,
       concurrent: sequence?.concurrent === true,
-      seed: typeof sequence?.seed === 'number' ? sequence.seed : null,
+      seed:
+        shuffled && typeof sequence?.seed === 'number' ? sequence.seed : null,
     },
   }
 }
