@@ -24,7 +24,13 @@ describe('vitest 4/5 support range (issue #78)', () => {
   })
 
   it('adds a vitest 5 cell to the CI job matrix without removing vitest 4 coverage', () => {
-    const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8')
+    // Normalize CRLF to LF: on Windows runners git checks this file out with
+    // CRLF line endings, and JS regex `.` treats `\r` as a line terminator
+    // (so it doesn't match it), which breaks the multiline patterns below.
+    const ci = readFileSync(
+      join(root, '.github/workflows/ci.yml'),
+      'utf8',
+    ).replace(/\r\n/g, '\n')
     expect(ci).toMatch(/vitest:\s*\[4\]/)
     expect(ci).toMatch(
       /include:\s*\n(?:.*\n)*?\s*- os: ubuntu-latest\s*\n\s*node-version: 24\s*\n\s*vitest: 5/,
