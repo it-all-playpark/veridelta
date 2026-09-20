@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import { treeDigest } from '../../src/tree-digest.js'
@@ -76,7 +76,7 @@ describe('treeDigest (index seeding)', () => {
     await git(dir, ['add', 'a.txt'])
     await git(dir, ['commit', '-m', 'initial'])
 
-    const traceFile = join(dir, '..', `${dir.split('/').pop()}-trace.log`)
+    const traceFile = join(dir, '..', `${basename(dir)}-trace.log`)
     scratchDirs.push(traceFile)
     const { result: oid, trace } = await withGitTrace(traceFile, () =>
       treeDigest(dir),
@@ -96,7 +96,7 @@ describe('treeDigest (index seeding)', () => {
     await git(dir, ['commit', '-m', 'initial'])
     rmSync(join(dir, '.git', 'index'))
 
-    const traceFile = join(dir, '..', `${dir.split('/').pop()}-trace.log`)
+    const traceFile = join(dir, '..', `${basename(dir)}-trace.log`)
     scratchDirs.push(traceFile)
     const { result: oid, trace } = await withGitTrace(traceFile, () =>
       treeDigest(dir),
@@ -113,7 +113,7 @@ describe('treeDigest (index seeding)', () => {
     await initRepo(dir)
     writeFileSync(join(dir, 'c.txt'), 'untracked only\n')
 
-    const traceFile = join(dir, '..', `${dir.split('/').pop()}-trace.log`)
+    const traceFile = join(dir, '..', `${basename(dir)}-trace.log`)
     scratchDirs.push(traceFile)
     const { result: oid, trace } = await withGitTrace(traceFile, () =>
       treeDigest(dir),
