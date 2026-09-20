@@ -199,12 +199,19 @@ full digest.
 git tree object id over the union of tracked, staged, unstaged, and untracked
 files, excluding paths ignored by committed `.gitignore`/`.gitattributes`
 rules. Implementations MUST compute it against a dedicated, throwaway index
-(`GIT_INDEX_FILE`) seeded from `HEAD` (`git read-tree HEAD`, or `read-tree
---empty` for an unborn `HEAD`), followed by `git add -A` and `git write-tree`,
-so that the operation never mutates the repository's real index or working
-tree. To keep the digest deterministic and independent of host and time, the
-computation MUST pin `core.autocrlf=false`, `core.eol=lf`, and
-`core.excludesFile=/dev/null`, and MUST NOT depend on file mtimes. For a clean
+(`GIT_INDEX_FILE`), followed by `git add -A` and `git write-tree`, so that the
+operation never mutates the repository's real index or working tree. The
+throwaway index MAY be seeded from `HEAD` (`git read-tree HEAD`, or
+`read-tree --empty` for an unborn `HEAD`) or from a byte copy of the
+repository's real index file (which carries git's stat cache and avoids
+re-hashing unchanged tracked files); because `git add -A` reconciles the
+index with the working tree before `write-tree`, the resulting id MUST NOT
+depend on which seed was used. To keep the digest deterministic and
+independent of host and time, the computation MUST pin
+`core.autocrlf=false`, `core.eol=lf`, and `core.excludesFile=/dev/null`, and
+MUST NOT depend on file mtimes (an implementation MAY consult git's stat
+cache to skip re-hashing, relying on git's racy-git detection, provided the
+resulting id equals that of a full re-hash). For a clean
 checkout the resulting id is identical to `git rev-parse HEAD^{tree}`, which a
 verifier MAY use directly as the canonical form (subject to the conditions of
 §11.3). The digest records submodules solely by their gitlink commit id; it
