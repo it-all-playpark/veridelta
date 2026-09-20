@@ -21,7 +21,7 @@
  * files whose stat data changed, keeping cost proportional to dirty files
  * instead of tracked files. `add -A` + `write-tree` reconcile the index
  * with the working tree so the resulting tree id is independent of the
- * seed (verified for the S1-S14 scenarios of issue #81 and enforced by
+ * seed (verified for the S1-S17 scenarios of issue #81 and enforced by
  * tests/unit/tree-digest-parity.test.ts).
  *
  * (1) racy-git: correctness of the stat-cache shortcut rests on git's
@@ -36,10 +36,19 @@
  *
  * (2) split-index / extensions: an index with the `link` extension
  * (core.splitIndex) still resolves `sharedindex.*` from the real git dir,
- * so a copied index works (S14 in #81); however core.splitIndex,
- * core.untrackedCache, core.fsmonitor and index.sparse were all unset in
- * every repo the change was validated against, and behaviour with those
- * enabled is UNVERIFIED.
+ * so a copied index works (S14 in #81); however core.untrackedCache,
+ * core.fsmonitor and index.sparse were all unset in every repo the change
+ * was validated against, and behaviour with those enabled is UNVERIFIED.
+ * assume-unchanged (CE_VALID) and skip-worktree (sparse-checkout) entries
+ * are handled explicitly: `add -A` skips them via ie_match_stat without
+ * stat'ing the working tree, so a copied index carrying either flag on a
+ * changed file would silently keep the stale HEAD content. After copying,
+ * `git ls-files -v` is run against the throwaway index and, if any entry
+ * reports a lowercase tag (assume-unchanged) or an `S`/`s` tag
+ * (skip-worktree), the copy is discarded and seeding falls back to
+ * `read-tree` (note 3) instead, which always re-stats every path via
+ * `add -A`. Covered by S16 (assume-unchanged) and S17 (skip-worktree) in
+ * tests/unit/tree-digest-parity.test.ts.
  *
  * (3) fallback: when the real index file does not exist (fresh `git
  * init`, checkout from bare, `rm .git/index`) or cannot be copied, the
@@ -102,6 +111,24 @@ async function seedFromRealIndex(
   }
 }
 
+/**
+ * `git ls-files -v` tags each entry H (cached), S (skip-worktree), M
+ * (unmerged), R (removed), C (modified/changed) or K (to be killed); the
+ * tag is lowercased when the entry also has the assume-unchanged
+ * (CE_VALID) bit set. `add -A` reconciles the index against the working
+ * tree via ie_match_stat, which treats both assume-unchanged and
+ * skip-worktree entries as trusted and skips re-stat'ing them -- so a
+ * copied real index carrying either flag on a changed file would leave the
+ * throwaway index (and therefore the resulting tree) pinned to the stale
+ * content. Detect that here so the caller can fall back to a `read-tree`
+ * seed, which re-stats every path.
+ */
+function hasUntrustworthyIndexFlags(lsFilesOutput: string): boolean {
+  return lsFilesOutput
+    .split('\n')
+    .some((line) => line !== '' && /^[a-z]|^[Ss]/.test(line))
+}
+
 export async function treeDigest(worktree: string): Promise<string> {
   const idx = join(tmpdir(), `vd-idx-${randomUUID()}`)
   const objDir = join(tmpdir(), `vd-obj-${randomUUID()}`)
@@ -126,7 +153,14 @@ export async function treeDigest(worktree: string): Promise<string> {
       GIT_ALTERNATE_OBJECT_DIRECTORIES: alternates,
     }
 
-    if (!(await seedFromRealIndex(realIndex, idx))) {
+    let seeded = await seedFromRealIndex(realIndex, idx)
+    if (
+      seeded &&
+      hasUntrustworthyIndexFlags(await git(worktree, ['ls-files', '-v'], env))
+    ) {
+      seeded = false
+    }
+    if (!seeded) {
       let hasHead = true
       try {
         await git(worktree, ['rev-parse', '--verify', '-q', 'HEAD'])

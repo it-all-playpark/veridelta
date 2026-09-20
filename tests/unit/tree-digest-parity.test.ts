@@ -295,4 +295,22 @@ describe('treeDigest parity: read-tree seed (A) vs current implementation (B)', 
     writeFileSync(join(dir, 'b.txt'), 'beta\n')
     await expectParity(dir)
   })
+
+  it('S16 assume-unchanged (CE_VALID) entry with a changed file', async () => {
+    const dir = makeScratchDir('vd-tdp-')
+    await makeRepo(dir)
+    await git(dir, ['update-index', '--assume-unchanged', 'a.txt'])
+    writeFileSync(join(dir, 'a.txt'), 'alpha-changed-behind-assume-unchanged\n')
+    const oid = await expectParity(dir)
+    expect(oid).not.toBe(await headTree(dir))
+  })
+
+  it('S17 skip-worktree entry with a changed file', async () => {
+    const dir = makeScratchDir('vd-tdp-')
+    await makeRepo(dir)
+    await git(dir, ['update-index', '--skip-worktree', 'a.txt'])
+    writeFileSync(join(dir, 'a.txt'), 'alpha-changed-behind-skip-worktree\n')
+    const oid = await expectParity(dir)
+    expect(oid).not.toBe(await headTree(dir))
+  })
 })
