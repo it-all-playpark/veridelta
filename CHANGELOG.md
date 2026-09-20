@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.2](https://github.com/it-all-playpark/veridelta/compare/v0.10.1...v0.10.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* **tests:** trace ファイル名生成を basename() でクロスプラットフォーム化 ([c212ba9](https://github.com/it-all-playpark/veridelta/commit/c212ba98b23a3bfa66c2a1e465bdd1463760e376))
+* **tree-digest:** assume-unchanged/skip-worktree エントリで real-index seed を read-tree にフォールバック ([5beaf6c](https://github.com/it-all-playpark/veridelta/commit/5beaf6ca0e13900843a709efebe4e04f3dea5521))
+
+
+### Performance Improvements
+
+* **tree-digest:** 実 index をコピーして seed し、clean tree での全ファイル再ハッシュを避ける ([#81](https://github.com/it-all-playpark/veridelta/issues/81)) ([dcfa984](https://github.com/it-all-playpark/veridelta/commit/dcfa9841902844aca37862864f096b20fa6f93e9))
+
 ## [0.10.1](https://github.com/it-all-playpark/veridelta/compare/v0.10.0...v0.10.1) (2026-09-14)
 
 
