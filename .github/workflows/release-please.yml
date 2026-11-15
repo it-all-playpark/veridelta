@@ -27,7 +27,7 @@ jobs:
       contents: read
       id-token: write # npm OIDC Trusted Publishing
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: 24
